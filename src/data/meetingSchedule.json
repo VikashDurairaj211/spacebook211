@@ -1,0 +1,5 @@
+[
+  { "id": "ms1", "title": "Daily standup", "room": "Discussion Room 1", "time": "09:30", "day": "Today" },
+  { "id": "ms2", "title": "Product review", "room": "Conference Room 1", "time": "13:00", "day": "Today" },
+  { "id": "ms3", "title": "Customer workshop", "room": "Training Room 1", "time": "15:30", "day": "Tomorrow" }
+]

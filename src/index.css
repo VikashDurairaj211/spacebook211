@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --neutralShadowAmbient: rgba(0, 0, 0, 0.12);
+    --neutralShadowAmbientDarker: rgba(0, 0, 0, 0.2);
+    --neutralShadowKey: rgba(0, 0, 0, 0.14);
+    --neutralShadowKeyDarker: rgba(0, 0, 0, 0.24);
+    --shadow4: 0px 0px 2px var(--neutralShadowAmbient), 0px 2px 4px var(--neutralShadowKey);
+    --shadow8: 0px 0px 2px var(--neutralShadowAmbient), 0px 4px 8px var(--neutralShadowKey);
+    --shadow16: 0px 0px 2px var(--neutralShadowAmbient), 0px 8px 16px var(--neutralShadowKey);
+    --shadow64: 0px 0px 8px var(--neutralShadowAmbientDarker), 0px 32px 64px var(--neutralShadowKeyDarker);
+
+    --cornerRadius20: 2px;
+    --cornerRadius40: 4px;
+    --cornerRadius80: 8px;
+
+    --colorNeutralForeground1: #201F1E;
+    --colorNeutralForeground2: #3B3A39;
+    --colorNeutralBackground1: #ffffff;
+    --colorNeutralBackground1Hover: #EDEBE9;
+
+    --fontFamilyBase: 'Segoe UI', Tahoma, sans-serif;
+    --fontWeightRegular: 400;
+    --fontWeightMedium: 400;
+    --fontWeightSemibold: 600;
+    --fontWeightBold: 800;
+
+    --fontSizeBase200: 12px;
+    --lineHeightBase200: 18px;
+  }
+
+  body {
+    @apply bg-portal-bg;
+    font-family: var(--fontFamilyBase);
+    font-style: normal;
+    font-variant: normal;
+    font-weight: 400;
+    font-size: 12px;
+    color: var(--colorNeutralForeground1);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body, button, input, select, table, textarea {
+    font-style: normal;
+    font-variant: normal;
+    font-weight: 400;
+    font-size: 12px;
+    font-family: var(--fontFamilyBase);
+    color: var(--colorNeutralForeground1);
+  }
+
+  ::selection {
+    background-color: theme('colors.portal-accent');
+    color: #F7F5F1;
+  }
+}
+
+@layer components {
+  /* Blueprint-style plaque tag used for room codes and statuses */
+  .plaque {
+    @apply inline-flex items-center gap-1 border border-ink/70 px-2 py-0.5 font-mono text-[11px] uppercase tracking-wider;
+  }
+  .plaque-available {
+    @apply border-moss text-moss;
+  }
+  .plaque-booked {
+    @apply border-clay text-clay;
+  }
+  .plaque-pending {
+    @apply border-signal text-signal;
+  }
+}

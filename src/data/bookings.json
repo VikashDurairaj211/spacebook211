@@ -1,0 +1,5 @@
+[
+  { "id": "b1", "roomName": "Conference Room 1", "date": "2026-08-03", "startTime": "09:00", "endTime": "10:00", "status": "Confirmed", "title": "Leadership Sync" },
+  { "id": "b2", "roomName": "Discussion Room 2", "date": "2026-08-04", "startTime": "11:00", "endTime": "12:00", "status": "Pending", "title": "Design Review" },
+  { "id": "b3", "roomName": "Training Room 1", "date": "2026-08-05", "startTime": "14:00", "endTime": "16:00", "status": "Confirmed", "title": "Product Demo" }
+]
