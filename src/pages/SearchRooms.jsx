@@ -59,7 +59,7 @@ export default function SearchRooms() {
               {ROOM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </Select>
           </Field>
-          <Field label="Capacity">
+          <Field label="No. of attendees">
             <Input
               type="number"
               min="1"
@@ -68,30 +68,39 @@ export default function SearchRooms() {
               onChange={(e) => updateFilter('capacity', e.target.value)}
             />
           </Field>
-          <Field label="Date">
-            <Input type="date" value={filters.date} onChange={(e) => updateFilter('date', e.target.value)} />
-          </Field>
-          <Field label="Start Time">
-            <Input type="time" value={filters.startTime} onChange={(e) => updateFilter('startTime', e.target.value)} />
-          </Field>
-          <Field label="End Time">
-            <Input type="time" value={filters.endTime} onChange={(e) => updateFilter('endTime', e.target.value)} />
-          </Field>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 mt-4">
-          {FACILITY_OPTIONS.map((facility) => (
-            <label key={facility.key} className="inline-flex items-center gap-2 rounded-lg border border-line bg-slate-50 px-3 py-3 text-sm hover:border-brand-blue">
-              <input
-                type="checkbox"
-                checked={filters[facility.key]}
-                onChange={(e) => updateFilter(facility.key, e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
-              />
-              <span>{facility.label}</span>
-            </label>
-          ))}
-        </div>
+        <details className="mt-4 rounded-lg border border-line bg-slate-50 p-3">
+          <summary className="cursor-pointer mb-3 font-medium">Facilities (click to expand)</summary>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            {FACILITY_OPTIONS.map((facility) => (
+              <label key={facility.key} className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm hover:border-brand-blue">
+                <input
+                  type="checkbox"
+                  checked={filters[facility.key]}
+                  onChange={(e) => updateFilter(facility.key, e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
+                />
+                <span>{facility.label}</span>
+              </label>
+            ))}
+
+            <div className="md:col-span-2 lg:col-span-2 grid grid-cols-3 gap-3 items-end">
+              <div>
+                <label className="block text-sm text-slate">Date</label>
+                <Input type="date" value={filters.date} onChange={(e) => updateFilter('date', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm text-slate">Start Time</label>
+                <Input type="time" value={filters.startTime} onChange={(e) => updateFilter('startTime', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm text-slate">End Time</label>
+                <Input type="time" value={filters.endTime} onChange={(e) => updateFilter('endTime', e.target.value)} />
+              </div>
+            </div>
+          </div>
+        </details>
 
         <Button type="submit" className="mt-4">Search</Button>
       </form>
@@ -113,7 +122,7 @@ export default function SearchRooms() {
               <p className="text-sm text-slate">{room.module} · {room.type}</p>
               <p className="mb-2 text-sm text-slate">Capacity: {room.capacity}</p>
               <p className="mb-4 text-sm text-slate">Facilities: {room.facilities?.join(', ') || 'None'}</p>
-              <Link to={`/book-room?roomId=${room.id}`}>
+              <Link to={`/book-room?roomId=${encodeURIComponent(room.id)}&date=${encodeURIComponent(filters.date||'')}&startTime=${encodeURIComponent(filters.startTime||'')}&endTime=${encodeURIComponent(filters.endTime||'')}&attendees=${encodeURIComponent(filters.capacity||'')}`}>
                 <Button variant="secondary" className="w-full" disabled={room.status === 'Booked'}>
                   {room.status === 'Booked' ? 'Unavailable' : 'Book This Room'}
                 </Button>

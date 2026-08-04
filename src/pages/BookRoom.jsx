@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { createBooking } from '../api/bookings'
 import { MOCK_ROOMS, MODULES } from '../data/mockRooms'
-import { Field, Input, Select, Textarea } from '../components/common/Input'
+import { Field, Input, Select } from '../components/common/Input'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
 
@@ -11,16 +11,20 @@ export default function BookRoom() {
   const [searchParams] = useSearchParams()
   const preselectedRoom = MOCK_ROOMS.find((r) => r.id === searchParams.get('roomId'))
 
+  const prefillDate = searchParams.get('date') || ''
+  const prefillStart = searchParams.get('startTime') || ''
+  const prefillEnd = searchParams.get('endTime') || ''
+  const prefillAttendees = searchParams.get('attendees') || ''
+
   const [form, setForm] = useState({
     title: '',
     purpose: '',
     module: preselectedRoom?.module || '',
     roomId: preselectedRoom?.id || '',
-    date: '',
-    startTime: '',
-    endTime: '',
-    attendees: '',
-    notes: '',
+    date: prefillDate,
+    startTime: prefillStart,
+    endTime: prefillEnd,
+    attendees: prefillAttendees,
   })
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -107,10 +111,6 @@ export default function BookRoom() {
 
           <Field label="Number of Attendees">
             <Input type="number" min="1" className="w-32" value={form.attendees} onChange={(e) => update('attendees', e.target.value)} />
-          </Field>
-
-          <Field label="Notes">
-            <Textarea rows={3} value={form.notes} onChange={(e) => update('notes', e.target.value)} placeholder="Anything the room admin should know" />
           </Field>
 
           {error && <p className="border border-clay px-3 py-2 text-sm text-clay">{error}</p>}
