@@ -2,14 +2,19 @@ import { Search, Bell, User, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { useState, useMemo } from 'react'
-import { rooms as ROOMS, bookings as BOOKINGS } from '../../services/mockData'
+import { rooms as ROOMS, bookings as BOOKINGS, notifications as NOTIFS } from '../../services/mockData'
+import Logo from '../../../Logo.jpg'
 
-export default function TopNav({ onToggleSidebar, sidebarCollapsed }) {
+export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly = false }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [notificationOpen, setNotificationOpen] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [showSearchResults, setShowSearchResults] = useState(false)
+
+  const notifications = useMemo(() => NOTIFS, [])
+  const unreadCount = notifications.length
 
   const searchResults = useMemo(() => {
     if (!searchInput.trim()) return { rooms: [], bookings: [] }
@@ -46,20 +51,23 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed }) {
   return (
     <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-slate-200 bg-portal-nav px-4 text-white shadow-sm md:px-6">
       <div className="flex items-center gap-3">
-        <button
+        {!publicOnly && <button
           onClick={onToggleSidebar}
           className="rounded-lg border border-white/20 p-2 transition bg-white/5 text-white hover:bg-white/10"
           aria-label="Toggle sidebar"
         >
           {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-        </button>
+        </button>}
         <div className="flex items-center gap-2">
-          <span className="rounded-lg bg-white/10 px-2 py-1 font-display text-sm font-700 tracking-tight">SPACEBOOK</span>
-          <span className="hidden text-xs uppercase tracking-[0.25em] text-slate-200 md:inline">Office Workspace Reservation</span>
+          <img src={Logo} alt="Spacebook logo" className="h-10 w-10 rounded-full border border-white/20 bg-white/10 object-cover" />
+          <div>
+            <span className="block font-display text-sm font-700 tracking-tight text-white">Spacebook</span>
+            <span className="hidden text-xs uppercase tracking-[0.25em] text-slate-200 md:inline">Office Workspace Reservation</span>
+          </div>
         </div>
       </div>
 
-      <form onSubmit={handleSearch} className="relative mx-6 hidden max-w-md flex-1 md:flex">
+      {!publicOnly && <form onSubmit={handleSearch} className="relative mx-6 hidden max-w-md flex-1 md:flex">
         <div className="flex w-full items-center gap-2 border border-white/20 bg-white/10 px-3 py-1.5 rounded-lg">
           <Search size={15} className="text-slate-200" />
           <input
@@ -122,15 +130,57 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed }) {
             )}
           </div>
         )}
-      </form>
+      </form>}
 
-      <div className="flex items-center gap-3">
-        <button
-          className="rounded-lg p-2 text-white hover:bg-white/10"
-          aria-label="Notifications"
-        >
-          <Bell size={18} />
-        </button>
+      {!publicOnly && <div className="flex items-center gap-3">
+        <div className="relative">
+          <button
+            onClick={() => {
+              setNotificationOpen((value) => !value)
+              setMenuOpen(false)
+            }}
+            className="relative rounded-lg p-2 text-white hover:bg-white/10"
+            aria-label="Notifications"
+          >
+            <Bell size={18} />
+            {unreadCount > 0 && (
+              <span className="pointer-events-none absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-400 px-1.5 text-[10px] font-semibold text-white">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+
+          {notificationOpen && (
+            <div className="absolute right-0 top-full z-50 mt-2 w-80 max-w-full rounded-xl border border-slate-200 bg-white text-sm text-ink shadow-lg">
+              <div className="border-b border-line px-4 py-3 flex items-center justify-between">
+                <span className="font-display text-sm font-700">Notifications</span>
+                <button
+                  onClick={() => {
+                    navigate('/notifications')
+                    setNotificationOpen(false)
+                  }}
+                  className="text-xs text-brand-blue hover:underline"
+                >
+                  View all
+                </button>
+              </div>
+              <div className="max-h-80 overflow-auto px-4 py-3 space-y-3">
+                {notifications.map((notification) => (
+                  <div key={notification.id} className="rounded-xl border border-slate-200 bg-portal-bg p-3 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-display text-sm font-700 text-ink">{notification.title}</p>
+                        <p className="mt-1 text-sm text-slate">{notification.message}</p>
+                      </div>
+                      <span className="font-mono text-[11px] uppercase tracking-wider text-slate">{notification.time}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="relative">
           <button
             onClick={() => setMenuOpen((v) => !v)}
@@ -141,14 +191,22 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed }) {
           </button>
           {menuOpen && (
             <div className="absolute right-0 top-full mt-1 w-40 border border-slate-200 bg-white text-sm text-ink shadow-sm rounded-lg">
-              <a href="/profile" className="block px-3 py-2 hover:bg-slate-50">Profile</a>
+              <button
+                onClick={() => {
+                  navigate('/profile')
+                  setMenuOpen(false)
+                }}
+                className="block w-full px-3 py-2 text-left hover:bg-slate-50"
+              >
+                Profile
+              </button>
               <button onClick={handleLogout} className="block w-full px-3 py-2 text-left text-clay hover:bg-slate-50">
                 Sign out
               </button>
             </div>
           )}
         </div>
-      </div>
+      </div>}
     </header>
   )
 }

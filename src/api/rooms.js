@@ -36,10 +36,22 @@ export async function getRoomAvailability(id, date) {
 }
 
 function filterMockRooms(filters) {
+  const requiredFacilities = []
+  if (filters.whiteboard) requiredFacilities.push('Whiteboard & Marker')
+  if (filters.tv) requiredFacilities.push('TV & Remote')
+  if (filters.camera) requiredFacilities.push('Camera')
+  if (filters.mic) requiredFacilities.push('Mic')
+
   return MOCK_ROOMS.filter((room) => {
     if (filters.module && room.module !== filters.module) return false
     if (filters.type && room.type !== filters.type) return false
     if (filters.capacity && room.capacity < Number(filters.capacity)) return false
+    if (requiredFacilities.length > 0) {
+      const roomFacilities = room.facilities || []
+      for (const facility of requiredFacilities) {
+        if (!roomFacilities.includes(facility)) return false
+      }
+    }
     return true
   })
 }

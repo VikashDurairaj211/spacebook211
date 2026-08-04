@@ -7,6 +7,13 @@ import Button from '../components/common/Button'
 import Card from '../components/common/Card'
 import StatusTag from '../components/common/StatusTag'
 
+const FACILITY_OPTIONS = [
+  { key: 'whiteboard', label: 'Whiteboard & Marker', value: 'Whiteboard & Marker' },
+  { key: 'tv', label: 'TV & Remote', value: 'TV & Remote' },
+  { key: 'camera', label: 'Camera', value: 'Camera' },
+  { key: 'mic', label: 'Mic', value: 'Mic' },
+]
+
 export default function SearchRooms() {
   const [filters, setFilters] = useState({
     module: '',
@@ -15,6 +22,10 @@ export default function SearchRooms() {
     date: '',
     startTime: '',
     endTime: '',
+    whiteboard: false,
+    tv: false,
+    camera: false,
+    mic: false,
   })
   const [results, setResults] = useState(MOCK_ROOMS)
   const [searched, setSearched] = useState(false)
@@ -67,6 +78,21 @@ export default function SearchRooms() {
             <Input type="time" value={filters.endTime} onChange={(e) => updateFilter('endTime', e.target.value)} />
           </Field>
         </div>
+
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 mt-4">
+          {FACILITY_OPTIONS.map((facility) => (
+            <label key={facility.key} className="inline-flex items-center gap-2 rounded-lg border border-line bg-slate-50 px-3 py-3 text-sm hover:border-brand-blue">
+              <input
+                type="checkbox"
+                checked={filters[facility.key]}
+                onChange={(e) => updateFilter(facility.key, e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
+              />
+              <span>{facility.label}</span>
+            </label>
+          ))}
+        </div>
+
         <Button type="submit" className="mt-4">Search</Button>
       </form>
 
@@ -85,7 +111,8 @@ export default function SearchRooms() {
                 <StatusTag status={room.status} />
               </div>
               <p className="text-sm text-slate">{room.module} · {room.type}</p>
-              <p className="mb-4 text-sm text-slate">Capacity: {room.capacity}</p>
+              <p className="mb-2 text-sm text-slate">Capacity: {room.capacity}</p>
+              <p className="mb-4 text-sm text-slate">Facilities: {room.facilities?.join(', ') || 'None'}</p>
               <Link to={`/book-room?roomId=${room.id}`}>
                 <Button variant="secondary" className="w-full" disabled={room.status === 'Booked'}>
                   {room.status === 'Booked' ? 'Unavailable' : 'Book This Room'}

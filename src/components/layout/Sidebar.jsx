@@ -1,9 +1,9 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Search, CalendarRange, ClipboardList, ShieldCheck, Building2, BookOpenCheck, BarChart3, Settings } from 'lucide-react'
+import { LayoutDashboard, Search, CalendarRange, ClipboardList, ShieldCheck, Building2, BookOpenCheck, BarChart3 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/search-rooms', label: 'Search Rooms', icon: Search },
   { to: '/availability-calendar', label: 'Availability Calendar', icon: CalendarRange },
   { to: '/my-bookings', label: 'My Bookings', icon: ClipboardList },
@@ -14,7 +14,6 @@ const ADMIN_ITEMS = [
   { to: '/admin/room-management', label: 'Room Management', icon: Building2 },
   { to: '/admin/booking-management', label: 'Booking Management', icon: BookOpenCheck },
   { to: '/admin/reports', label: 'Reports', icon: BarChart3 },
-  { to: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
 export default function Sidebar({ collapsed = false }) {

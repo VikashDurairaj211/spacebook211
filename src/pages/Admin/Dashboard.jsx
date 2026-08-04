@@ -3,14 +3,12 @@ import { Link } from 'react-router-dom'
 import Card from '../../components/common/Card'
 import Button from '../../components/common/Button'
 import DashboardCard from '../../components/cards/DashboardCard'
-import NotificationCard from '../../components/cards/NotificationCard'
 import StatusTag from '../../components/common/StatusTag'
-import { rooms as ROOMS, bookings as BOOKINGS, notifications as NOTIFS } from '../../services/mockData'
+import { rooms as ROOMS, bookings as BOOKINGS } from '../../services/mockData'
 
 export default function AdminDashboard() {
   const rooms = useMemo(() => ROOMS, [])
   const bookings = useMemo(() => BOOKINGS, [])
-  const notifications = useMemo(() => NOTIFS, [])
 
   const today = new Date().toISOString().slice(0, 10)
   const todayBookings = bookings.filter((b) => b.date === today)
@@ -32,14 +30,14 @@ export default function AdminDashboard() {
         <DashboardCard title="Utilization" value={`${utilization}%`} description="Approximate occupancy" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-display text-sm font-700 text-ink">Pending Approvals</h2>
               <p className="text-xs text-slate">Review the latest pending room requests.</p>
             </div>
-            <Link to="/admin/booking-management" className="text-xs text-portal-accent underline">Manage all</Link>
+            <Link to="/admin/booking-management" className="text-xs text-brand-blue underline">Manage all</Link>
           </div>
 
           {pendingApprovals.length === 0 ? (
@@ -68,7 +66,7 @@ export default function AdminDashboard() {
               <h2 className="font-display text-sm font-700 text-ink">Recent Activity</h2>
               <p className="text-xs text-slate">Latest room bookings and status changes.</p>
             </div>
-            <Link to="/admin/reports" className="text-xs text-portal-accent underline">View reports</Link>
+            <Link to="/admin/reports" className="text-xs text-brand-blue underline">View reports</Link>
           </div>
 
           <div className="mt-4 space-y-3">
@@ -85,45 +83,7 @@ export default function AdminDashboard() {
             ))}
           </div>
         </Card>
-
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-display text-sm font-700 text-ink">Admin Actions</h2>
-              <p className="text-xs text-slate">Jump to core admin tools.</p>
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-2">
-            <Link to="/admin/room-management"><Button variant="ghost">Room Management</Button></Link>
-            <Link to="/admin/booking-management"><Button variant="ghost">Booking Management</Button></Link>
-            <Link to="/admin/reports"><Button variant="ghost">Reports</Button></Link>
-            <Link to="/admin/settings"><Button variant="ghost">Settings</Button></Link>
-          </div>
-        </Card>
       </div>
-
-      <Card>
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-display text-sm font-700 text-ink">System Notifications</h2>
-            <p className="text-xs text-slate">Important operational alerts and messages.</p>
-          </div>
-          <Link to="/notifications" className="text-xs text-portal-accent underline">View all</Link>
-        </div>
-
-        <div className="mt-4 space-y-3">
-          {notifications.slice(0, 3).map((notification) => (
-            <NotificationCard
-              key={notification.id}
-              title={notification.title}
-              message={notification.message}
-              time={notification.time}
-              tone={notification.tone}
-            />
-          ))}
-        </div>
-      </Card>
     </div>
   )
 }

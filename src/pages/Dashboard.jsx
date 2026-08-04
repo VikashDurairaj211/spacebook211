@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Card from '../components/common/Card'
 import StatusTag from '../components/common/StatusTag'
 import Button from '../components/common/Button'
 import DashboardCard from '../components/cards/DashboardCard'
-import NotificationCard from '../components/cards/NotificationCard'
-import { rooms as ROOMS, bookings as BOOKINGS, notifications as NOTIFS } from '../services/mockData'
+import { rooms as ROOMS, bookings as BOOKINGS } from '../services/mockData'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -17,8 +16,6 @@ export default function Dashboard() {
 
   const rooms = useMemo(() => ROOMS, [])
   const bookings = useMemo(() => BOOKINGS, [])
-  const notifications = useMemo(() => NOTIFS, [])
-
   const today = new Date().toISOString().slice(0, 10)
   const todaysMeetings = bookings.filter((b) => b.date === today && b.status !== 'Cancelled')
   const upcoming = bookings.filter((b) => b.status !== 'Cancelled').slice(0, 5)
@@ -39,13 +36,6 @@ export default function Dashboard() {
         <h1 className="mt-1 font-display text-xl font-700 text-ink">
           Welcome back, {user?.name || 'there'}
         </h1>
-      </div>
-
-      {/* Quick actions */}
-      <div className="flex flex-wrap gap-3">
-        <Link to="/book-room"><Button>+ Book a Room</Button></Link>
-        <Link to="/search-rooms"><Button variant="secondary">Search Rooms</Button></Link>
-        <Link to="/my-bookings"><Button variant="secondary">View My Bookings</Button></Link>
       </div>
 
       {/* Summary cards */}

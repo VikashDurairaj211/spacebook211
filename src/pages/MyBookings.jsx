@@ -37,9 +37,8 @@ export default function MyBookings() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div>
         <h1 className="font-display text-xl font-700">My Bookings</h1>
-        <Link to="/book-room"><Button>+ New Booking</Button></Link>
       </div>
 
       <Card className="p-0">
