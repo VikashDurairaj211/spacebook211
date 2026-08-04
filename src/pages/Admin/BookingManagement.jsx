@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react'
 import Card from '../../components/common/Card'
 import Button from '../../components/common/Button'
+import Modal from '../../components/common/Modal'
 import StatusTag from '../../components/common/StatusTag'
 import { bookings as BOOKINGS } from '../../services/mockData'
 
 export default function BookingManagement() {
-  const bookings = useMemo(() => BOOKINGS, [])
+  const [bookings, setBookings] = useState(() => BOOKINGS)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
+  const [selectedBooking, setSelectedBooking] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const statuses = useMemo(
     () => ['All', ...new Set(bookings.map((booking) => booking.status))],
@@ -33,9 +36,37 @@ export default function BookingManagement() {
     [bookings]
   )
 
+  function openViewModal(booking) {
+    setSelectedBooking(booking)
+    setIsModalOpen(true)
+  }
+
+  function closeModal() {
+    setIsModalOpen(false)
+    setSelectedBooking(null)
+  }
+
+  function handleApprove(bookingId) {
+    setBookings((previous) =>
+      previous.map((booking) =>
+        booking.id === bookingId ? { ...booking, status: 'Confirmed' } : booking
+      )
+    )
+    setSelectedBooking((prev) => prev && { ...prev, status: 'Confirmed' })
+  }
+
+  function handleReject(bookingId) {
+    setBookings((previous) =>
+      previous.map((booking) =>
+        booking.id === bookingId ? { ...booking, status: 'Cancelled' } : booking
+      )
+    )
+    setSelectedBooking((prev) => prev && { ...prev, status: 'Cancelled' })
+  }
+
   return (
     <div className="space-y-6">
-      <div className="border border-ink bg-white p-5">
+      <div className="rounded-2xl border border-ink bg-white p-5">
         <h1 className="font-display text-xl font-700 text-ink">Booking Management</h1>
         <p className="mt-2 text-sm text-slate">Review, filter, and take action on room bookings for the workplace.</p>
       </div>
@@ -69,12 +100,12 @@ export default function BookingManagement() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by room, title, or date"
-              className="rounded-sm border border-line bg-portal-bg px-3 py-2 text-sm text-ink outline-none focus:border-portal-accent"
+              className="rounded-xl border border-line bg-portal-bg px-3 py-2 text-sm text-ink outline-none focus:border-portal-accent"
             />
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
-              className="rounded-sm border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
+              className="rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
             >
               {statuses.map((status) => (
                 <option key={status}>{status}</option>
@@ -85,10 +116,10 @@ export default function BookingManagement() {
       </Card>
 
       <Card className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-left text-sm">
+        <table className="w-full min-w-[920px] text-left text-sm">
           <thead>
             <tr className="border-b border-line text-[11px] uppercase tracking-[0.2em] text-slate">
-              <th className="px-4 py-3">Booking</th>
+              <th className="px-4 py-3">Booking Name</th>
               <th className="px-4 py-3">Room</th>
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Time</th>
@@ -103,19 +134,25 @@ export default function BookingManagement() {
               </tr>
             ) : (
               filteredBookings.map((booking) => (
-                <tr key={booking.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-3 font-medium text-ink">{booking.title}</td>
-                  <td className="px-4 py-3 text-slate">{booking.roomName}</td>
-                  <td className="px-4 py-3 text-slate">{booking.date}</td>
-                  <td className="px-4 py-3 text-slate">{booking.startTime}–{booking.endTime}</td>
-                  <td className="px-4 py-3"><StatusTag status={booking.status} /></td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="secondary">View</Button>
+                <tr key={booking.id} className="border-b border-line transition-colors duration-200 hover:bg-portal-bg/70 last:border-0">
+                  <td className="px-4 py-3 font-medium text-ink whitespace-nowrap">{booking.title}</td>
+                  <td className="px-4 py-3 text-slate whitespace-nowrap">{booking.roomName}</td>
+                  <td className="px-4 py-3 text-slate whitespace-nowrap">{booking.date}</td>
+                  <td className="px-4 py-3 text-slate whitespace-nowrap">{booking.startTime}–{booking.endTime}</td>
+                  <td className="px-4 py-3 whitespace-nowrap"><StatusTag status={booking.status} /></td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex flex-nowrap items-center gap-2">
+                      <Button size="sm" variant="secondary" className="flex-none" onClick={() => openViewModal(booking)}>
+                        View
+                      </Button>
                       {booking.status === 'Pending' && (
                         <>
-                          <Button size="sm">Approve</Button>
-                          <Button size="sm" variant="danger">Reject</Button>
+                          <Button size="sm" className="flex-none" onClick={() => handleApprove(booking.id)}>
+                            Approve
+                          </Button>
+                          <Button size="sm" variant="danger" className="flex-none" onClick={() => handleReject(booking.id)}>
+                            Reject
+                          </Button>
                         </>
                       )}
                     </div>
@@ -126,6 +163,49 @@ export default function BookingManagement() {
           </tbody>
         </table>
       </Card>
+
+      {selectedBooking && (
+        <Modal
+          open={isModalOpen}
+          title="Booking Details"
+          footer={
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" onClick={closeModal}>Close</Button>
+              {selectedBooking.status === 'Pending' && (
+                <>
+                  <Button size="sm" onClick={() => handleApprove(selectedBooking.id)}>Approve</Button>
+                  <Button size="sm" variant="danger" onClick={() => handleReject(selectedBooking.id)}>Reject</Button>
+                </>
+              )}
+            </div>
+          }
+        >
+          <div className="space-y-3 text-sm text-slate">
+            <div>
+              <h3 className="font-medium text-ink">{selectedBooking.title}</h3>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate">Booking Name</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="font-medium text-ink">Room</p>
+                <p>{selectedBooking.roomName}</p>
+              </div>
+              <div>
+                <p className="font-medium text-ink">Date</p>
+                <p>{selectedBooking.date}</p>
+              </div>
+              <div>
+                <p className="font-medium text-ink">Time</p>
+                <p>{selectedBooking.startTime}–{selectedBooking.endTime}</p>
+              </div>
+              <div>
+                <p className="font-medium text-ink">Status</p>
+                <StatusTag status={selectedBooking.status} />
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

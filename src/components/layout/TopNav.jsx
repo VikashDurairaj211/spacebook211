@@ -1,8 +1,9 @@
 import { Search, Bell, User, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { rooms as ROOMS, bookings as BOOKINGS, notifications as NOTIFS } from '../../services/mockData'
+import NotificationDropdown from '../common/NotificationDropdown'
 import Logo from '../../../Logo.jpg'
 
 export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly = false }) {
@@ -12,9 +13,10 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [showSearchResults, setShowSearchResults] = useState(false)
+  const [notifications, setNotifications] = useState(() => NOTIFS)
+  const notificationButtonRef = useRef(null)
 
-  const notifications = useMemo(() => NOTIFS, [])
-  const unreadCount = notifications.length
+  const unreadCount = notifications.filter((notification) => notification.unread).length
 
   const searchResults = useMemo(() => {
     if (!searchInput.trim()) return { rooms: [], bookings: [] }
@@ -135,6 +137,7 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
       {!publicOnly && <div className="flex items-center gap-3">
         <div className="relative">
           <button
+            ref={notificationButtonRef}
             onClick={() => {
               setNotificationOpen((value) => !value)
               setMenuOpen(false)
@@ -150,35 +153,17 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
             )}
           </button>
 
-          {notificationOpen && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-80 max-w-full rounded-xl border border-slate-200 bg-white text-sm text-ink shadow-lg">
-              <div className="border-b border-line px-4 py-3 flex items-center justify-between">
-                <span className="font-display text-sm font-700">Notifications</span>
-                <button
-                  onClick={() => {
-                    navigate('/notifications')
-                    setNotificationOpen(false)
-                  }}
-                  className="text-xs text-brand-blue hover:underline"
-                >
-                  View all
-                </button>
-              </div>
-              <div className="max-h-80 overflow-auto px-4 py-3 space-y-3">
-                {notifications.map((notification) => (
-                  <div key={notification.id} className="rounded-xl border border-slate-200 bg-portal-bg p-3 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-display text-sm font-700 text-ink">{notification.title}</p>
-                        <p className="mt-1 text-sm text-slate">{notification.message}</p>
-                      </div>
-                      <span className="font-mono text-[11px] uppercase tracking-wider text-slate">{notification.time}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <NotificationDropdown
+            open={notificationOpen}
+            buttonRef={notificationButtonRef}
+            notifications={notifications}
+            onClose={() => setNotificationOpen(false)}
+            onMarkAllRead={() => setNotifications((prev) => prev.map((notification) => ({ ...notification, unread: false })))}
+            onViewAll={() => {
+              navigate('/notifications')
+              setNotificationOpen(false)
+            }}
+          />
         </div>
 
         <div className="relative">

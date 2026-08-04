@@ -75,3 +75,21 @@
     @apply border-signal text-signal;
   }
 }
+
+@media print {
+  body.printing * {
+    visibility: hidden !important;
+  }
+
+  body.printing .report-print-area,
+  body.printing .report-print-area * {
+    visibility: visible !important;
+  }
+
+  body.printing .report-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
