@@ -25,12 +25,12 @@ export function AuthProvider({ children }) {
       // demo session so the frontend is usable on its own. Remove this
       // block once /api/auth/login is live.
       if (!err.response) {
-        // Demo fallback: treat emails containing "admin" as Admin for demo purposes
-        const isAdmin = String(email).toLowerCase().includes('admin')
+        const normalizedEmail = String(email).trim().toLowerCase()
+        const isAdmin = normalizedEmail === 'admin@spacebook.com'
         const demoUser = {
           id: 'demo',
-          name: email.split('@')[0] || 'Employee',
-          email,
+          name: isAdmin ? 'SpaceBook Administrator' : 'Demo Employee',
+          email: normalizedEmail,
           department: 'Engineering',
           role: isAdmin ? 'Admin' : 'Employee',
         }
@@ -46,6 +46,18 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  const register = useCallback(async (form) => {
+    setLoading(true); setError(null)
+    try {
+      const users = JSON.parse(localStorage.getItem('spacebook_registered_users') || '[]')
+      if (users.some((user) => user.employeeId.toLowerCase() === form.employeeId.toLowerCase())) throw new Error('Employee ID is already registered.')
+      if (users.some((user) => user.email === form.email.toLowerCase())) throw new Error('This email is already registered.')
+      users.push({ ...form, email: form.email.toLowerCase() })
+      localStorage.setItem('spacebook_registered_users', JSON.stringify(users))
+      return true
+    } catch (err) { setError(err.message); return false } finally { setLoading(false) }
   }, [])
 
   const logout = useCallback(async () => {
@@ -68,7 +80,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateProfile, error, loading }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateProfile, error, loading }}>
       {children}
     </AuthContext.Provider>
   )

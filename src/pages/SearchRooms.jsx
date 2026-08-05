@@ -1,136 +1,104 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getRooms } from '../api/rooms'
-import { MOCK_ROOMS, MODULES, ROOM_TYPES } from '../data/mockRooms'
+import { MODULES, ROOM_TYPES } from '../data/mockRooms'
 import { Field, Input, Select } from '../components/common/Input'
+import CheckboxDropdown from '../components/common/CheckboxDropdown'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
+import Loader from '../components/common/Loader'
 import StatusTag from '../components/common/StatusTag'
 
 const FACILITY_OPTIONS = [
-  { key: 'whiteboard', label: 'Whiteboard & Marker', value: 'Whiteboard & Marker' },
-  { key: 'tv', label: 'TV & Remote', value: 'TV & Remote' },
-  { key: 'camera', label: 'Camera', value: 'Camera' },
-  { key: 'mic', label: 'Mic', value: 'Mic' },
+  { key: 'whiteboard', label: 'Whiteboard & Marker' },
+  { key: 'tv', label: 'TV & Remote' },
+  { key: 'camera', label: 'Camera' },
+  { key: 'mic', label: 'Mic' },
 ]
 
+const INITIAL_FILTERS = { module: '', type: '', capacity: '', date: '', startTime: '', endTime: '', whiteboard: false, tv: false, camera: false, mic: false }
+
 export default function SearchRooms() {
-  const [filters, setFilters] = useState({
-    module: '',
-    type: '',
-    capacity: '',
-    date: '',
-    startTime: '',
-    endTime: '',
-    whiteboard: false,
-    tv: false,
-    camera: false,
-    mic: false,
-  })
-  const [results, setResults] = useState(MOCK_ROOMS)
+  const [filters, setFilters] = useState(INITIAL_FILTERS)
+  const [results, setResults] = useState([])
   const [searched, setSearched] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const canChooseType = Boolean(filters.module)
+  const canChooseFacilities = canChooseType && Boolean(filters.type)
+  const canSearch = canChooseFacilities && filters.date && filters.startTime && filters.endTime && Number(filters.capacity) > 0
 
   function updateFilter(key, value) {
-    setFilters((f) => ({ ...f, [key]: value }))
+    setFilters((currentFilters) => {
+      const nextFilters = { ...currentFilters, [key]: value }
+      if (key === 'module') Object.assign(nextFilters, { type: '', whiteboard: false, tv: false, camera: false, mic: false })
+      if (key === 'type') Object.assign(nextFilters, { whiteboard: false, tv: false, camera: false, mic: false })
+      return nextFilters
+    })
+    setError('')
   }
 
-  async function handleSearch(e) {
-    e.preventDefault()
-    const data = await getRooms(filters)
-    setResults(data)
-    setSearched(true)
+  async function handleSearch(event) {
+    event.preventDefault()
+    if (!canSearch) return setError('Complete each search field to view available rooms.')
+    if (filters.startTime >= filters.endTime) return setError('End time must be after start time.')
+
+    setLoading(true)
+    setError('')
+    try {
+      setResults(await getRooms(filters))
+      setSearched(true)
+    } catch {
+      setError('Rooms could not be loaded. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function roomDetailsLink(roomId) {
+    const parameters = new URLSearchParams({ roomId, date: filters.date, startTime: filters.startTime, endTime: filters.endTime, attendees: filters.capacity })
+    return `/room-details?${parameters.toString()}`
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-xl font-700">Search Rooms</h1>
+      <div>
+        <h1 className="font-display text-xl font-700">Search Rooms</h1>
+        <p className="mt-1 text-sm text-slate">Set your meeting requirements to find available rooms.</p>
+      </div>
 
-      <form onSubmit={handleSearch} className="border border-line bg-white p-4">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-          <Field label="Office / Module">
-            <Select value={filters.module} onChange={(e) => updateFilter('module', e.target.value)}>
-              <option value="">Any</option>
-              {MODULES.map((m) => <option key={m} value={m}>{m}</option>)}
-            </Select>
-          </Field>
-          <Field label="Room Type">
-            <Select value={filters.type} onChange={(e) => updateFilter('type', e.target.value)}>
-              <option value="">Any</option>
-              {ROOM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </Select>
-          </Field>
-          <Field label="No. of attendees">
-            <Input
-              type="number"
-              min="1"
-              placeholder="e.g. 6"
-              value={filters.capacity}
-              onChange={(e) => updateFilter('capacity', e.target.value)}
+      <Card>
+        <form onSubmit={handleSearch} className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Field label="1. Select Module"><Select value={filters.module} onChange={(event) => updateFilter('module', event.target.value)}><option value="">Select module</option>{MODULES.map((module) => <option key={module} value={module}>{module}</option>)}</Select></Field>
+            <Field label="2. Select Room Type"><Select disabled={!canChooseType} value={filters.type} onChange={(event) => updateFilter('type', event.target.value)}><option value="">{canChooseType ? 'Select room type' : 'Choose a module first'}</option>{ROOM_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}</Select></Field>
+            <Field label="3. Number of Attendees"><Input disabled={!canChooseFacilities} type="number" min="1" value={filters.capacity} onChange={(event) => updateFilter('capacity', event.target.value)} placeholder={canChooseFacilities ? 'e.g. 6' : 'Choose a room type first'} /></Field>
+          </div>
+
+          <Field label="4. Select Facilities">
+            <CheckboxDropdown
+              options={FACILITY_OPTIONS}
+              values={filters}
+              onChange={(key, value) => updateFilter(key, value)}
+              disabled={!canChooseFacilities}
+              placeholder="Checkbox"
             />
           </Field>
-        </div>
 
-        <details className="mt-4 rounded-lg border border-line bg-slate-50 p-3">
-          <summary className="cursor-pointer mb-3 font-medium">Facilities (click to expand)</summary>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-            {FACILITY_OPTIONS.map((facility) => (
-              <label key={facility.key} className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm hover:border-brand-blue">
-                <input
-                  type="checkbox"
-                  checked={filters[facility.key]}
-                  onChange={(e) => updateFilter(facility.key, e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
-                />
-                <span>{facility.label}</span>
-              </label>
-            ))}
-
-            <div className="md:col-span-2 lg:col-span-2 grid grid-cols-3 gap-3 items-end">
-              <div>
-                <label className="block text-sm text-slate">Date</label>
-                <Input type="date" value={filters.date} onChange={(e) => updateFilter('date', e.target.value)} />
-              </div>
-              <div>
-                <label className="block text-sm text-slate">Start Time</label>
-                <Input type="time" value={filters.startTime} onChange={(e) => updateFilter('startTime', e.target.value)} />
-              </div>
-              <div>
-                <label className="block text-sm text-slate">End Time</label>
-                <Input type="time" value={filters.endTime} onChange={(e) => updateFilter('endTime', e.target.value)} />
-              </div>
-            </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Field label="5. Select Date"><Input disabled={!canChooseFacilities} min={new Date().toISOString().slice(0, 10)} type="date" value={filters.date} onChange={(event) => updateFilter('date', event.target.value)} /></Field>
+            <Field label="6. Select Start Time"><Input disabled={!filters.date} type="time" value={filters.startTime} onChange={(event) => updateFilter('startTime', event.target.value)} /></Field>
+            <Field label="7. Select End Time"><Input disabled={!filters.startTime} type="time" value={filters.endTime} onChange={(event) => updateFilter('endTime', event.target.value)} /></Field>
           </div>
-        </details>
 
-        <Button type="submit" className="mt-4">Search</Button>
-      </form>
+          {error && <p role="alert" className="rounded-lg border border-clay bg-red-50 px-3 py-2 text-sm text-clay">{error}</p>}
+          <Button type="submit" disabled={!canSearch || loading}>{loading ? 'Searching...' : 'Search Available Rooms'}</Button>
+        </form>
+      </Card>
 
-      <div>
-        <p className="mb-3 font-mono text-[11px] uppercase tracking-wider text-slate">
-          {searched ? `${results.length} room(s) found` : `Showing all ${results.length} rooms`}
-        </p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {results.map((room) => (
-            <Card key={room.id}>
-              <div className="mb-2 flex items-start justify-between">
-                <div>
-                  <p className="font-display text-sm font-700">{room.name}</p>
-                  <p className="font-mono text-[11px] text-slate">{room.code}</p>
-                </div>
-                <StatusTag status={room.status} />
-              </div>
-              <p className="text-sm text-slate">{room.module} · {room.type}</p>
-              <p className="mb-2 text-sm text-slate">Capacity: {room.capacity}</p>
-              <p className="mb-4 text-sm text-slate">Facilities: {room.facilities?.join(', ') || 'None'}</p>
-              <Link to={`/book-room?roomId=${encodeURIComponent(room.id)}&date=${encodeURIComponent(filters.date||'')}&startTime=${encodeURIComponent(filters.startTime||'')}&endTime=${encodeURIComponent(filters.endTime||'')}&attendees=${encodeURIComponent(filters.capacity||'')}`}>
-                <Button variant="secondary" className="w-full" disabled={room.status === 'Booked'}>
-                  {room.status === 'Booked' ? 'Unavailable' : 'Book This Room'}
-                </Button>
-              </Link>
-            </Card>
-          ))}
-        </div>
-      </div>
+      {loading && <Loader label="Finding rooms that match your requirements..." />}
+      {searched && !loading && <div><p className="mb-3 font-mono text-[11px] uppercase tracking-wider text-slate">{results.length} available room{results.length === 1 ? '' : 's'} found</p>{results.length === 0 ? <Card><p className="font-medium text-ink">No rooms match these requirements.</p><p className="mt-1 text-sm text-slate">Try another time, room type, or a smaller attendee count.</p></Card> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{results.map((room) => <Card key={room.id}><div className="mb-2 flex items-start justify-between"><div><p className="font-display text-sm font-700">{room.name}</p><p className="font-mono text-[11px] text-slate">{room.code}</p></div><StatusTag status={room.status} /></div><p className="text-sm text-slate">{room.module} · {room.type}</p><p className="mb-2 text-sm text-slate">Capacity: {room.capacity}</p><p className="mb-4 text-sm text-slate">Facilities: {room.facilities?.join(', ') || 'None'}</p><Link to={roomDetailsLink(room.id)}><Button variant="secondary" className="w-full" disabled={room.status === 'Booked'}>{room.status === 'Booked' ? 'Unavailable' : 'View Room Details'}</Button></Link></Card>)}</div>}</div>}
     </div>
   )
 }

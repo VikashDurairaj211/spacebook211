@@ -1,8 +1,11 @@
 import client from './client'
+import { MOCK_ROOMS } from '../data/mockRooms'
 
 // Expected .NET endpoint: GET /api/bookings/my
 // Response: Booking[] -> { id, roomId, roomName, date, startTime, endTime, status, title }
 export async function getMyBookings() {
+  const local = localStorage.getItem('spacebook_bookings')
+  if (local) return JSON.parse(local)
   try {
     const { data } = await client.get('/bookings/my')
     return data
@@ -15,20 +18,26 @@ export async function getMyBookings() {
 // Expected .NET endpoint: POST /api/bookings
 // Body: { title, purpose, roomId, date, startTime, endTime, attendees, notes }
 export async function createBooking(payload) {
-  const { data } = await client.post('/bookings', payload)
-  return data
+  const room = MOCK_ROOMS.find((item) => item.id === payload.roomId)
+  const bookings = await getMyBookings()
+  const overlaps = bookings.some((booking) => booking.roomId === payload.roomId && booking.date === payload.date && booking.status !== 'Cancelled' && payload.startTime < booking.endTime && payload.endTime > booking.startTime)
+  if (overlaps) throw new Error('Selected room is unavailable. Please choose another available slot.')
+  const booking = { ...payload, id: `BK-${Date.now()}`, roomName: room?.name || 'Room', roomType: room?.type || '', facilities: room?.facilities || [], status: 'Confirmed', createdDate: new Date().toLocaleDateString(), updatedDate: new Date().toLocaleDateString() }
+  localStorage.setItem('spacebook_bookings', JSON.stringify([...bookings, booking]))
+  return booking
 }
 
 // Expected .NET endpoint: PUT /api/bookings/{id}
 export async function updateBooking(id, payload) {
-  const { data } = await client.put(`/bookings/${id}`, payload)
-  return data
+  const bookings = await getMyBookings(); const existing = bookings.find((item) => item.id === id)
+  const overlaps = bookings.some((booking) => booking.id !== id && booking.roomId === existing?.roomId && booking.date === payload.date && booking.status !== 'Cancelled' && payload.startTime < booking.endTime && payload.endTime > booking.startTime)
+  if (overlaps) throw new Error('Selected room is unavailable. Please choose another available slot.')
+  const next = bookings.map((booking) => booking.id === id ? { ...booking, ...payload, updatedDate: new Date().toLocaleDateString() } : booking); localStorage.setItem('spacebook_bookings', JSON.stringify(next)); return next.find((booking) => booking.id === id)
 }
 
 // Expected .NET endpoint: DELETE /api/bookings/{id}  (or PATCH status=Cancelled)
 export async function cancelBooking(id) {
-  const { data } = await client.delete(`/bookings/${id}`)
-  return data
+  const bookings = await getMyBookings(); const next = bookings.map((booking) => booking.id === id ? { ...booking, status: 'Cancelled' } : booking); localStorage.setItem('spacebook_bookings', JSON.stringify(next)); return true
 }
 
 // Fallback data so the UI is demoable before the backend is wired up.

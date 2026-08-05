@@ -3,8 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { createBooking } from '../api/bookings'
 import { MOCK_ROOMS, MODULES } from '../data/mockRooms'
 import { Field, Input, Select } from '../components/common/Input'
+import { useToast } from '../components/common/ToastProvider'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
+import Modal from '../components/common/Modal'
 
 export default function BookRoom() {
   const navigate = useNavigate()
@@ -25,10 +27,12 @@ export default function BookRoom() {
     startTime: prefillStart,
     endTime: prefillEnd,
     attendees: prefillAttendees,
+    facilities: preselectedRoom?.facilities || [],
   })
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const toast = useToast()
 
   const roomsInModule = useMemo(
     () => MOCK_ROOMS.filter((r) => r.module === form.module),
@@ -47,18 +51,33 @@ export default function BookRoom() {
     e.preventDefault()
     setError(null)
 
-    if (!form.roomId) return setError('Please select a room.')
-    if (form.startTime && form.endTime && form.startTime >= form.endTime) {
-      return setError('End time must be after start time.')
+    if (!form.roomId) {
+      toast.addToast({ type: 'error', title: 'Please select a room.' })
+      return
     }
 
+    if (form.startTime && form.endTime && form.startTime >= form.endTime) {
+      toast.addToast({ type: 'error', title: 'End time must be after start time.' })
+      return
+    }
+
+    if (!form.date || !form.startTime || !form.endTime || !form.attendees) {
+      toast.addToast({ type: 'error', title: 'Please complete the date, time and attendee details.' })
+      return
+    }
+
+    setConfirming(true)
+  }
+
+  async function confirmBooking() {
+    setConfirming(false)
     setSubmitting(true)
     try {
       await createBooking(form)
-      setSuccess(true)
+      toast.addToast({ type: 'success', title: 'Booking confirmed', message: 'Redirecting to My Bookings…' })
       setTimeout(() => navigate('/my-bookings'), 900)
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not create booking. Please try again.')
+      toast.addToast({ type: 'error', title: err.response?.data?.message || 'Could not create booking. Please try again.' })
     } finally {
       setSubmitting(false)
     }
@@ -66,7 +85,7 @@ export default function BookRoom() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="font-display text-xl font-700">Book a Room</h1>
+      <h1 className="font-display text-xl font-700">Booking Summary</h1>
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -113,14 +132,19 @@ export default function BookRoom() {
             <Input type="number" min="1" className="w-32" value={form.attendees} onChange={(e) => update('attendees', e.target.value)} />
           </Field>
 
-          {error && <p className="border border-clay px-3 py-2 text-sm text-clay">{error}</p>}
-          {success && <p className="border border-moss px-3 py-2 text-sm text-moss">Booking confirmed — redirecting to My Bookings...</p>}
-
           <Button type="submit" className="w-full" disabled={submitting}>
             {submitting ? 'Confirming...' : 'Confirm Booking'}
           </Button>
         </form>
       </Card>
+
+      <Modal
+        open={confirming}
+        title="Confirm booking"
+        footer={<><Button variant="secondary" onClick={() => setConfirming(false)}>Back</Button><Button onClick={confirmBooking}>Confirm Booking</Button></>}
+      >
+        <div className="space-y-1"><p><strong>Room:</strong> {roomsInModule.find((room) => room.id === form.roomId)?.name || 'Selected room'}</p><p><strong>Module:</strong> {form.module}</p><p><strong>Date & time:</strong> {form.date} · {form.startTime}–{form.endTime}</p><p><strong>Duration:</strong> {form.startTime && form.endTime ? `${(new Date(`2000-01-01T${form.endTime}`) - new Date(`2000-01-01T${form.startTime}`)) / 3600000} hours` : ''}</p><p><strong>Purpose:</strong> {form.purpose || 'Not provided'}</p><p><strong>Attendees:</strong> {form.attendees}</p></div>
+      </Modal>
     </div>
   )
 }

@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -24,7 +22,7 @@
     --colorNeutralBackground1: #ffffff;
     --colorNeutralBackground1Hover: #EDEBE9;
 
-    --fontFamilyBase: 'Segoe UI', Tahoma, sans-serif;
+    --fontFamilyBase: '"Segoe UI Variable"', '"Segoe UI"', 'sans-serif';
     --fontWeightRegular: 400;
     --fontWeightMedium: 400;
     --fontWeightSemibold: 600;
@@ -61,6 +59,31 @@
 }
 
 @layer components {
+  .login-portal {
+    position: relative;
+    isolation: isolate;
+    background: #1f333d;
+    overflow: hidden;
+  }
+
+  .login-portal::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    /* Assign --portal-login-background to url('/calendar-background.jpg') once
+       the supplied calendar image is added to the public folder. */
+    background: var(--portal-login-background, linear-gradient(135deg, #30444d, #1f333d)) center / cover no-repeat;
+  }
+
+  .login-portal::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: rgba(16, 40, 50, .72);
+  }
+
   /* Blueprint-style plaque tag used for room codes and statuses */
   .plaque {
     @apply inline-flex items-center gap-1 border border-ink/70 px-2 py-0.5 font-mono text-[11px] uppercase tracking-wider;

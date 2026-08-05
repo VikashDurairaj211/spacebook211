@@ -10,11 +10,12 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
+  const [notificationsRead, setNotificationsRead] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [showSearchResults, setShowSearchResults] = useState(false)
 
   const notifications = useMemo(() => NOTIFS, [])
-  const unreadCount = notifications.length
+  const unreadCount = notificationsRead ? 0 : notifications.length
 
   const searchResults = useMemo(() => {
     if (!searchInput.trim()) return { rooms: [], bookings: [] }
@@ -151,17 +152,16 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
           </button>
 
           {notificationOpen && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-80 max-w-full rounded-xl border border-slate-200 bg-white text-sm text-ink shadow-lg">
+            <div className="absolute right-0 top-full z-50 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white text-sm text-ink shadow-xl">
               <div className="border-b border-line px-4 py-3 flex items-center justify-between">
-                <span className="font-display text-sm font-700">Notifications</span>
+                <div><span className="font-display text-base font-700">Notifications</span><p className="mt-0.5 text-xs text-slate">Recent alerts for your account.</p></div>
                 <button
                   onClick={() => {
-                    navigate('/notifications')
-                    setNotificationOpen(false)
+                    setNotificationsRead(true)
                   }}
                   className="text-xs text-brand-blue hover:underline"
                 >
-                  View all
+                  Mark all as read
                 </button>
               </div>
               <div className="max-h-80 overflow-auto px-4 py-3 space-y-3">
@@ -172,11 +172,12 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
                         <p className="font-display text-sm font-700 text-ink">{notification.title}</p>
                         <p className="mt-1 text-sm text-slate">{notification.message}</p>
                       </div>
-                      <span className="font-mono text-[11px] uppercase tracking-wider text-slate">{notification.time}</span>
+                      <div className="text-right"><span className={`rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider ${notification.tone === 'success' ? 'bg-green-100 text-green-700' : notification.tone === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>{notification.title === 'Reminder' ? 'REMINDER' : notification.title === 'Booking confirmed' ? 'APPROVED' : 'INFO'}</span><span className="mt-1 block font-mono text-[11px] text-slate">{notification.time}</span></div>
                     </div>
                   </div>
                 ))}
               </div>
+              <button onClick={() => { navigate('/notifications'); setNotificationOpen(false) }} className="w-full border-t border-line px-4 py-2 text-left text-xs text-brand-blue hover:bg-slate-50">View all notifications</button>
             </div>
           )}
         </div>

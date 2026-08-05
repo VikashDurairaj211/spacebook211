@@ -27,11 +27,6 @@ export default function SplashPage() {
                   Get Started
                 </Button>
               </Link>
-              <Link to="/register">
-                <Button variant="ghost" className="text-white underline-offset-4 hover:text-blue-100">
-                  Create account
-                </Button>
-              </Link>
             </div>
           </div>
 
