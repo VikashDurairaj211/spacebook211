@@ -29,9 +29,14 @@ function overlaps(slot, booking) {
   return slotStart < bookingEnd && bookingStart < slotEnd
 }
 
-function RoomCard({ room, bookings = [] }) {
+function RoomCard({ room, bookings = [], date }) {
   const hasBooking = bookings.length > 0
   const availableSlots = TIME_SLOTS.filter((slot) => !bookings.some((booking) => overlaps(slot, booking)))
+
+  const buildBookLink = (slot) => {
+    const parameters = new URLSearchParams({ roomId: room.id, date, startTime: slot.start, endTime: slot.end, attendees: '1' })
+    return `/book-room?${parameters.toString()}`
+  }
 
   return (
     <Card className="p-4">
@@ -60,7 +65,7 @@ function RoomCard({ room, bookings = [] }) {
                   <p className="text-sm font-medium text-ink">{slot.label}</p>
                   <p className="text-xs text-slate">Open for booking</p>
                 </div>
-                <Link to="/book-room" className="rounded-lg border border-ink px-2 py-1 text-xs text-ink hover:bg-ink hover:text-paper">
+                <Link to={buildBookLink(slot)} className="rounded-lg border border-ink px-2 py-1 text-xs text-ink hover:bg-ink hover:text-paper">
                   Book
                 </Link>
               </div>
@@ -92,7 +97,7 @@ function RoomCard({ room, bookings = [] }) {
   )
 }
 
-export default function AvailabilityGrid({ rooms = [], bookings = [] }) {
+export default function AvailabilityGrid({ rooms = [], bookings = [], date }) {
   const bookingsByRoom = bookings.reduce((acc, booking) => {
     const roomKey = booking.roomId || booking.roomName
     acc[roomKey] = acc[roomKey] || []
@@ -107,6 +112,7 @@ export default function AvailabilityGrid({ rooms = [], bookings = [] }) {
           key={room.id}
           room={room}
           bookings={bookingsByRoom[room.id] || bookingsByRoom[room.name] || []}
+          date={date}
         />
       ))}
     </div>

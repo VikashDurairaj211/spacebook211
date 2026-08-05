@@ -1,19 +1,26 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Card from '../components/common/Card'
 import Button from '../components/common/Button'
 import AvailabilityGrid from '../components/calendar/AvailabilityGrid'
 import roomsData from '../data/rooms.json'
 import bookingsData from '../data/bookings.json'
+import { getRooms } from '../api/rooms'
+import { getMyBookings } from '../api/bookings'
 import { formatDate } from '../utils/formatters'
 
 export default function AvailabilityCalendar() {
   const today = new Date().toISOString().slice(0, 10)
   const [selectedDate, setSelectedDate] = useState(today)
+  const [rooms, setRooms] = useState(roomsData)
+  const [bookings, setBookings] = useState(bookingsData)
 
-  const rooms = useMemo(() => roomsData, [])
+  useEffect(() => {
+    getRooms().then(setRooms).catch(() => setRooms(roomsData))
+    getMyBookings().then(setBookings).catch(() => setBookings(bookingsData))
+  }, [])
 
-  const bookingsForDate = useMemo(() => bookingsData.filter((b) => b.date === selectedDate), [selectedDate])
+  const bookingsForDate = useMemo(() => bookings.filter((b) => b.date === selectedDate), [bookings, selectedDate])
 
   function changeDays(delta) {
     const d = new Date(selectedDate)
@@ -45,7 +52,7 @@ export default function AvailabilityCalendar() {
       </div>
 
       <Card>
-        <AvailabilityGrid rooms={rooms} bookings={bookingsForDate} />
+        <AvailabilityGrid rooms={rooms} bookings={bookingsForDate} date={selectedDate} />
       </Card>
     </div>
   )

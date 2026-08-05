@@ -9,6 +9,7 @@ import Card from '../components/common/Card'
 import Loader from '../components/common/Loader'
 import StatusTag from '../components/common/StatusTag'
 import { getMyBookings } from '../api/bookings'
+import { filterRoomsByCriteria, isRoomAvailable } from '../utils/availabilityChecker'
 
 const FACILITY_OPTIONS = [
   { key: 'whiteboard', label: 'Whiteboard & Marker' },
@@ -53,7 +54,11 @@ export default function SearchRooms() {
     setLoading(true)
     setError('')
     try {
-      setResults(await getRooms(filters))
+      const latestBookings = await getMyBookings()
+      setBookings(latestBookings)
+      const rooms = await getRooms(filters)
+      const availableRooms = filterRoomsByCriteria(rooms, latestBookings, filters)
+      setResults(availableRooms)
       setSearched(true)
     } catch {
       setError('Rooms could not be loaded. Please try again.')
@@ -65,6 +70,11 @@ export default function SearchRooms() {
   function roomDetailsLink(roomId) {
     const parameters = new URLSearchParams({ roomId, date: filters.date, startTime: filters.startTime, endTime: filters.endTime, attendees: filters.capacity })
     return `/room-details?${parameters.toString()}`
+  }
+
+  function bookRoomLink(roomId) {
+    const parameters = new URLSearchParams({ roomId, date: filters.date, startTime: filters.startTime, endTime: filters.endTime, attendees: filters.capacity })
+    return `/book-room?${parameters.toString()}`
   }
 
   return (
@@ -111,7 +121,7 @@ export default function SearchRooms() {
       </Card>
 
       {loading && <Loader label="Finding rooms that match your requirements..." />}
-      {searched && !loading && <div><p className="mb-3 font-mono text-[11px] uppercase tracking-wider text-slate">{results.length} available room{results.length === 1 ? '' : 's'} found</p>{results.length === 0 ? <Card><p className="font-medium text-ink">No rooms match these requirements.</p><p className="mt-1 text-sm text-slate">Try another time, room type, or a smaller attendee count.</p></Card> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{results.map((room) => <Card key={room.id}><div className="mb-2 flex items-start justify-between"><div><p className="font-display text-sm font-700">{room.name}</p><p className="font-mono text-[11px] text-slate">{room.code}</p></div><StatusTag status={room.status} /></div><p className="text-sm text-slate">{room.module} · {room.type}</p><p className="mb-2 text-sm text-slate">Capacity: {room.capacity}</p><p className="mb-4 text-sm text-slate">Facilities: {room.facilities?.join(', ') || 'None'}</p><Link to={roomDetailsLink(room.id)}><Button variant="secondary" className="w-full" disabled={room.status === 'Booked'}>{room.status === 'Booked' ? 'Unavailable' : 'View Room Details'}</Button></Link></Card>)}</div>}</div>}
+      {searched && !loading && <div><p className="mb-3 font-mono text-[11px] uppercase tracking-wider text-slate">{results.length} available room{results.length === 1 ? '' : 's'} found</p>{results.length === 0 ? <Card><p className="font-medium text-ink">No rooms match these requirements.</p><p className="mt-1 text-sm text-slate">Try another time, room type, or a smaller attendee count.</p></Card> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{results.map((room) => { const available = isRoomAvailable(room.id, filters.date, filters.startTime, filters.endTime, bookings) && room.status !== 'Booked'; return (<Card key={room.id}><div className="mb-2 flex items-start justify-between"><div><p className="font-display text-sm font-700">{room.name}</p><p className="font-mono text-[11px] text-slate">{room.code}</p></div><StatusTag status={available ? 'Available' : 'Booked'} /></div><p className="text-sm text-slate">{room.module} · {room.type}</p><p className="mb-2 text-sm text-slate">Capacity: {room.capacity}</p><p className="mb-4 text-sm text-slate">Facilities: {room.facilities?.join(', ') || 'None'}</p><Link to={available ? bookRoomLink(room.id) : roomDetailsLink(room.id)}><Button variant={available ? 'primary' : 'secondary'} className="w-full" disabled={!available}>{available ? 'Book Now' : 'View Room Details'}</Button></Link></Card>) })}</div>}</div>}
     </div>
   )
 }
