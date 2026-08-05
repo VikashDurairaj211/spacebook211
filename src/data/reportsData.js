@@ -4,8 +4,6 @@ export const roomTypeOptions = ['All', 'Conference', 'Discussion', 'Training', '
 export const statusOptions = ['All', 'Confirmed', 'Pending', 'Cancelled']
 
 export const defaultReportFilters = {
-  startDate: '2026-07-01',
-  endDate: '2026-07-31',
   reportType: 'Monthly',
   module: 'All',
   roomType: 'All',

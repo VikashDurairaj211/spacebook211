@@ -2,7 +2,6 @@ import { useState } from 'react'
 import Card from '../components/common/Card'
 import Button from '../components/common/Button'
 import { useAuth } from '../context/AuthContext'
-import { meetingSchedule } from '../services/mockData'
 
 export default function Profile() {
   const { user, updateProfile } = useAuth()
@@ -82,27 +81,6 @@ export default function Profile() {
         </form>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <h2 className="font-display text-sm font-700">Upcoming Meetings</h2>
-          <ul className="mt-3 space-y-2">
-            {meetingSchedule.map((m) => (
-              <li key={m.id} className="flex items-center justify-between text-sm">
-                <div>
-                  <div className="font-700 text-ink">{m.title}</div>
-                  <div className="font-mono text-xs text-slate">{m.room} • {m.time}</div>
-                </div>
-                <div className="font-mono text-xs text-slate">{m.day}</div>
-              </li>
-            ))}
-          </ul>
-        </Card>
-
-        <Card>
-          <h2 className="font-display text-sm font-700">Preferences</h2>
-          <div className="mt-3 text-sm text-slate">Notification preferences and localization will appear here.</div>
-        </Card>
-      </div>
     </div>
   )
 }

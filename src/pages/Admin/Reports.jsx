@@ -1,101 +1,207 @@
-import { useMemo, useRef, useState } from 'react'
-import ReportFilters from '../../components/reports/ReportFilters'
-import KPISection from '../../components/reports/KPISection'
-import BookingTrendChart from '../../components/reports/BookingTrendChart'
-import UtilizationChart from '../../components/reports/UtilizationChart'
-import StatusChart from '../../components/reports/StatusChart'
-import RoomUsageChart from '../../components/reports/RoomUsageChart'
-import RecentActivityTable from '../../components/reports/RecentActivityTable'
-import ExportActions from '../../components/reports/ExportActions'
-import InsightsPanel from '../../components/reports/InsightsPanel'
+import { useMemo, useState } from "react";
+
+import BookingTrendChart from "../../components/reports/BookingTrendChart";
+import StatusChart from "../../components/reports/StatusChart";
+import RoomUsageChart from "../../components/reports/RoomUsageChart";
+
 import {
-  reportTypes,
   moduleOptions,
   roomTypeOptions,
   statusOptions,
   defaultReportFilters,
-  kpiMetrics,
-  monthlyBookingTrend,
-  weeklyBookingTrend,
-  moduleUtilization,
   bookingStatusDistribution,
   roomTypeUsage,
-  peakBookingHours,
-  mostBookedRooms,
-  leastUsedRooms,
   recentBookingActivity,
-  reportInsights,
-} from '../../data/reportsData'
+} from "../../data/reportsData";
 
 export default function Reports() {
-  const [filters, setFilters] = useState(defaultReportFilters)
-  const [activeMetrics, setActiveMetrics] = useState(kpiMetrics)
-  const reportRef = useRef(null)
+  const [filters, setFilters] = useState(defaultReportFilters);
 
-  const exportSheets = useMemo(
-    () => [
-      {
-        name: 'Summary Metrics',
-        data: kpiMetrics.map((metric) => ({ Metric: metric.label, Value: metric.value })),
-      },
-      { name: 'Most Booked Rooms', data: mostBookedRooms },
-      { name: 'Least Used Rooms', data: leastUsedRooms },
-      { name: 'Recent Activity', data: recentBookingActivity },
-    ],
-    [],
-  )
+  const filteredData = useMemo(
+    () =>
+      recentBookingActivity.filter((booking) => {
+        if (filters.module !== "All" && booking.module !== filters.module)
+          return false;
+        if (filters.roomType !== "All" && booking.roomType !== filters.roomType)
+          return false;
+        if (filters.status !== "All" && booking.status !== filters.status)
+          return false;
+        return true;
+      }),
+    [filters],
+  );
 
-  function handleFilterChange(field, value) {
-    setFilters((previous) => ({ ...previous, [field]: value }))
-  }
+  const filteredStatusDistribution = useMemo(() => {
+    const counts = {};
 
-  function handleApplyFilters() {
-    setActiveMetrics(kpiMetrics)
-  }
+    filteredData.forEach((booking) => {
+      counts[booking.status] = (counts[booking.status] || 0) + 1;
+    });
 
-  function handleResetFilters() {
-    setFilters(defaultReportFilters)
-    setActiveMetrics(kpiMetrics)
-  }
+    const data = Object.entries(counts).map(([name, value]) => ({
+      name,
+      value,
+    }));
+
+    return data.length ? data : bookingStatusDistribution;
+  }, [filteredData]);
+
+  // Room Usage Chart
+  const filteredRoomTypeUsage = useMemo(() => {
+    const counts = {};
+
+    filteredData.forEach((booking) => {
+      counts[booking.roomType] = (counts[booking.roomType] || 0) + 1;
+    });
+
+    const data = Object.entries(counts).map(([name, value]) => ({
+      name,
+      value,
+    }));
+
+    return data.length ? data : roomTypeUsage;
+  }, [filteredData]);
+
+  // Monthly Trend
+  const filteredMonthlyTrend = useMemo(() => {
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    const counts = {};
+
+    filteredData.forEach((booking) => {
+      const date = new Date(booking.date);
+      if (Number.isNaN(date.getTime())) return;
+
+      const month = months[date.getMonth()];
+      counts[month] = (counts[month] || 0) + 1;
+    });
+
+    return months.map((month) => ({
+      month,
+      bookings: counts[month] || 0,
+    }));
+  }, [filteredData]);
+
+  // Weekly Trend
+  const filteredWeeklyTrend = useMemo(() => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    const counts = {};
+
+    filteredData.forEach((booking) => {
+      const date = new Date(booking.date);
+      if (Number.isNaN(date.getTime())) return;
+
+      const day = days[date.getDay()];
+      counts[day] = (counts[day] || 0) + 1;
+    });
+
+    return days.map((day) => ({
+      day,
+      bookings: counts[day] || 0,
+    }));
+  }, [filteredData]);
+
+  const reportTrendData =
+    filters.reportType === "Weekly"
+      ? filteredWeeklyTrend
+      : filteredMonthlyTrend;
+
+  const xKey = filters.reportType === "Weekly" ? "day" : "month";
+  const chartType = filters.reportType === "Weekly" ? "line" : "bar";
+
+  const totalBookings = filteredData.length;
+  const uniqueRooms = new Set(filteredData.map((booking) => booking.room)).size;
+  const confirmedRate =
+    !filteredData.length
+      ? "0%"
+      : `${Math.round(
+          (filteredData.filter((booking) => booking.status === "Confirmed").length /
+            filteredData.length) *
+            100,
+        )}%`;
+
+  const avgDuration = (() => {
+    if (!filteredData.length) return "0h 0m";
+
+    const totalMinutes = filteredData.reduce((sum, booking) => {
+      const match = booking.duration?.match(/(\d+)h\s*(\d+)m/);
+      if (!match) return sum;
+      return sum + parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+    }, 0);
+
+    const average = Math.round(totalMinutes / filteredData.length);
+    const hours = Math.floor(average / 60);
+    const minutes = average % 60;
+    return `${hours}h ${minutes.toString().padStart(2, "0")}m`;
+  })();
+
+  const kpiMetrics = [
+    { label: "Total Bookings", value: totalBookings },
+    { label: "Unique Rooms", value: uniqueRooms },
+    { label: "Confirmed Rate", value: confirmedRate },
+    { label: "Avg. Duration", value: avgDuration },
+  ];
+
+  const handleFilterChange = (field, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
   return (
-    <div ref={reportRef} className="report-print-area space-y-6">
-      <ReportFilters
-        filters={filters}
-        reportTypes={reportTypes}
-        moduleOptions={moduleOptions}
-        roomTypeOptions={roomTypeOptions}
-        statusOptions={statusOptions}
-        onChange={handleFilterChange}
-        onApply={handleApplyFilters}
-        onReset={handleResetFilters}
-      />
-
-      <KPISection metrics={activeMetrics} />
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <BookingTrendChart title="Monthly Booking Trend" data={monthlyBookingTrend} xKey="month" chartType="bar" />
-        <BookingTrendChart title="Weekly Booking Trend" data={weeklyBookingTrend} xKey="day" chartType="line" />
+    <div className="mx-auto max-w-7xl space-y-2 px-4 pt-2 pb-4 sm:px-6 lg:px-8">
+      <div className="rounded-[28px] border border-gray-200 bg-white px-5 py-3 shadow-sm">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Reports</h1>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <UtilizationChart data={moduleUtilization} />
-        <StatusChart data={bookingStatusDistribution} />
-        <RoomUsageChart data={roomTypeUsage} />
+      <div className="grid gap-6">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <BookingTrendChart
+            title="Booking Analytics"
+            data={reportTrendData}
+            xKey={filters.reportType === "Weekly" ? "day" : "month"}
+            chartType={filters.reportType === "Weekly" ? "line" : "bar"}
+            reportType={filters.reportType}
+            moduleOptions={moduleOptions}
+            roomTypeOptions={roomTypeOptions}
+            statusOptions={statusOptions}
+            selectedModule={filters.module}
+            selectedRoomType={filters.roomType}
+            selectedStatus={filters.status}
+            onReportTypeChange={(value) => handleFilterChange("reportType", value)}
+            onModuleChange={(value) => handleFilterChange("module", value)}
+            onRoomTypeChange={(value) => handleFilterChange("roomType", value)}
+            onStatusChange={(value) => handleFilterChange("status", value)}
+            kpiMetrics={kpiMetrics}
+            hasData={reportTrendData.some((item) => item.bookings > 0)}
+          />
+        </div>
       </div>
 
-      <BookingTrendChart title="Peak Booking Hours" data={peakBookingHours} xKey="hour" chartType="area" />
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <StatusChart data={filteredStatusDistribution} />
+        </div>
 
-      <RecentActivityTable
-        recentBookings={recentBookingActivity}
-        mostBookedRooms={mostBookedRooms}
-        leastUsedRooms={leastUsedRooms}
-      />
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <ExportActions reportRef={reportRef} exportSheets={exportSheets} csvRows={recentBookingActivity} />
-        <InsightsPanel insights={reportInsights} />
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <RoomUsageChart data={filteredRoomTypeUsage} />
+        </div>
       </div>
     </div>
-  )
+  );
 }

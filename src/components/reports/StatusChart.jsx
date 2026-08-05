@@ -1,28 +1,100 @@
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts'
-import Card from '../../components/common/Card'
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+} from 'recharts'
 
-const COLORS = ['#1d4ed8', '#0ea5e9', '#f59e0b', '#ef4444']
+import Card from '../../components/common/Card'
+import Button from '../../components/common/Button'
+import { downloadCSV } from '../../utils/exportHelpers'
+
+const COLORS = [
+  '#2563EB',
+  '#06B6D4',
+  '#10B981',
+  '#F59E0B',
+  '#8B5CF6',
+  '#EF4444',
+]
 
 export default function StatusChart({ data }) {
+  const handleDownload = () => {
+    downloadCSV(data, 'booking-status-distribution.csv')
+  }
+
   return (
-    <Card className="rounded-[24px] border border-line bg-white p-5 shadow-sm">
-      <div className="mb-4">
-        <h3 className="font-display text-sm font-700 text-ink">Booking Status Distribution</h3>
-        <p className="text-sm text-slate">Breakdown of booking statuses for the selected period.</p>
+    <Card className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+
+      {/* Header */}
+      <div className="border-b border-gray-200 px-6 py-5">
+
+        <div className="flex items-center justify-between">
+
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Booking Status
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Snapshot of booking status distribution for selected filters.
+            </p>
+          </div>
+
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleDownload}
+          >
+            Download CSV
+          </Button>
+
+        </div>
+
       </div>
-      <div className="h-[320px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie data={data} dataKey="value" nameKey="name" outerRadius={110} innerRadius={60} paddingAngle={3}>
-              {data.map((entry, index) => (
-                <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip />
-            <Legend verticalAlign="bottom" height={36} />
-          </PieChart>
-        </ResponsiveContainer>
+
+      {/* Chart */}
+      <div className="p-6">
+
+        <div className="h-[360px]">
+
+          <ResponsiveContainer width="100%" height="100%">
+
+            <PieChart>
+
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                innerRadius={70}
+                outerRadius={110}
+                paddingAngle={3}
+              >
+                {data.map((entry, index) => (
+                  <Cell
+                    key={entry.name}
+                    fill={COLORS[index % COLORS.length]}
+                  />
+                ))}
+              </Pie>
+
+              <Tooltip />
+
+              <Legend
+                verticalAlign="bottom"
+                iconType="circle"
+              />
+
+            </PieChart>
+
+          </ResponsiveContainer>
+
+        </div>
+
       </div>
+
     </Card>
   )
 }
