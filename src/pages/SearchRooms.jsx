@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getRooms } from '../api/rooms'
 import { MODULES, ROOM_TYPES } from '../data/mockRooms'
@@ -8,6 +8,7 @@ import Button from '../components/common/Button'
 import Card from '../components/common/Card'
 import Loader from '../components/common/Loader'
 import StatusTag from '../components/common/StatusTag'
+import { getMyBookings } from '../api/bookings'
 
 const FACILITY_OPTIONS = [
   { key: 'whiteboard', label: 'Whiteboard & Marker' },
@@ -24,6 +25,11 @@ export default function SearchRooms() {
   const [searched, setSearched] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [bookings, setBookings] = useState([])
+
+  useEffect(() => {
+    getMyBookings().then(setBookings).catch(() => setBookings([]))
+  }, [])
 
   const canChooseType = Boolean(filters.module)
   const canChooseFacilities = canChooseType && Boolean(filters.type)
@@ -76,25 +82,32 @@ export default function SearchRooms() {
             <Field label="3. Number of Attendees"><Input disabled={!canChooseFacilities} type="number" min="1" value={filters.capacity} onChange={(event) => updateFilter('capacity', event.target.value)} placeholder={canChooseFacilities ? 'e.g. 6' : 'Choose a room type first'} /></Field>
           </div>
 
-          <Field label="4. Select Facilities">
-            <CheckboxDropdown
-              options={FACILITY_OPTIONS}
-              values={filters}
-              onChange={(key, value) => updateFilter(key, value)}
-              disabled={!canChooseFacilities}
-              placeholder="Checkbox"
-            />
-          </Field>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            <Field label="5. Select Date"><Input disabled={!canChooseFacilities} min={new Date().toISOString().slice(0, 10)} type="date" value={filters.date} onChange={(event) => updateFilter('date', event.target.value)} /></Field>
-            <Field label="6. Select Start Time"><Input disabled={!filters.date} type="time" value={filters.startTime} onChange={(event) => updateFilter('startTime', event.target.value)} /></Field>
-            <Field label="7. Select End Time"><Input disabled={!filters.startTime} type="time" value={filters.endTime} onChange={(event) => updateFilter('endTime', event.target.value)} /></Field>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <Field label="4. Select Facilities">
+              <CheckboxDropdown
+                options={FACILITY_OPTIONS}
+                values={filters}
+                onChange={(key, value) => updateFilter(key, value)}
+                disabled={!canChooseFacilities}
+                placeholder="Choose facilities"
+              />
+            </Field>
+            <Field label="5. Select Date"><Input disabled={!canChooseFacilities} min={new Date().toISOString().slice(0, 10)} type="date" value={filters.date} onChange={(event) => updateFilter('date', event.target.value)} className="rounded-[8px] border border-slate-200 px-3 py-3 text-sm" /></Field>
+            <Field label="6. Select Start Time"><Input disabled={!filters.date} type="time" value={filters.startTime} onChange={(event) => updateFilter('startTime', event.target.value)} className="rounded-[8px] border border-slate-200 px-3 py-3 text-sm" /></Field>
+            <Field label="7. Select End Time"><Input disabled={!filters.startTime} type="time" value={filters.endTime} onChange={(event) => updateFilter('endTime', event.target.value)} className="rounded-[8px] border border-slate-200 px-3 py-3 text-sm" /></Field>
           </div>
 
           {error && <p role="alert" className="rounded-lg border border-clay bg-red-50 px-3 py-2 text-sm text-clay">{error}</p>}
           <Button type="submit" disabled={!canSearch || loading}>{loading ? 'Searching...' : 'Search Available Rooms'}</Button>
         </form>
+      </Card>
+
+      <Card className="overflow-hidden p-0">
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <div><h2 className="font-display text-lg font-700">My Bookings</h2><p className="text-sm text-slate">Your upcoming workspace reservations.</p></div>
+          <Link to="/my-bookings" className="text-sm font-semibold text-brand-blue hover:underline">View all</Link>
+        </div>
+        {bookings.length === 0 ? <p className="px-4 py-5 text-sm text-slate">You do not have any bookings yet.</p> : <div className="divide-y divide-line">{bookings.filter((booking) => booking.status !== 'Cancelled').slice(0, 3).map((booking) => <div key={booking.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"><div><p className="font-semibold text-ink">{booking.roomName}</p><p className="text-sm text-slate">{booking.title || 'Room booking'} · {booking.date} · {booking.startTime}–{booking.endTime}</p></div><StatusTag status={booking.status} /></div>)}</div>}
       </Card>
 
       {loading && <Loader label="Finding rooms that match your requirements..." />}

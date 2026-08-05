@@ -85,7 +85,7 @@ export default function BookRoom() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="font-display text-xl font-700">Booking Summary</h1>
+      <h1 className="font-display text-xl font-700">Booking</h1>
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
