@@ -1,5 +1,5 @@
 [
-  { "id": "n1", "title": "Booking confirmed", "message": "Conference Room 1 is reserved for your leadership sync.", "time": "10m ago", "tone": "success" },
-  { "id": "n2", "title": "Reminder", "message": "Your design review starts in 30 minutes.", "time": "30m ago", "tone": "warning" },
-  { "id": "n3", "title": "Policy update", "message": "New workspace standards are now available for review.", "time": "1h ago", "tone": "default" }
+  { "id": "n1", "title": "Booking confirmed", "message": "Conference Room 1 is reserved for your leadership sync.", "time": "10m ago", "tone": "success", "unread": true },
+  { "id": "n2", "title": "Reminder", "message": "Your design review starts in 30 minutes.", "time": "30m ago", "tone": "warning", "unread": true },
+  { "id": "n3", "title": "Policy update", "message": "New workspace standards are now available for review.", "time": "1h ago", "tone": "default", "unread": false }
 ]

@@ -15,7 +15,7 @@ const ADMIN_ITEMS = [
   { to: '/admin/reports', label: 'Reports', icon: BarChart3 },
 ]
 
-export default function Sidebar({ collapsed = false }) {
+export default function Sidebar({ collapsed = true }) {
   // width classes used for fixed positioning and spacing
   const widthClass = collapsed ? 'w-20' : 'w-64'
 
@@ -31,21 +31,21 @@ export default function Sidebar({ collapsed = false }) {
         {!isAdmin && (
           <>
             <p className={`mb-2 font-mono text-[11px] uppercase tracking-[0.25em] text-slate-500 ${collapsed ? 'hidden' : 'block'}`}>Workspace</p>
-            <ul className="space-y-1">
+            <ul className="space-y-1.5">
               {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
                 <li key={to}>
                   <NavLink
                     to={to}
                     end={end}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm transition ${
+                      `flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-all duration-200 ${
                         isActive
-                          ? 'bg-portal-nav text-white'
-                          : 'text-slate-700 hover:bg-white hover:text-ink'
+                          ? 'bg-portal-nav text-white font-medium'
+                          : 'text-slate-700 hover:bg-white/80 hover:text-ink'
                       } ${collapsed ? 'justify-center px-2' : ''}`
                     }
                   >
-                    <Icon size={16} />
+                    <Icon size={18} />
                     {!collapsed && <span>{label}</span>}
                   </NavLink>
                 </li>
@@ -56,22 +56,22 @@ export default function Sidebar({ collapsed = false }) {
 
         {/* Admin menu only for admins */}
         {isAdmin && (
-          <div className="mt-6">
+          <div className="mt-2">
             <p className={`mb-2 font-mono text-[11px] uppercase tracking-[0.25em] text-slate-500 ${collapsed ? 'hidden' : 'block'}`}>Admin</p>
-            <ul className="space-y-1">
+            <ul className="space-y-1.5">
               {ADMIN_ITEMS.map(({ to, label, icon: Icon }) => (
                 <li key={to}>
                   <NavLink
                     to={to}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm transition ${
+                      `flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-all duration-200 ${
                         isActive
-                          ? 'bg-portal-nav text-white'
-                          : 'text-slate-700 hover:bg-white hover:text-ink'
+                          ? 'bg-portal-nav text-white font-medium'
+                          : 'text-slate-700 hover:bg-white/80 hover:text-ink'
                       } ${collapsed ? 'justify-center px-2' : ''}`
                     }
                   >
-                    <Icon size={16} />
+                    <Icon size={18} />
                     {!collapsed && <span>{label}</span>}
                   </NavLink>
                 </li>

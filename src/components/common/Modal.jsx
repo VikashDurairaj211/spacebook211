@@ -1,12 +1,44 @@
-export default function Modal({ open, title, children, footer }) {
+import React from 'react'
+
+export default function Modal({
+  open,
+  title,
+  children,
+  footer,
+  onClose,
+  className = '',
+}) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 px-4">
-      <div className="w-full max-w-lg overflow-hidden rounded-[28px] border border-line bg-white p-5 shadow-[0_25px_60px_-30px_rgba(15,23,42,0.35)]">
-        {title ? <h3 className="font-display text-lg font-700 text-ink">{title}</h3> : null}
-        <div className="mt-4 text-sm text-slate">{children}</div>
-        {footer ? <div className="mt-5 flex justify-end gap-2">{footer}</div> : null}
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
+      <div
+        className={`relative w-full transform rounded-2xl bg-white p-6 shadow-xl transition-all ${
+          className || 'max-w-lg'
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-line pb-4">
+          <h3 className="font-display text-lg font-700 text-ink">{title}</h3>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1 text-slate hover:bg-portal-bg hover:text-ink"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Content Body */}
+        <div className="py-4">{children}</div>
+
+        {/* Footer */}
+        {footer && (
+          <div className="flex items-center justify-end gap-3 border-t border-line pt-4">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   )
