@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { getRooms } from '../api/rooms'
 import { MODULES, ROOM_TYPES } from '../data/mockRooms'
 import { Field, Input, Select } from '../components/common/Input'
-import CheckboxDropdown from '../components/common/CheckboxDropdown'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
 import Loader from '../components/common/Loader'
@@ -12,14 +11,7 @@ import Modal from '../components/common/Modal'
 import { getMyBookings } from '../api/bookings'
 import { filterRoomsByCriteria, isRoomAvailable } from '../utils/availabilityChecker'
 
-const FACILITY_OPTIONS = [
-  { key: 'whiteboard', label: 'Whiteboard & Marker' },
-  { key: 'tv', label: 'TV & Remote' },
-  { key: 'camera', label: 'Camera' },
-  { key: 'mic', label: 'Mic' },
-]
-
-const INITIAL_FILTERS = { module: '', type: '', capacity: '', date: '', startTime: '', endTime: '', whiteboard: false, tv: false, camera: false, mic: false }
+const INITIAL_FILTERS = { module: '', type: '', capacity: '', date: '', startTime: '', endTime: '' }
 
 export default function SearchRooms() {
   const [filters, setFilters] = useState(INITIAL_FILTERS)
@@ -35,14 +27,13 @@ export default function SearchRooms() {
   }, [])
 
   const canChooseType = Boolean(filters.module)
-  const canChooseFacilities = canChooseType && Boolean(filters.type)
-  const canSearch = canChooseFacilities && filters.date && filters.startTime && filters.endTime && Number(filters.capacity) > 0
+  const canChooseDetails = canChooseType && Boolean(filters.type)
+  const canSearch = canChooseDetails && filters.date && filters.startTime && filters.endTime && Number(filters.capacity) > 0
 
   function updateFilter(key, value) {
     setFilters((currentFilters) => {
       const nextFilters = { ...currentFilters, [key]: value }
-      if (key === 'module') Object.assign(nextFilters, { type: '', whiteboard: false, tv: false, camera: false, mic: false })
-      if (key === 'type') Object.assign(nextFilters, { whiteboard: false, tv: false, camera: false, mic: false })
+      if (key === 'module') Object.assign(nextFilters, { type: '' })
       return nextFilters
     })
     setError('')
@@ -92,22 +83,13 @@ export default function SearchRooms() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Field label="1. Select Module"><Select value={filters.module} onChange={(event) => updateFilter('module', event.target.value)}><option value="">Select module</option>{MODULES.map((module) => <option key={module} value={module}>{module}</option>)}</Select></Field>
             <Field label="2. Select Room Type"><Select disabled={!canChooseType} value={filters.type} onChange={(event) => updateFilter('type', event.target.value)}><option value="">{canChooseType ? 'Select room type' : 'Choose a module first'}</option>{ROOM_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}</Select></Field>
-            <Field label="3. Number of Attendees"><Input disabled={!canChooseFacilities} type="number" min="1" value={filters.capacity} onChange={(event) => updateFilter('capacity', event.target.value)} placeholder={canChooseFacilities ? 'e.g. 6' : 'Choose a room type first'} /></Field>
+            <Field label="3. Number of Attendees"><Input disabled={!canChooseDetails} type="number" min="1" value={filters.capacity} onChange={(event) => updateFilter('capacity', event.target.value)} placeholder={canChooseDetails ? 'e.g. 6' : 'Choose a room type first'} /></Field>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Field label="4. Select Facilities">
-              <CheckboxDropdown
-                options={FACILITY_OPTIONS}
-                values={filters}
-                onChange={(key, value) => updateFilter(key, value)}
-                disabled={!canChooseFacilities}
-                placeholder="Choose facilities"
-              />
-            </Field>
-            <Field label="5. Select Date"><Input disabled={!canChooseFacilities} min={new Date().toISOString().slice(0, 10)} type="date" value={filters.date} onChange={(event) => updateFilter('date', event.target.value)} className="rounded-[8px] border border-slate-200 px-3 py-3 text-sm" /></Field>
-            <Field label="6. Select Start Time"><Input disabled={!filters.date} type="time" value={filters.startTime} onChange={(event) => updateFilter('startTime', event.target.value)} className="rounded-[8px] border border-slate-200 px-3 py-3 text-sm" /></Field>
-            <Field label="7. Select End Time"><Input disabled={!filters.startTime} type="time" value={filters.endTime} onChange={(event) => updateFilter('endTime', event.target.value)} className="rounded-[8px] border border-slate-200 px-3 py-3 text-sm" /></Field>
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+            <Field label="4. Select Date"><Input disabled={!canChooseDetails} min={new Date().toISOString().slice(0, 10)} type="date" value={filters.date} onChange={(event) => updateFilter('date', event.target.value)} className="rounded-[8px] border border-slate-200 px-3 py-3 text-sm" /></Field>
+            <Field label="5. Select Start Time"><Input disabled={!filters.date} type="time" value={filters.startTime} onChange={(event) => updateFilter('startTime', event.target.value)} className="rounded-[8px] border border-slate-200 px-3 py-3 text-sm" /></Field>
+            <Field label="6. Select End Time"><Input disabled={!filters.startTime} type="time" value={filters.endTime} onChange={(event) => updateFilter('endTime', event.target.value)} className="rounded-[8px] border border-slate-200 px-3 py-3 text-sm" /></Field>
           </div>
 
           {error && <p role="alert" className="rounded-lg border border-clay bg-red-50 px-3 py-2 text-sm text-clay">{error}</p>}

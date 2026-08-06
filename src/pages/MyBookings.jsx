@@ -21,8 +21,9 @@ export default function MyBookings() {
 
   const isUpcomingBooking = (booking) => {
     if (booking.status === 'Cancelled') return false
-    const bookingStart = new Date(`${booking.date}T${booking.startTime}`)
-    return bookingStart > new Date()
+    const today = new Date().toISOString().slice(0, 10)
+    // consider bookings on or after today as upcoming
+    return booking.date >= today
   }
 
   async function cancel() {
@@ -139,24 +140,7 @@ export default function MyBookings() {
               <Field label="End"><Input type="time" value={selected.endTime} onChange={(e) => setSelected({ ...selected, endTime: e.target.value })} /></Field>
             </div>
             <Field label="Attendees"><Input type="number" value={selected.attendees || ''} onChange={(e) => setSelected({ ...selected, attendees: e.target.value })} /></Field>
-            <Field label="Facilities">
-              <div className="flex flex-wrap gap-2">
-                {['Whiteboard & Marker', 'TV & Remote', 'Camera', 'Mic'].map((facility) => (
-                  <label key={facility} className="text-xs">
-                    <input
-                      type="checkbox"
-                      checked={(selected.facilities || []).includes(facility)}
-                      onChange={(e) => setSelected({
-                        ...selected,
-                        facilities: e.target.checked
-                          ? [...(selected.facilities || []), facility]
-                          : (selected.facilities || []).filter((item) => item !== facility),
-                      })}
-                    /> {facility}
-                  </label>
-                ))}
-              </div>
-            </Field>
+            {/* Facilities editing removed per request */}
             <div className="flex justify-end gap-2">
               <Button variant="secondary" type="button" onClick={() => setMode(null)}>Cancel</Button>
               <Button type="submit">Save changes</Button>

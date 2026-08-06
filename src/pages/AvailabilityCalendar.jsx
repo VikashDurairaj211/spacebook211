@@ -11,9 +11,7 @@ import { getMyBookings } from '../api/bookings'
 import { Field, Input, Select } from '../components/common/Input'
 
 const ROOM_TYPE_OPTIONS = ['All Rooms', 'Conference', 'Discussion', 'Training']
-const FACILITIES = [
-  ['whiteboard', 'Whiteboard & Marker'], ['tv', 'TV & Remote'], ['camera', 'Camera'], ['mic', 'Mic'],
-]
+// facility filters removed — facilities remain a read-only room attribute
 
 function localDate(value = new Date()) {
   const offset = value.getTimezoneOffset() * 60000
@@ -25,7 +23,7 @@ export default function AvailabilityCalendar() {
   const [selectedDate, setSelectedDate] = useState(today)
   const [rooms, setRooms] = useState(roomsData)
   const [bookings, setBookings] = useState(bookingsData)
-  const [filters, setFilters] = useState({ type: 'All Rooms', capacity: '', startTime: '', endTime: '', whiteboard: false, tv: false, camera: false, mic: false })
+  const [filters, setFilters] = useState({ type: 'All Rooms', capacity: '', startTime: '', endTime: '' })
   const [selectedSlot, setSelectedSlot] = useState(null)
 
   useEffect(() => {
@@ -36,11 +34,9 @@ export default function AvailabilityCalendar() {
   const now = new Date()
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
   const filteredRooms = useMemo(() => {
-    const requiredFacilities = FACILITIES.filter(([key]) => filters[key]).map(([, label]) => label)
     return rooms.filter((room) => {
       if (filters.type !== 'All Rooms' && room.type !== filters.type) return false
       if (filters.capacity && room.capacity < Number(filters.capacity)) return false
-      if (requiredFacilities.some((facility) => !(room.facilities || []).includes(facility))) return false
       return true
     })
   }, [filters, rooms])
