@@ -6,6 +6,8 @@ import { Field, Input } from '../components/common/Input'
 import Button from '../components/common/Button'
 import Logo from '../../Logo.jpg'
 
+const BACKGROUND_IMAGE_URL = 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1920&q=80'
+
 export default function Login() {
   const { login, error, loading } = useAuth()
   const navigate = useNavigate()
@@ -19,41 +21,98 @@ export default function Login() {
     if (ok) navigate(email.trim().toLowerCase() === 'admin@spacebook.com' ? '/admin/dashboard' : '/dashboard')
   }
 
-  return <div className="login-portal min-h-screen px-4 py-8 sm:px-6 sm:py-10">
-    <div className="mx-auto max-w-7xl">
-      <div className="mb-8 flex items-center gap-4 rounded-b-[18px] bg-[#07205A] px-4 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.18)] sm:px-6">
-        <img src={Logo} alt="SpaceBook" className="h-10 w-10 rounded-sm border border-white/15 object-cover" />
-        <div>
-          <p className="text-lg font-semibold uppercase tracking-[0.35em] text-white"> SpaceBook</p>
+  return (
+    <div className="relative h-screen w-screen overflow-hidden flex flex-col justify-between font-sans">
+      {/* Background Image with Dark Navy Overlay */}
+      <div 
+        className="absolute inset-0 -z-20 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url('${BACKGROUND_IMAGE_URL}')` }}
+      />
+      <div className="absolute inset-0 -z-10 bg-[#001D4A]/75 backdrop-blur-[2px]" />
+
+      {/* 1. Header Bar */}
+      <header className="w-full bg-[#001D4A]/90 px-6 py-3 shadow-lg flex items-center gap-3 backdrop-blur-md border-b border-white/10 shrink-0">
+        <img src={Logo} alt="SpaceBook" className="h-9 w-9 rounded-sm object-cover" />
+        <div className="flex flex-col">
+          <span className="text-lg font-bold tracking-widest text-white uppercase leading-none">
+            SpaceBook
+          </span>
+          <span className="text-[10px] text-slate-300 tracking-wide">
+            Workspace Portal
+          </span>
         </div>
-      </div>
+      </header>
 
-      <div className="grid gap-10 lg:grid-cols-[1.2fr_0.9fr]">
-        {/*<div className="flex flex-col justify-center text-white lg:pr-10">
-          <h1 className="text-5xl font-semibold leading-tight tracking-tight sm:text-6xl">Welcome to the<br />Service Portal</h1>
-          <p className="mt-4 max-w-xl text-lg text-slate-200">Log in to get help or report an issue.</p>
-        </div>*/}
+      {/* 2. Main Content Area */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-8 py-6 flex flex-col justify-center overflow-hidden">
+        {/* Workspace Headline (Single Line) */}
+        <div className="max-w-3xl mb-6 text-white">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-normal leading-tight tracking-tight text-white whitespace-nowrap">
+            Reserve Your Workspace
+          </h1>
+          <p className="mt-3 text-base text-slate-200">
+            Log in to manage bookings and schedule meeting rooms.
+          </p>
+        </div>
 
-        <div className="mx-auto w-full max-w-md">
-          <div className="overflow-hidden rounded-[18px] border border-white/20 bg-white/95 shadow-[0_30px_80px_rgba(15,23,42,0.18)] backdrop-blur-sm">
-            <div className="border-b border-slate-200 bg-slate-50 px-6 py-5">
-              <h2 className="text-lg font-semibold text-slate-900">Log in</h2>
+        {/* Login Card */}
+        <div className="w-full max-w-md">
+          <div className="overflow-hidden rounded-lg bg-white/95 shadow-2xl backdrop-blur-md border border-white/20">
+            <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-3.5">
+              <h2 className="text-sm font-semibold text-slate-700">Log in to SpaceBook</h2>
             </div>
-            <div className="px-6 py-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <Field label="User name"><Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your user name" className="w-full rounded-[10px] border border-slate-200 px-4 py-3 text-sm" /></Field>
-                <Field label="Password"><div className="relative"><Input type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" className="w-full rounded-[10px] border border-slate-200 px-4 py-3 pr-10 text-sm" /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" aria-label="Toggle password visibility">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></Field>
-                {/*<div className="text-sm text-slate-500">
-                  <span className="font-medium text-[#06285f]">Forgot Password?</span>
-                </div>*/}
-                {error && <p className="rounded-lg border border-clay bg-red-50 px-3 py-2 text-sm text-clay">{error}</p>}
-                <Button type="submit" className="w-full rounded-[10px] bg-[#06285f] py-3 text-base font-semibold text-white shadow-lg shadow-[#06285f]/20 hover:bg-[#041d48]" disabled={loading || !email.trim() || !password}>{loading ? 'Signing in...' : 'Log in'}</Button>
+            <div className="px-6 py-5">
+              <form onSubmit={handleSubmit} className="space-y-3.5">
+                <Field label="User name">
+                  <Input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="alex@company.com"
+                    className="w-full rounded-md border border-slate-200 px-4 py-2 text-sm"
+                  />
+                </Field>
+
+                <Field label="Password">
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter password"
+                      className="w-full rounded-md border border-slate-200 px-4 py-2 pr-10 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      aria-label="Toggle password visibility"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </Field>
+
+                {error && (
+                  <p className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-600">
+                    {error}
+                  </p>
+                )}
+
+                <Button
+                  type="submit"
+                  className="w-full rounded-md bg-[#001D4A] py-2.5 text-sm font-semibold text-white hover:bg-[#001433] transition-colors shadow-md"
+                  disabled={loading || !email.trim() || !password}
+                >
+                  {loading ? 'Signing in...' : 'Log in'}
+                </Button>
               </form>
-              
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
-  </div>
+  )
 }

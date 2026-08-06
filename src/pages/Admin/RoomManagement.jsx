@@ -380,7 +380,7 @@ export default function RoomManagement() {
                     <CustomStatusTag status={room.status} />
                   </td>
                   <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-3 font-serif text-sm">
+                    <div className="flex items-center gap-3 font-sans text-sm">
                       <button
                         onClick={() => openViewModal(room)}
                         className="text-ink hover:underline"
@@ -526,7 +526,7 @@ export default function RoomManagement() {
                           <button
                             type="button"
                             onClick={() => handleRemoveTypeConfig(index)}
-                            className="text-[#be534d] hover:underline text-xs font-serif pt-2"
+                            className="text-[#be534d] hover:underline text-xs font-sans pt-2"
                           >
                             Remove
                           </button>

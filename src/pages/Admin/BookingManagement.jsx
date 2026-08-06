@@ -170,7 +170,7 @@ export default function BookingManagement() {
                     <CustomStatusTag status={booking.status} />
                   </td>
                   <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                    <div className="inline-flex items-center gap-2.5 font-serif text-xs">
+                    <div className="inline-flex items-center gap-2.5 font-sans text-xs">
                       <button
                         onClick={() => openViewModal(booking)}
                         className="text-ink hover:underline"

@@ -57,7 +57,7 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
   }
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-slate-200 bg-portal-nav px-4 text-white shadow-sm md:px-6">
+    <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-slate-200 bg-portal-nav px-4 text-white shadow-sm md:px-6 font-sans">
       <div className="flex items-center gap-3">
         {!publicOnly && (
           <button
@@ -71,7 +71,7 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/dashboard')}>
           <img src={Logo} alt="Spacebook logo" className="h-10 w-10 rounded-full border border-white/20 bg-white/10 object-cover" />
           <div>
-            <span className="block font-display text-sm font-700 tracking-tight text-white">Spacebook</span>
+            <span className="block font-display text-sm font-bold tracking-tight text-white">Spacebook</span>
           </div>
         </div>
       </div>
@@ -91,7 +91,7 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
                 setShowSearchResults(true)
               }}
               onFocus={() => searchInput && setShowSearchResults(true)}
-              className="w-full bg-transparent text-sm outline-none placeholder:text-slate-200 text-white"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-slate-200 text-white font-sans"
             />
           </div>
 
@@ -107,7 +107,7 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
                       key={room.id}
                       type="button"
                       onClick={() => handleSelectResult(room.name)}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-portal-bg/80 transition-colors flex flex-col"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-portal-bg/80 transition-colors flex flex-col font-sans"
                     >
                       <span className="font-medium text-ink">{room.name}</span>
                       <span className="text-xs text-slate">{room.module} · {room.type}</span>
@@ -126,7 +126,7 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
                       key={booking.id}
                       type="button"
                       onClick={() => handleSelectResult(booking.title || booking.roomName)}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-portal-bg/80 transition-colors flex flex-col"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-portal-bg/80 transition-colors flex flex-col font-sans"
                     >
                       <span className="font-medium text-ink">{booking.title}</span>
                       <span className="text-xs text-slate">{booking.roomName} · {booking.date}</span>
@@ -136,7 +136,7 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
               )}
 
               {searchResults.rooms.length === 0 && searchResults.bookings.length === 0 && (
-                <div className="px-3 py-4 text-center text-sm text-slate">No rooms or bookings found</div>
+                <div className="px-3 py-4 text-center text-sm text-slate font-sans">No rooms or bookings found</div>
               )}
             </div>
           )}
@@ -185,17 +185,8 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
               <span className="max-w-[120px] truncate font-mono text-xs">{user?.name || 'Employee'}</span>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-40 border border-slate-200 bg-white text-sm text-ink shadow-sm rounded-lg">
-                <button
-                  onClick={() => {
-                    navigate('/profile')
-                    setMenuOpen(false)
-                  }}
-                  className="block w-full px-3 py-2 text-left hover:bg-slate-50"
-                >
-                  Profile
-                </button>
-                <button onClick={handleLogout} className="block w-full px-3 py-2 text-left text-clay hover:bg-slate-50">
+              <div className="absolute right-0 top-full mt-1 w-32 border border-slate-200 bg-white text-sm text-ink shadow-md rounded-lg py-1 font-sans">
+                <button onClick={handleLogout} className="block w-full px-3 py-2 text-left text-clay hover:bg-slate-50 transition-colors font-medium">
                   Sign out
                 </button>
               </div>
