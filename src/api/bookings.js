@@ -26,12 +26,12 @@ function findRoom(roomId) {
 }
 
 // Expected .NET endpoint: POST /api/bookings
-// Body: { title, purpose, roomId, date, startTime, endTime, attendees, notes }
+// Body: { title, roomId, date, startTime, endTime, attendees, notes }
 export async function createBooking(payload) {
   const bookings = await getMyBookings()
   const room = findRoom(payload.roomId)
   const validationError = validateBookingRequest(
-    { room, date: normalizeDate(payload.date), startTime: payload.startTime, endTime: payload.endTime, attendees: payload.attendees, purpose: payload.purpose },
+    { room, date: normalizeDate(payload.date), startTime: payload.startTime, endTime: payload.endTime, attendees: payload.attendees },
     bookings
   )
   if (validationError) throw new Error(validationError)

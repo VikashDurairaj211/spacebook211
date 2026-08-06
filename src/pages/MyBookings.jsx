@@ -115,8 +115,6 @@ export default function MyBookings() {
             <dd>{selected.date}, {selected.startTime}–{selected.endTime}</dd>
             <dt>Attendees</dt>
             <dd>{selected.attendees || '—'}</dd>
-            <dt>Purpose</dt>
-            <dd>{selected.purpose || selected.title}</dd>
             <dt>Facilities</dt>
             <dd>{selected.facilities?.join(', ') || '—'}</dd>
             <dt>Organizer</dt>
@@ -141,7 +139,6 @@ export default function MyBookings() {
               <Field label="End"><Input type="time" value={selected.endTime} onChange={(e) => setSelected({ ...selected, endTime: e.target.value })} /></Field>
             </div>
             <Field label="Attendees"><Input type="number" value={selected.attendees || ''} onChange={(e) => setSelected({ ...selected, attendees: e.target.value })} /></Field>
-            <Field label="Meeting Purpose"><Input value={selected.purpose || ''} onChange={(e) => setSelected({ ...selected, purpose: e.target.value })} /></Field>
             <Field label="Facilities">
               <div className="flex flex-wrap gap-2">
                 {['Whiteboard & Marker', 'TV & Remote', 'Camera', 'Mic'].map((facility) => (

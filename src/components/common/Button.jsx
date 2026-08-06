@@ -1,5 +1,5 @@
 export default function Button({ children, variant = 'primary', className = '', ...props }) {
-  const base = 'rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+  const base = 'rounded-2xl px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
   const variants = {
     primary: 'bg-ink text-paper hover:bg-ink/90',
     secondary: 'border border-ink text-ink hover:bg-ink hover:text-paper',

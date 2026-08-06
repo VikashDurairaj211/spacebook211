@@ -86,15 +86,15 @@
 
   /* Blueprint-style plaque tag used for room codes and statuses */
   .plaque {
-    @apply inline-flex items-center gap-1 border border-ink/70 px-2 py-0.5 font-mono text-[11px] uppercase tracking-wider;
+    @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[11px] uppercase tracking-wider;
   }
   .plaque-available {
-    @apply border-moss text-moss;
+    @apply bg-moss border-moss text-white;
   }
   .plaque-booked {
-    @apply border-clay text-clay;
+    @apply bg-clay border-clay text-white;
   }
   .plaque-pending {
-    @apply border-signal text-signal;
+    @apply bg-signal border-signal text-white;
   }
 }

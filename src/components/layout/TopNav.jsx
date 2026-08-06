@@ -188,7 +188,7 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
             className="flex items-center gap-2 rounded-lg border border-white/20 px-2 py-1 text-sm text-white hover:bg-white/10"
           >
             <User size={15} />
-            <span className="hidden font-mono text-xs md:inline">{user?.name || 'Employee'}</span>
+            <span className="max-w-[120px] truncate font-mono text-xs">{user?.name || 'Employee'}</span>
           </button>
           {menuOpen && (
             <div className="absolute right-0 top-full mt-1 w-40 border border-slate-200 bg-white text-sm text-ink shadow-sm rounded-lg">

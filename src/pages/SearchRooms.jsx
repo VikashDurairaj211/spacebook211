@@ -8,6 +8,7 @@ import Button from '../components/common/Button'
 import Card from '../components/common/Card'
 import Loader from '../components/common/Loader'
 import StatusTag from '../components/common/StatusTag'
+import Modal from '../components/common/Modal'
 import { getMyBookings } from '../api/bookings'
 import { filterRoomsByCriteria, isRoomAvailable } from '../utils/availabilityChecker'
 
@@ -27,6 +28,7 @@ export default function SearchRooms() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [bookings, setBookings] = useState([])
+  const [resultsOpen, setResultsOpen] = useState(false)
 
   useEffect(() => {
     getMyBookings().then(setBookings).catch(() => setBookings([]))
@@ -59,7 +61,8 @@ export default function SearchRooms() {
       const rooms = await getRooms(filters)
       const availableRooms = filterRoomsByCriteria(rooms, latestBookings, filters)
       setResults(availableRooms)
-      setSearched(true)
+      setSearched(false)
+      setResultsOpen(true)
     } catch {
       setError('Rooms could not be loaded. Please try again.')
     } finally {
@@ -121,6 +124,13 @@ export default function SearchRooms() {
       </Card>
 
       {loading && <Loader label="Finding rooms that match your requirements..." />}
+      <Modal open={resultsOpen && !loading} title="Available rooms" footer={<Button variant="secondary" onClick={() => setResultsOpen(false)}>Close</Button>}>
+        <p className="mb-4">{results.length} room{results.length === 1 ? '' : 's'} available for your selected time.</p>
+        {results.length === 0 ? <p>Try another time, room type, or a smaller attendee count.</p> : <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">{results.map((room) => {
+          const available = isRoomAvailable(room.id, filters.date, filters.startTime, filters.endTime, bookings) && room.status !== 'Booked'
+          return <div key={room.id} className="border border-line p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-display font-700 text-ink">{room.name}</p><p className="font-mono text-[11px] text-slate">{room.code}, {room.module}, {room.type}</p></div><StatusTag status={available ? 'Available' : 'Booked'} /></div><p className="mt-2 text-sm">Capacity: {room.capacity}. Facilities: {room.facilities?.join(', ') || 'None'}</p>{available && <Link to={bookRoomLink(room.id)} onClick={() => setResultsOpen(false)}><Button className="mt-3 w-full">Book this room</Button></Link>}</div>
+        })}</div>}
+      </Modal>
       {searched && !loading && <div><p className="mb-3 font-mono text-[11px] uppercase tracking-wider text-slate">{results.length} available room{results.length === 1 ? '' : 's'} found</p>{results.length === 0 ? <Card><p className="font-medium text-ink">No rooms match these requirements.</p><p className="mt-1 text-sm text-slate">Try another time, room type, or a smaller attendee count.</p></Card> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{results.map((room) => { const available = isRoomAvailable(room.id, filters.date, filters.startTime, filters.endTime, bookings) && room.status !== 'Booked'; return (<Card key={room.id}><div className="mb-2 flex items-start justify-between"><div><p className="font-display text-sm font-700">{room.name}</p><p className="font-mono text-[11px] text-slate">{room.code}</p></div><StatusTag status={available ? 'Available' : 'Booked'} /></div><p className="text-sm text-slate">{room.module} · {room.type}</p><p className="mb-2 text-sm text-slate">Capacity: {room.capacity}</p><p className="mb-4 text-sm text-slate">Facilities: {room.facilities?.join(', ') || 'None'}</p><Link to={available ? bookRoomLink(room.id) : roomDetailsLink(room.id)}><Button variant={available ? 'primary' : 'secondary'} className="w-full" disabled={!available}>{available ? 'Book Now' : 'View Room Details'}</Button></Link></Card>) })}</div>}</div>}
     </div>
   )

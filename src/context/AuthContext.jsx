@@ -1,6 +1,16 @@
 import { createContext, useContext, useState, useCallback } from 'react'
 import * as authApi from '../api/auth'
 
+function formatNameFromEmail(email) {
+  const localPart = String(email).split('@')[0].replace(/[^a-zA-Z0-9]+/g, ' ').trim()
+  if (!localPart) return 'Demo Employee'
+  return localPart
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => `${word[0].toUpperCase()}${word.slice(1)}`)
+    .join(' ')
+}
+
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
@@ -29,7 +39,7 @@ export function AuthProvider({ children }) {
         const isAdmin = normalizedEmail === 'admin@spacebook.com'
         const demoUser = {
           id: 'demo',
-          name: isAdmin ? 'SpaceBook Administrator' : 'Demo Employee',
+          name: isAdmin ? 'SpaceBook Administrator' : formatNameFromEmail(normalizedEmail),
           email: normalizedEmail,
           department: 'Engineering',
           role: isAdmin ? 'Admin' : 'Employee',

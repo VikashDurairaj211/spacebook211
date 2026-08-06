@@ -2,10 +2,9 @@ import { isPastDate } from './dateUtils'
 import { isValidTimeRange, durationInMinutes, isWithinWorkingHours } from './timeUtils'
 import { roomHasConflict } from './availabilityChecker'
 
-export function validateBookingRequest({ room, date, startTime, endTime, attendees, purpose }, bookings = [], ignoreBookingId) {
+export function validateBookingRequest({ room, date, startTime, endTime, attendees }, bookings = [], ignoreBookingId) {
   if (!room) return 'Select a room before confirming the booking.'
   if (!date || !startTime || !endTime) return 'Date and time must be selected.'
-  if (!purpose?.trim()) return 'Purpose is required.'
   if (!attendees || Number(attendees) <= 0) return 'Attendee count must be greater than zero.'
   if (room.capacity && Number(attendees) > Number(room.capacity)) return `Attendees cannot exceed room capacity of ${room.capacity}.`
   if (isPastDate(date)) return 'Bookings cannot be created in the past.'

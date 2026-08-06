@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { createBooking } from '../api/bookings'
+import { createBooking, getMyBookings } from '../api/bookings'
 import { getRoomById } from '../api/rooms'
 import { MOCK_ROOMS, MODULES } from '../data/mockRooms'
 import { Field, Input, Select } from '../components/common/Input'
 import { useToast } from '../components/common/ToastProvider'
+import { isRoomAvailable } from '../utils/availabilityChecker'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
 import Modal from '../components/common/Modal'
@@ -20,9 +21,10 @@ export default function BookRoom() {
   const prefillAttendees = searchParams.get('attendees') || ''
 
   const [selectedRoom, setSelectedRoom] = useState(null)
+  const [bookings, setBookings] = useState([])
+  const [suggestions, setSuggestions] = useState([])
   const [form, setForm] = useState({
     title: '',
-    purpose: '',
     module: '',
     roomId: '',
     date: prefillDate,
@@ -57,6 +59,10 @@ export default function BookRoom() {
     }
   }, [roomIdParam])
 
+  useEffect(() => {
+    getMyBookings().then(setBookings).catch(() => setBookings([]))
+  }, [])
+
   const roomsInModule = useMemo(
     () => MOCK_ROOMS.filter((r) => r.module === form.module),
     [form.module]
@@ -84,10 +90,6 @@ export default function BookRoom() {
       toast.addToast({ type: 'error', title: 'Meeting title is required.' })
       return
     }
-    if (!form.purpose.trim()) {
-      toast.addToast({ type: 'error', title: 'Purpose is required.' })
-      return
-    }
     if (!form.date || !form.startTime || !form.endTime || !form.attendees) {
       toast.addToast({ type: 'error', title: 'Complete the date, time, and attendee details.' })
       return
@@ -97,6 +99,22 @@ export default function BookRoom() {
       return
     }
 
+    const attendeeCount = Number(form.attendees)
+    const roomCapacity = Number(selectedRoomDetails?.capacity || 0)
+    if (attendeeCount > roomCapacity) {
+      toast.addToast({
+        type: 'error',
+        title: `Selected room capacity is ${roomCapacity}. Entered attendees: ${attendeeCount}. Please choose a suitable room.`,
+      })
+      const recommended = MOCK_ROOMS.filter((room) =>
+        room.capacity >= attendeeCount && room.id !== form.roomId &&
+        isRoomAvailable(room.id, form.date, form.startTime, form.endTime, bookings)
+      ).slice(0, 3)
+      setSuggestions(recommended)
+      return
+    }
+
+    setSuggestions([])
     setConfirming(true)
   }
 
@@ -118,31 +136,10 @@ export default function BookRoom() {
     <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="font-display text-xl font-700">Booking</h1>
 
-      {selectedRoomDetails && (
-        <Card>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className="font-display text-sm font-700">{selectedRoomDetails.name}</p>
-              <p className="text-sm text-slate">{selectedRoomDetails.code} · {selectedRoomDetails.module} · {selectedRoomDetails.type}</p>
-            </div>
-            <div className="space-y-2 rounded-xl border border-line bg-portal-bg p-4 text-sm">
-              <div><strong>Capacity:</strong> {selectedRoomDetails.capacity}</div>
-              <div><strong>Facilities:</strong> {selectedRoomDetails.facilities?.join(', ') || 'None'}</div>
-              <div><strong>Selected date:</strong> {form.date || 'Not selected'}</div>
-              <div><strong>Selected time:</strong> {form.startTime && form.endTime ? `${form.startTime}–${form.endTime}` : 'Not selected'}</div>
-            </div>
-          </div>
-        </Card>
-      )}
-
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Field label="Meeting Title">
             <Input required value={form.title} onChange={(e) => update('title', e.target.value)} placeholder="e.g. Sprint Planning" />
-          </Field>
-
-          <Field label="Purpose">
-            <Input value={form.purpose} onChange={(e) => update('purpose', e.target.value)} placeholder="Brief reason for the meeting" />
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
@@ -186,6 +183,24 @@ export default function BookRoom() {
         </form>
       </Card>
 
+      {suggestions.length > 0 && (
+        <Card>
+          <div className="space-y-3">
+            <p className="font-medium text-ink">Recommended Rooms</p>
+            <p className="text-sm text-slate">Choose a room with enough capacity for your attendee count.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {suggestions.map((room) => (
+                <div key={room.id} className="rounded-2xl border border-line bg-white p-4">
+                  <p className="font-semibold text-ink">{room.name}</p>
+                  <p className="text-sm text-slate">{room.module} · {room.type}</p>
+                  <p className="mt-2 text-sm text-slate">Capacity: {room.capacity}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      )}
+
       <Modal
         open={confirming}
         title="Confirm booking"
@@ -196,7 +211,6 @@ export default function BookRoom() {
           <p><strong>Module:</strong> {form.module}</p>
           <p><strong>Date & time:</strong> {form.date} · {form.startTime}–{form.endTime}</p>
           <p><strong>Duration:</strong> {form.startTime && form.endTime ? `${(new Date(`2000-01-01T${form.endTime}`) - new Date(`2000-01-01T${form.startTime}`)) / 3600000} hours` : ''}</p>
-          <p><strong>Purpose:</strong> {form.purpose || 'Not provided'}</p>
           <p><strong>Attendees:</strong> {form.attendees}</p>
         </div>
       </Modal>
