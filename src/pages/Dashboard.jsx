@@ -40,9 +40,10 @@ export default function Dashboard() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <DashboardCard title="Bookings Today" value={bookings.filter((b) => b.date === today).length} tone="warning" />
         <DashboardCard title="Upcoming" value={upcoming.length} />
+        <DashboardCard title="Today's Meetings" value={todaysMeetings.length} />
       </div>
 
       {/* Upcoming bookings table */}
@@ -76,23 +77,7 @@ export default function Dashboard() {
         </table>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-1">
-        <Card>
-          <h2 className="mb-3 font-display text-sm font-700">Today's Meetings</h2>
-          {todaysMeetings.length === 0 ? (
-            <p className="text-sm text-slate">Nothing on your calendar today.</p>
-          ) : (
-            <ul className="space-y-2">
-              {todaysMeetings.map((m) => (
-                <li key={m.id} className="flex justify-between text-sm">
-                  <span>{m.title}</span>
-                  <span className="font-mono text-xs text-slate">{m.startTime}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
+      {/* Today's Meetings summary moved into the top summary cards */}
     </div>
   )
 }

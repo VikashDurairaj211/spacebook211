@@ -14,7 +14,7 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
   const [searchInput, setSearchInput] = useState('')
   const [showSearchResults, setShowSearchResults] = useState(false)
 
-  const notifications = useMemo(() => NOTIFS, [])
+  const [notifications, setNotifications] = useState(() => NOTIFS)
   const unreadCount = notificationsRead ? 0 : notifications.length
 
   const searchResults = useMemo(() => {
@@ -157,6 +157,7 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
                 <div><span className="font-display text-base font-700">Notifications</span><p className="mt-0.5 text-xs text-slate">Recent alerts for your account.</p></div>
                 <button
                   onClick={() => {
+                    setNotifications([])
                     setNotificationsRead(true)
                   }}
                   className="text-xs text-brand-blue hover:underline"
