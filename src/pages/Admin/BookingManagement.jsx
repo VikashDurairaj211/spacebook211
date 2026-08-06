@@ -4,7 +4,7 @@ import Button from '../../components/common/Button'
 import Modal from '../../components/common/Modal'
 import { bookings as BOOKINGS } from '../../services/mockData'
 
-// Equal-width Status Badge Component matching the design
+// Equal-width Status Badge Component matching the design system
 function CustomStatusTag({ status }) {
   const normalized = status?.toUpperCase()
 
@@ -18,7 +18,7 @@ function CustomStatusTag({ status }) {
 
   return (
     <span
-      className={`inline-flex items-center justify-center min-w-[110px] rounded-full px-3 py-1 text-[11px] font-semibold tracking-wider text-center ${bgClass}`}
+      className={`inline-flex items-center justify-center min-w-[95px] rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wider text-center ${bgClass}`}
     >
       {normalized}
     </span>
@@ -39,7 +39,8 @@ export default function BookingManagement() {
 
   const filteredBookings = useMemo(() => {
     return bookings.filter((booking) => {
-      const text = [booking.roomName, booking.title, booking.date, booking.status]
+      const creator = booking.createdBy || booking.requestedBy || booking.requester || ''
+      const text = [booking.roomName, booking.title, booking.date, booking.status, creator]
         .join(' ')
         .toLowerCase()
       const matchesSearch = text.includes(search.toLowerCase())
@@ -119,13 +120,13 @@ export default function BookingManagement() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by room, title, or date"
-              className="rounded-xl border border-line bg-portal-bg px-3 py-2 text-sm text-ink outline-none focus:border-portal-accent"
+              placeholder="Search title, room, creator..."
+              className="rounded-xl border border-line bg-portal-bg px-3 py-1.5 text-xs text-ink outline-none focus:border-portal-accent"
             />
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
-              className="rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
+              className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs text-ink outline-none"
             >
               {statuses.map((status) => (
                 <option key={status}>{status}</option>
@@ -135,35 +136,41 @@ export default function BookingManagement() {
         </div>
       </Card>
 
-      <Card className="overflow-x-auto">
-        <table className="w-full min-w-[920px] text-left text-sm">
+      <Card className="overflow-x-auto p-4">
+        <table className="w-full text-left text-xs">
           <thead>
-            <tr className="border-b border-line text-[11px] font-bold uppercase tracking-wider text-slate">
-              <th className="px-4 py-3">Booking Name</th>
-              <th className="px-4 py-3">Room</th>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Time</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
+            <tr className="border-b border-line text-[10px] font-bold uppercase tracking-wider text-slate">
+              <th className="px-3 py-2.5">Meeting Title</th>
+              <th className="px-3 py-2.5">Room</th>
+              <th className="px-3 py-2.5">Date</th>
+              <th className="px-3 py-2.5">Time</th>
+              <th className="px-3 py-2.5">Created By</th>
+              <th className="px-3 py-2.5 text-center">Status</th>
+              <th className="px-3 py-2.5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
             {filteredBookings.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-slate">No booking requests match the current filters.</td>
+                <td colSpan={7} className="px-3 py-6 text-center text-slate">
+                  No booking requests match the current filters.
+                </td>
               </tr>
             ) : (
               filteredBookings.map((booking) => (
                 <tr key={booking.id} className="transition-colors duration-200 hover:bg-portal-bg/70">
-                  <td className="px-4 py-3.5 font-medium text-ink whitespace-nowrap">{booking.title}</td>
-                  <td className="px-4 py-3.5 text-slate whitespace-nowrap">{booking.roomName}</td>
-                  <td className="px-4 py-3.5 text-slate whitespace-nowrap">{booking.date}</td>
-                  <td className="px-4 py-3.5 text-slate whitespace-nowrap">{booking.startTime}–{booking.endTime}</td>
-                  <td className="px-4 py-3.5 whitespace-nowrap">
+                  <td className="px-3 py-2.5 font-medium text-ink whitespace-nowrap">{booking.title}</td>
+                  <td className="px-3 py-2.5 text-slate whitespace-nowrap">{booking.roomName}</td>
+                  <td className="px-3 py-2.5 text-slate whitespace-nowrap">{booking.date}</td>
+                  <td className="px-3 py-2.5 text-slate whitespace-nowrap">{booking.startTime}–{booking.endTime}</td>
+                  <td className="px-3 py-2.5 text-slate whitespace-nowrap">
+                    {booking.createdBy || booking.requestedBy || booking.requester || 'Employee'}
+                  </td>
+                  <td className="px-3 py-2.5 text-center whitespace-nowrap">
                     <CustomStatusTag status={booking.status} />
                   </td>
-                  <td className="px-4 py-3.5 whitespace-nowrap">
-                    <div className="flex items-center gap-3 font-serif text-sm">
+                  <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                    <div className="inline-flex items-center gap-2.5 font-serif text-xs">
                       <button
                         onClick={() => openViewModal(booking)}
                         className="text-ink hover:underline"
@@ -215,12 +222,16 @@ export default function BookingManagement() {
           <div className="space-y-3 text-sm text-slate">
             <div>
               <h3 className="font-medium text-ink">{selectedBooking.title}</h3>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate">Booking Name</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate">Meeting Title</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <p className="font-medium text-ink">Room</p>
                 <p>{selectedBooking.roomName}</p>
+              </div>
+              <div>
+                <p className="font-medium text-ink">Created By</p>
+                <p>{selectedBooking.createdBy || selectedBooking.requestedBy || selectedBooking.requester || 'Employee'}</p>
               </div>
               <div>
                 <p className="font-medium text-ink">Date</p>
