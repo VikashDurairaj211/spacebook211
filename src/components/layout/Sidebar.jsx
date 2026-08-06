@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Search, CalendarRange, ShieldCheck, Building2, BookOpenCheck, BarChart3 } from 'lucide-react'
+import { LayoutDashboard, Search, CalendarRange, ClipboardList, ShieldCheck, Building2, BookOpenCheck, BarChart3 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/search-rooms', label: 'Search Rooms', icon: Search },
   { to: '/availability-calendar', label: 'Availability Calendar', icon: CalendarRange },
+  { to: '/my-bookings', label: 'My Bookings', icon: ClipboardList },
 ]
 
 const ADMIN_ITEMS = [

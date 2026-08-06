@@ -3,10 +3,8 @@ import { AuthProvider } from '../context/AuthContext'
 import RequireAuth from '../components/RequireAuth'
 import AppShell from '../components/layout/AppShell'
 import LoginPage from '../pages/Login'
-
 import DashboardPage from '../pages/Dashboard'
 import SearchRoomsPage from '../pages/SearchRooms'
-import RoomDetailsPage from '../pages/RoomDetails'
 import AvailabilityCalendarPage from '../pages/AvailabilityCalendar'
 import BookRoomPage from '../pages/BookRoom'
 import MyBookingsPage from '../pages/MyBookings'
@@ -24,7 +22,6 @@ export default function AppRoutes() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          
 
           <Route
             element={
@@ -36,13 +33,12 @@ export default function AppRoutes() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/search-rooms" element={<SearchRoomsPage />} />
-            <Route path="/room-details" element={<RoomDetailsPage />} />
             <Route path="/availability-calendar" element={<AvailabilityCalendarPage />} />
             <Route path="/book-room" element={<BookRoomPage />} />
             <Route path="/my-bookings" element={<MyBookingsPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/admin/dashboard" element={<RequireAuth allowedRoles={['Admin']}><AdminDashboardPage /></RequireAuth>} />
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
             <Route path="/admin/room-management" element={<AdminRoomManagementPage />} />
             <Route path="/admin/booking-management" element={<AdminBookingManagementPage />} />
             <Route path="/admin/reports" element={<AdminReportsPage />} />

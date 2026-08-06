@@ -1,119 +1,136 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getRooms } from '../api/rooms'
-import { MODULES, ROOM_TYPES } from '../data/mockRooms'
+import { MOCK_ROOMS, MODULES, ROOM_TYPES } from '../data/mockRooms'
 import { Field, Input, Select } from '../components/common/Input'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
-import Loader from '../components/common/Loader'
 import StatusTag from '../components/common/StatusTag'
-import Modal from '../components/common/Modal'
-import { getMyBookings } from '../api/bookings'
-import { filterRoomsByCriteria, isRoomAvailable } from '../utils/availabilityChecker'
 
-const INITIAL_FILTERS = { module: '', type: '', capacity: '', date: '', startTime: '', endTime: '' }
+const FACILITY_OPTIONS = [
+  { key: 'whiteboard', label: 'Whiteboard & Marker', value: 'Whiteboard & Marker' },
+  { key: 'tv', label: 'TV & Remote', value: 'TV & Remote' },
+  { key: 'camera', label: 'Camera', value: 'Camera' },
+  { key: 'mic', label: 'Mic', value: 'Mic' },
+]
 
 export default function SearchRooms() {
-  const [filters, setFilters] = useState(INITIAL_FILTERS)
-  const [results, setResults] = useState([])
+  const [filters, setFilters] = useState({
+    module: '',
+    type: '',
+    capacity: '',
+    date: '',
+    startTime: '',
+    endTime: '',
+    whiteboard: false,
+    tv: false,
+    camera: false,
+    mic: false,
+  })
+  const [results, setResults] = useState(MOCK_ROOMS)
   const [searched, setSearched] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [bookings, setBookings] = useState([])
-  const [resultsOpen, setResultsOpen] = useState(false)
-
-  useEffect(() => {
-    getMyBookings().then(setBookings).catch(() => setBookings([]))
-  }, [])
-
-  const canChooseType = Boolean(filters.module)
-  const canChooseDetails = canChooseType && Boolean(filters.type)
-  const canSearch = canChooseDetails && filters.date && filters.startTime && filters.endTime && Number(filters.capacity) > 0
 
   function updateFilter(key, value) {
-    setFilters((currentFilters) => {
-      const nextFilters = { ...currentFilters, [key]: value }
-      if (key === 'module') Object.assign(nextFilters, { type: '' })
-      return nextFilters
-    })
-    setError('')
+    setFilters((f) => ({ ...f, [key]: value }))
   }
 
-  async function handleSearch(event) {
-    event.preventDefault()
-    if (!canSearch) return setError('Complete each search field to view available rooms.')
-    if (filters.startTime >= filters.endTime) return setError('End time must be after start time.')
-
-    setLoading(true)
-    setError('')
-    try {
-      const latestBookings = await getMyBookings()
-      setBookings(latestBookings)
-      const rooms = await getRooms(filters)
-      const availableRooms = filterRoomsByCriteria(rooms, latestBookings, filters)
-      setResults(availableRooms)
-      setSearched(false)
-      setResultsOpen(true)
-    } catch {
-      setError('Rooms could not be loaded. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  function roomDetailsLink(roomId) {
-    const parameters = new URLSearchParams({ roomId, date: filters.date, startTime: filters.startTime, endTime: filters.endTime, attendees: filters.capacity })
-    return `/room-details?${parameters.toString()}`
-  }
-
-  function bookRoomLink(roomId) {
-    const parameters = new URLSearchParams({ roomId, date: filters.date, startTime: filters.startTime, endTime: filters.endTime, attendees: filters.capacity })
-    return `/book-room?${parameters.toString()}`
+  async function handleSearch(e) {
+    e.preventDefault()
+    const data = await getRooms(filters)
+    setResults(data)
+    setSearched(true)
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-xl font-700">Search Rooms</h1>
-        <p className="mt-1 text-sm text-slate">Set your meeting requirements to find available rooms.</p>
-      </div>
+      <h1 className="font-display text-xl font-700">Search Rooms</h1>
 
-      <Card>
-        <form onSubmit={handleSearch} className="space-y-5">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Field label="1. Select Module"><Select value={filters.module} onChange={(event) => updateFilter('module', event.target.value)}><option value="">Select module</option>{MODULES.map((module) => <option key={module} value={module}>{module}</option>)}</Select></Field>
-            <Field label="2. Select Room Type"><Select disabled={!canChooseType} value={filters.type} onChange={(event) => updateFilter('type', event.target.value)}><option value="">{canChooseType ? 'Select room type' : 'Choose a module first'}</option>{ROOM_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}</Select></Field>
-            <Field label="3. Number of Attendees"><Input disabled={!canChooseDetails} type="number" min="1" value={filters.capacity} onChange={(event) => updateFilter('capacity', event.target.value)} placeholder={canChooseDetails ? 'e.g. 6' : 'Choose a room type first'} /></Field>
-          </div>
-
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-            <Field label="4. Select Date"><Input disabled={!canChooseDetails} min={new Date().toISOString().slice(0, 10)} type="date" value={filters.date} onChange={(event) => updateFilter('date', event.target.value)} className="rounded-[8px] border border-slate-200 px-3 py-3 text-sm" /></Field>
-            <Field label="5. Select Start Time"><Input disabled={!filters.date} type="time" value={filters.startTime} onChange={(event) => updateFilter('startTime', event.target.value)} className="rounded-[8px] border border-slate-200 px-3 py-3 text-sm" /></Field>
-            <Field label="6. Select End Time"><Input disabled={!filters.startTime} type="time" value={filters.endTime} onChange={(event) => updateFilter('endTime', event.target.value)} className="rounded-[8px] border border-slate-200 px-3 py-3 text-sm" /></Field>
-          </div>
-
-          {error && <p role="alert" className="rounded-lg border border-clay bg-red-50 px-3 py-2 text-sm text-clay">{error}</p>}
-          <Button type="submit" disabled={!canSearch || loading}>{loading ? 'Searching...' : 'Search Available Rooms'}</Button>
-        </form>
-      </Card>
-
-      <Card className="overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-line px-4 py-3">
-          <div><h2 className="font-display text-lg font-700">My Bookings</h2><p className="text-sm text-slate">Your upcoming workspace reservations.</p></div>
-          <Link to="/my-bookings" className="text-sm font-semibold text-brand-blue hover:underline">View all</Link>
+      <form onSubmit={handleSearch} className="border border-line bg-white p-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+          <Field label="Office / Module">
+            <Select value={filters.module} onChange={(e) => updateFilter('module', e.target.value)}>
+              <option value="">Any</option>
+              {MODULES.map((m) => <option key={m} value={m}>{m}</option>)}
+            </Select>
+          </Field>
+          <Field label="Room Type">
+            <Select value={filters.type} onChange={(e) => updateFilter('type', e.target.value)}>
+              <option value="">Any</option>
+              {ROOM_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </Select>
+          </Field>
+          <Field label="No. of attendees">
+            <Input
+              type="number"
+              min="1"
+              placeholder="e.g. 6"
+              value={filters.capacity}
+              onChange={(e) => updateFilter('capacity', e.target.value)}
+            />
+          </Field>
         </div>
-        {bookings.length === 0 ? <p className="px-4 py-5 text-sm text-slate">You do not have any bookings yet.</p> : <div className="divide-y divide-line">{bookings.filter((booking) => booking.status !== 'Cancelled').slice(0, 3).map((booking) => <div key={booking.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"><div><p className="font-semibold text-ink">{booking.roomName}</p><p className="text-sm text-slate">{booking.title || 'Room booking'} · {booking.date} · {booking.startTime}–{booking.endTime}</p></div><StatusTag status={booking.status} /></div>)}</div>}
-      </Card>
 
-      {loading && <Loader label="Finding rooms that match your requirements..." />}
-      <Modal open={resultsOpen && !loading} title="Available rooms" footer={<Button variant="secondary" onClick={() => setResultsOpen(false)}>Close</Button>}>
-        <p className="mb-4">{results.length} room{results.length === 1 ? '' : 's'} available for your selected time.</p>
-        {results.length === 0 ? <p>Try another time, room type, or a smaller attendee count.</p> : <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">{results.map((room) => {
-          const available = isRoomAvailable(room.id, filters.date, filters.startTime, filters.endTime, bookings) && room.status !== 'Booked'
-          return <div key={room.id} className="border border-line p-3"><div className="flex items-start justify-between gap-3"><div><p className="font-display font-700 text-ink">{room.name}</p><p className="font-mono text-[11px] text-slate">{room.code}, {room.module}, {room.type}</p></div><StatusTag status={available ? 'Available' : 'Booked'} /></div><p className="mt-2 text-sm">Capacity: {room.capacity}. Facilities: {room.facilities?.join(', ') || 'None'}</p>{available && <Link to={bookRoomLink(room.id)} onClick={() => setResultsOpen(false)}><Button className="mt-3 w-full">Book this room</Button></Link>}</div>
-        })}</div>}
-      </Modal>
-      {searched && !loading && <div><p className="mb-3 font-mono text-[11px] uppercase tracking-wider text-slate">{results.length} available room{results.length === 1 ? '' : 's'} found</p>{results.length === 0 ? <Card><p className="font-medium text-ink">No rooms match these requirements.</p><p className="mt-1 text-sm text-slate">Try another time, room type, or a smaller attendee count.</p></Card> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{results.map((room) => { const available = isRoomAvailable(room.id, filters.date, filters.startTime, filters.endTime, bookings) && room.status !== 'Booked'; return (<Card key={room.id}><div className="mb-2 flex items-start justify-between"><div><p className="font-display text-sm font-700">{room.name}</p><p className="font-mono text-[11px] text-slate">{room.code}</p></div><StatusTag status={available ? 'Available' : 'Booked'} /></div><p className="text-sm text-slate">{room.module} · {room.type}</p><p className="mb-2 text-sm text-slate">Capacity: {room.capacity}</p><p className="mb-4 text-sm text-slate">Facilities: {room.facilities?.join(', ') || 'None'}</p><Link to={available ? bookRoomLink(room.id) : roomDetailsLink(room.id)}><Button variant={available ? 'primary' : 'secondary'} className="w-full" disabled={!available}>{available ? 'Book Now' : 'View Room Details'}</Button></Link></Card>) })}</div>}</div>}
+        <details className="mt-4 rounded-lg border border-line bg-slate-50 p-3">
+          <summary className="cursor-pointer mb-3 font-medium">Facilities (click to expand)</summary>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            {FACILITY_OPTIONS.map((facility) => (
+              <label key={facility.key} className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm hover:border-brand-blue">
+                <input
+                  type="checkbox"
+                  checked={filters[facility.key]}
+                  onChange={(e) => updateFilter(facility.key, e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
+                />
+                <span>{facility.label}</span>
+              </label>
+            ))}
+
+            <div className="md:col-span-2 lg:col-span-2 grid grid-cols-3 gap-3 items-end">
+              <div>
+                <label className="block text-sm text-slate">Date</label>
+                <Input type="date" value={filters.date} onChange={(e) => updateFilter('date', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm text-slate">Start Time</label>
+                <Input type="time" value={filters.startTime} onChange={(e) => updateFilter('startTime', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm text-slate">End Time</label>
+                <Input type="time" value={filters.endTime} onChange={(e) => updateFilter('endTime', e.target.value)} />
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <Button type="submit" className="mt-4">Search</Button>
+      </form>
+
+      <div>
+        <p className="mb-3 font-mono text-[11px] uppercase tracking-wider text-slate">
+          {searched ? `${results.length} room(s) found` : `Showing all ${results.length} rooms`}
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {results.map((room) => (
+            <Card key={room.id}>
+              <div className="mb-2 flex items-start justify-between">
+                <div>
+                  <p className="font-display text-sm font-700">{room.name}</p>
+                  <p className="font-mono text-[11px] text-slate">{room.code}</p>
+                </div>
+                <StatusTag status={room.status} />
+              </div>
+              <p className="text-sm text-slate">{room.module} · {room.type}</p>
+              <p className="mb-2 text-sm text-slate">Capacity: {room.capacity}</p>
+              <p className="mb-4 text-sm text-slate">Facilities: {room.facilities?.join(', ') || 'None'}</p>
+              <Link to={`/book-room?roomId=${encodeURIComponent(room.id)}&date=${encodeURIComponent(filters.date||'')}&startTime=${encodeURIComponent(filters.startTime||'')}&endTime=${encodeURIComponent(filters.endTime||'')}&attendees=${encodeURIComponent(filters.capacity||'')}`}>
+                <Button variant="secondary" className="w-full" disabled={room.status === 'Booked'}>
+                  {room.status === 'Booked' ? 'Unavailable' : 'Book This Room'}
+                </Button>
+              </Link>
+            </Card>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

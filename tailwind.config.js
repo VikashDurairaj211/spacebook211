@@ -19,9 +19,8 @@ export default {
         'portal-paper': '#ffffff',
       },
       fontFamily: {
-        sans: ['"Segoe UI Variable"', '"Segoe UI"', 'sans-serif'],
-        display: ['"Segoe UI Variable"', '"Segoe UI"', 'sans-serif'],
-        body: ['"Segoe UI Variable"', '"Segoe UI"', 'sans-serif'],
+        display: ['"Segoe UI"', '"Space Grotesk"', 'sans-serif'],
+        body: ['"Segoe UI"', 'Tahoma', 'sans-serif'],
         mono: ['"IBM Plex Mono"', 'monospace'],
       },
       borderRadius: {

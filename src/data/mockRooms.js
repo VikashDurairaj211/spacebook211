@@ -10,8 +10,8 @@ export const MOCK_ROOMS = [
   { id: 'r7', name: 'Discussion Room 3', code: 'M2-DR3', module: 'Module 2', type: 'Discussion', capacity: 6, status: 'Available', facilities: ['TV & Remote', 'Camera'] },
   { id: 'r8', name: 'Discussion Room 4', code: 'M2-DR4', module: 'Module 2', type: 'Discussion', capacity: 6, status: 'Available', facilities: ['Whiteboard & Marker', 'TV & Remote', 'Camera'] },
   { id: 'r9', name: 'Training Room 1', code: 'M2-TR1', module: 'Module 2', type: 'Training', capacity: 20, status: 'Available', facilities: ['Whiteboard & Marker', 'TV & Remote', 'Mic'] },
-  
+  { id: 'r10', name: 'Game Room 1', code: 'M2-GR1', module: 'Module 2', type: 'Game', capacity: 8, status: 'Available', facilities: ['Camera'] },
 ]
 
 export const MODULES = ['Module 1', 'Module 2']
-export const ROOM_TYPES = ['Conference', 'Discussion', 'Training']
+export const ROOM_TYPES = ['Conference', 'Discussion', 'Training', 'Game']
