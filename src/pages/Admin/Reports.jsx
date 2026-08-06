@@ -1,114 +1,207 @@
-import { useMemo } from 'react'
-import Card from '../../components/common/Card'
-import DashboardCard from '../../components/cards/DashboardCard'
-import StatusTag from '../../components/common/StatusTag'
-import { rooms as ROOMS, bookings as BOOKINGS } from '../../services/mockData'
+import { useMemo, useState } from "react";
+
+import BookingTrendChart from "../../components/reports/BookingTrendChart";
+import StatusChart from "../../components/reports/StatusChart";
+import RoomUsageChart from "../../components/reports/RoomUsageChart";
+
+import {
+  moduleOptions,
+  roomTypeOptions,
+  statusOptions,
+  defaultReportFilters,
+  bookingStatusDistribution,
+  roomTypeUsage,
+  recentBookingActivity,
+} from "../../data/reportsData";
 
 export default function Reports() {
-  const rooms = useMemo(() => ROOMS, [])
-  const bookings = useMemo(() => BOOKINGS, [])
+  const [filters, setFilters] = useState(defaultReportFilters);
 
-  const pendingCount = bookings.filter((booking) => booking.status === 'Pending').length
-  const confirmedCount = bookings.filter((booking) => booking.status === 'Confirmed').length
-  const cancelledCount = bookings.filter((booking) => booking.status === 'Cancelled').length
+  const filteredData = useMemo(
+    () =>
+      recentBookingActivity.filter((booking) => {
+        if (filters.module !== "All" && booking.module !== filters.module)
+          return false;
+        if (filters.roomType !== "All" && booking.roomType !== filters.roomType)
+          return false;
+        if (filters.status !== "All" && booking.status !== filters.status)
+          return false;
+        return true;
+      }),
+    [filters],
+  );
 
-  const moduleSummary = useMemo(() => {
-    return rooms.reduce((acc, room) => {
-      acc[room.module] = acc[room.module] || { total: 0, available: 0, booked: 0 }
-      acc[room.module].total += 1
-      if (room.status === 'Available') acc[room.module].available += 1
-      if (room.status === 'Booked') acc[room.module].booked += 1
-      return acc
-    }, {})
-  }, [rooms])
+  const filteredStatusDistribution = useMemo(() => {
+    const counts = {};
+
+    filteredData.forEach((booking) => {
+      counts[booking.status] = (counts[booking.status] || 0) + 1;
+    });
+
+    const data = Object.entries(counts).map(([name, value]) => ({
+      name,
+      value,
+    }));
+
+    return data.length ? data : bookingStatusDistribution;
+  }, [filteredData]);
+
+  // Room Usage Chart
+  const filteredRoomTypeUsage = useMemo(() => {
+    const counts = {};
+
+    filteredData.forEach((booking) => {
+      counts[booking.roomType] = (counts[booking.roomType] || 0) + 1;
+    });
+
+    const data = Object.entries(counts).map(([name, value]) => ({
+      name,
+      value,
+    }));
+
+    return data.length ? data : roomTypeUsage;
+  }, [filteredData]);
+
+  // Monthly Trend
+  const filteredMonthlyTrend = useMemo(() => {
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    const counts = {};
+
+    filteredData.forEach((booking) => {
+      const date = new Date(booking.date);
+      if (Number.isNaN(date.getTime())) return;
+
+      const month = months[date.getMonth()];
+      counts[month] = (counts[month] || 0) + 1;
+    });
+
+    return months.map((month) => ({
+      month,
+      bookings: counts[month] || 0,
+    }));
+  }, [filteredData]);
+
+  // Weekly Trend
+  const filteredWeeklyTrend = useMemo(() => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    const counts = {};
+
+    filteredData.forEach((booking) => {
+      const date = new Date(booking.date);
+      if (Number.isNaN(date.getTime())) return;
+
+      const day = days[date.getDay()];
+      counts[day] = (counts[day] || 0) + 1;
+    });
+
+    return days.map((day) => ({
+      day,
+      bookings: counts[day] || 0,
+    }));
+  }, [filteredData]);
+
+  const reportTrendData =
+    filters.reportType === "Weekly"
+      ? filteredWeeklyTrend
+      : filteredMonthlyTrend;
+
+  const xKey = filters.reportType === "Weekly" ? "day" : "month";
+  const chartType = filters.reportType === "Weekly" ? "line" : "bar";
+
+  const totalBookings = filteredData.length;
+  const uniqueRooms = new Set(filteredData.map((booking) => booking.room)).size;
+  const confirmedRate =
+    !filteredData.length
+      ? "0%"
+      : `${Math.round(
+          (filteredData.filter((booking) => booking.status === "Confirmed").length /
+            filteredData.length) *
+            100,
+        )}%`;
+
+  const avgDuration = (() => {
+    if (!filteredData.length) return "0h 0m";
+
+    const totalMinutes = filteredData.reduce((sum, booking) => {
+      const match = booking.duration?.match(/(\d+)h\s*(\d+)m/);
+      if (!match) return sum;
+      return sum + parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+    }, 0);
+
+    const average = Math.round(totalMinutes / filteredData.length);
+    const hours = Math.floor(average / 60);
+    const minutes = average % 60;
+    return `${hours}h ${minutes.toString().padStart(2, "0")}m`;
+  })();
+
+  const kpiMetrics = [
+    { label: "Total Bookings", value: totalBookings },
+    { label: "Unique Rooms", value: uniqueRooms },
+    { label: "Confirmed Rate", value: confirmedRate },
+    { label: "Avg. Duration", value: avgDuration },
+  ];
+
+  const handleFilterChange = (field, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="border border-ink bg-white p-5">
-        <h1 className="font-display text-xl font-700 text-ink">Reports</h1>
-        <p className="mt-2 text-sm text-slate">Room and booking trends to support admin decisions.</p>
+    <div className="mx-auto max-w-7xl space-y-2 px-4 pt-2 pb-4 sm:px-6 lg:px-8">
+      <div className="rounded-[28px] border border-gray-200 bg-white px-5 py-3 shadow-sm">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Reports</h1>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <DashboardCard title="Total Bookings" value={bookings.length} description="All requests logged" />
-        <DashboardCard title="Pending" value={pendingCount} tone="warning" description="Awaiting approval" />
-        <DashboardCard title="Confirmed" value={confirmedCount} tone="success" description="Scheduled bookings" />
+      <div className="grid gap-6">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <BookingTrendChart
+            title="Booking Analytics"
+            data={reportTrendData}
+            xKey={filters.reportType === "Weekly" ? "day" : "month"}
+            chartType={filters.reportType === "Weekly" ? "line" : "bar"}
+            reportType={filters.reportType}
+            moduleOptions={moduleOptions}
+            roomTypeOptions={roomTypeOptions}
+            statusOptions={statusOptions}
+            selectedModule={filters.module}
+            selectedRoomType={filters.roomType}
+            selectedStatus={filters.status}
+            onReportTypeChange={(value) => handleFilterChange("reportType", value)}
+            onModuleChange={(value) => handleFilterChange("module", value)}
+            onRoomTypeChange={(value) => handleFilterChange("roomType", value)}
+            onStatusChange={(value) => handleFilterChange("status", value)}
+            kpiMetrics={kpiMetrics}
+            hasData={reportTrendData.some((item) => item.bookings > 0)}
+          />
+        </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-display text-sm font-700 text-ink">Booking Status Summary</h2>
-              <p className="text-sm text-slate">Current distribution of booking states.</p>
-            </div>
-            <span className="font-mono text-xs uppercase tracking-[0.2em] text-slate">{new Date().toLocaleDateString()}</span>
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-sm border border-line bg-portal-bg p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate">Pending</p>
-              <p className="mt-2 text-2xl font-700 text-clay">{pendingCount}</p>
-            </div>
-            <div className="rounded-sm border border-line bg-portal-bg p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate">Confirmed</p>
-              <p className="mt-2 text-2xl font-700 text-moss">{confirmedCount}</p>
-            </div>
-            <div className="rounded-sm border border-line bg-portal-bg p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate">Cancelled</p>
-              <p className="mt-2 text-2xl font-700 text-slate">{cancelledCount}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <h2 className="font-display text-sm font-700 text-ink">Module Utilization</h2>
-          <p className="text-sm text-slate">Room status breakdown per module.</p>
-
-          <div className="mt-5 space-y-3">
-            {Object.entries(moduleSummary).map(([module, values]) => (
-              <div key={module} className="rounded-xl border border-line bg-portal-bg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-sm text-ink">{module}</p>
-                    <p className="text-xs text-slate">{values.total} rooms total</p>
-                  </div>
-                  <span className="font-mono text-xs uppercase tracking-[0.2em] text-slate">{Math.round((values.booked / values.total) * 100)}% booked</span>
-                </div>
-                <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-sm bg-white p-3 text-center">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate">Available</p>
-                    <p className="mt-2 text-xl font-700 text-moss">{values.available}</p>
-                  </div>
-                  <div className="rounded-sm bg-white p-3 text-center">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate">Booked</p>
-                    <p className="mt-2 text-xl font-700 text-clay">{values.booked}</p>
-                  </div>
-                  <div className="rounded-sm bg-white p-3 text-center">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate">Total</p>
-                    <p className="mt-2 text-xl font-700 text-ink">{values.total}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      <Card>
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-display text-sm font-700 text-ink">Key insights</h2>
-            <p className="text-sm text-slate">Operational observations from current room usage.</p>
-          </div>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <StatusChart data={filteredStatusDistribution} />
         </div>
 
-        <ul className="mt-5 space-y-3 text-sm text-slate">
-          <li className="rounded-xl border border-line bg-portal-bg px-4 py-3">Most bookings are coming from Module 2 this week.</li>
-          <li className="rounded-xl border border-line bg-portal-bg px-4 py-3">Pending approvals remain low, so the booking pipeline is healthy.</li>
-          <li className="rounded-xl border border-line bg-portal-bg px-4 py-3">Room utilization suggests there is available capacity for new training sessions.</li>
-        </ul>
-      </Card>
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <RoomUsageChart data={filteredRoomTypeUsage} />
+        </div>
+      </div>
     </div>
-  )
+  );
 }

@@ -18,7 +18,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="border border-ink bg-white p-5">
+      <div className="rounded-2xl border border-ink bg-white p-5">
         <h1 className="font-display text-xl font-700 text-ink">Admin Dashboard</h1>
         <p className="mt-2 text-sm text-slate">Operational overview for room management and approval workloads.</p>
       </div>
@@ -26,7 +26,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <DashboardCard title="Total Rooms" value={rooms.length} description="Active room inventory" />
         <DashboardCard title="Today's Bookings" value={todayBookings.length} tone="warning" description="Bookings scheduled for today" />
-        <DashboardCard title="Pending Approvals" value={pendingApprovals.length} tone="accent" description="Pending requests awaiting review" />
+        <DashboardCard title="Pending Approvals" value={pendingApprovals.length} tone="accent" description="Pending requests awaiting review" to="/admin/booking-management" />
         <DashboardCard title="Utilization" value={`${utilization}%`} description="Approximate occupancy" />
       </div>
 
