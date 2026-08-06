@@ -34,22 +34,22 @@ export default function Dashboard() {
           {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
         </p>
         <h1 className="mt-1 font-display text-xl font-700 text-ink">
-          Welcome back, {user?.name || 'there'}
+          Welcome, {user?.name || 'there'}
         </h1>
+        <p className="mt-2 text-sm text-slate">Find and reserve a workspace for your next meeting.</p>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <DashboardCard title="Total Rooms" value={rooms.length} description="All rooms across modules" />
-        <DashboardCard title="Available Now" value={availableCount} tone="success" />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <DashboardCard title="Bookings Today" value={bookings.filter((b) => b.date === today).length} tone="warning" />
         <DashboardCard title="Upcoming" value={upcoming.length} />
+        <DashboardCard title="Today's Meetings" value={todaysMeetings.length} />
       </div>
 
       {/* Upcoming bookings table */}
       <Card className="p-0">
         <div className="border-b border-line px-4 py-3 flex items-center justify-between">
-          <h2 className="font-display text-sm font-700">Upcoming Bookings</h2>
+          <h2 className="font-display text-sm font-700">Recent Reservations</h2>
           <Link to="/my-bookings" className="text-xs text-slate underline">View all</Link>
         </div>
         <table className="w-full text-sm">
@@ -77,23 +77,7 @@ export default function Dashboard() {
         </table>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-1">
-        <Card>
-          <h2 className="mb-3 font-display text-sm font-700">Today's Meetings</h2>
-          {todaysMeetings.length === 0 ? (
-            <p className="text-sm text-slate">Nothing on your calendar today.</p>
-          ) : (
-            <ul className="space-y-2">
-              {todaysMeetings.map((m) => (
-                <li key={m.id} className="flex justify-between text-sm">
-                  <span>{m.title}</span>
-                  <span className="font-mono text-xs text-slate">{m.startTime}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
+      {/* Today's Meetings summary moved into the top summary cards */}
     </div>
   )
 }

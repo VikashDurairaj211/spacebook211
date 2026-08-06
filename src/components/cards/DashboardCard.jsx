@@ -9,6 +9,7 @@ export default function DashboardCard({ title, value, description, tone = 'defau
   }
 
   const sharedClasses = `rounded-xl border p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${toneStyles[tone] || toneStyles.default}`
+  
   const content = (
     <>
       <p className="font-mono text-[11px] uppercase tracking-wider opacity-70">{title}</p>

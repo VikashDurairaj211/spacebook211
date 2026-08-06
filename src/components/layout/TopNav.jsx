@@ -11,12 +11,13 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
+  const [notificationsRead, setNotificationsRead] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [notifications, setNotifications] = useState(() => NOTIFS)
   const notificationButtonRef = useRef(null)
 
-  const unreadCount = notifications.filter((notification) => notification.unread).length
+  const unreadCount = notificationsRead ? 0 : notifications.length
 
   const searchResults = useMemo(() => {
     if (!searchInput.trim()) return { rooms: [], bookings: [] }
@@ -181,14 +182,20 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
               className="flex items-center gap-2 rounded-lg border border-white/20 px-2 py-1 text-sm text-white hover:bg-white/10"
             >
               <User size={15} />
-              <span className="hidden font-mono text-xs md:inline">{user?.name || 'Employee'}</span>
+              <span className="max-w-[120px] truncate font-mono text-xs">{user?.name || 'Employee'}</span>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-32 overflow-hidden rounded-lg border border-slate-200 bg-white text-sm text-ink shadow-sm">
+              <div className="absolute right-0 top-full mt-1 w-40 border border-slate-200 bg-white text-sm text-ink shadow-sm rounded-lg">
                 <button
-                  onClick={handleLogout}
-                  className="block w-full px-3 py-2 text-left text-clay transition-colors hover:bg-slate-50"
+                  onClick={() => {
+                    navigate('/profile')
+                    setMenuOpen(false)
+                  }}
+                  className="block w-full px-3 py-2 text-left hover:bg-slate-50"
                 >
+                  Profile
+                </button>
+                <button onClick={handleLogout} className="block w-full px-3 py-2 text-left text-clay hover:bg-slate-50">
                   Sign out
                 </button>
               </div>

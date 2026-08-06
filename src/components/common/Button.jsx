@@ -11,6 +11,7 @@ export default function Button({ children, variant = 'primary', size = 'md', cla
     ghost: 'text-slate hover:text-ink underline underline-offset-2',
     danger: 'border border-clay text-clay hover:bg-clay hover:text-paper',
   }
+
   return (
     <button className={`${base} ${sizes[size] || sizes.md} ${variants[variant]} ${className}`} {...props}>
       {children}
