@@ -64,7 +64,7 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
           <img src={Logo} alt="Spacebook logo" className="h-10 w-10 rounded-full border border-white/20 bg-white/10 object-cover" />
           <div>
             <span className="block font-display text-sm font-700 tracking-tight text-white">Spacebook</span>
-            <span className="hidden text-xs uppercase tracking-[0.25em] text-slate-200 md:inline">Office Workspace Reservation</span>
+           
           </div>
         </div>
       </div>
