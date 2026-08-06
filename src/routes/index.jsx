@@ -14,7 +14,7 @@ import AdminDashboardPage from '../pages/Admin/Dashboard'
 import AdminRoomManagementPage from '../pages/Admin/RoomManagement'
 import AdminBookingManagementPage from '../pages/Admin/BookingManagement'
 import AdminReportsPage from '../pages/Admin/Reports'
-import AdminSettingsPage from '../pages/Admin/Settings'
+
 
 export default function AppRoutes() {
   return (
@@ -42,7 +42,7 @@ export default function AppRoutes() {
             <Route path="/admin/room-management" element={<AdminRoomManagementPage />} />
             <Route path="/admin/booking-management" element={<AdminBookingManagementPage />} />
             <Route path="/admin/reports" element={<AdminReportsPage />} />
-            <Route path="/admin/settings" element={<AdminSettingsPage />} />
+           
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
