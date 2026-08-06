@@ -4,17 +4,16 @@ import Button from '../../components/common/Button'
 import Modal from '../../components/common/Modal'
 import { rooms as ROOMS } from '../../services/mockData'
 
-// Status Badge Component matching the design
+// Equal-width Status Badge Component (Maintenance set to yellow)
 function CustomStatusTag({ status }) {
   const normalized = status?.toUpperCase()
 
   let bgClass = 'bg-[#5c7a60] text-white' // Green (Available / Confirmed)
 
-  if (normalized === 'PENDING') {
+  if (normalized === 'PENDING' || normalized === 'MAINTENANCE') {
     bgClass = 'bg-[#e5a038] text-white' // Yellow/Orange
   } else if (
     normalized === 'BOOKED' ||
-    normalized === 'MAINTENANCE' ||
     normalized === 'CANCELLED'
   ) {
     bgClass = 'bg-[#be534d] text-white' // Red/Terracotta
@@ -22,7 +21,7 @@ function CustomStatusTag({ status }) {
 
   return (
     <span
-      className={`inline-block rounded-full px-3 py-1 text-[11px] font-semibold tracking-wider ${bgClass}`}
+      className={`inline-flex items-center justify-center min-w-[110px] rounded-full px-3 py-1 text-[11px] font-semibold tracking-wider text-center ${bgClass}`}
     >
       {normalized}
     </span>
@@ -294,7 +293,7 @@ export default function RoomManagement() {
         </Card>
         <Card>
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Maintenance</p>
-          <p className="mt-2 text-3xl font-700 text-[#be534d]">{statusCounts.Maintenance}</p>
+          <p className="mt-2 text-3xl font-700 text-[#e5a038]">{statusCounts.Maintenance}</p>
           <p className="mt-1 text-sm text-slate">Rooms under maintenance</p>
         </Card>
       </div>
@@ -443,7 +442,7 @@ export default function RoomManagement() {
           </>
         }
       >
-        {/* ADD MODE - STEP 1 (RESTORED ACTION COLUMN) */}
+        {/* ADD MODE - STEP 1 */}
         {modalMode === 'add' && addStep === 1 && (
           <div className="space-y-4">
             <p className="text-xs text-slate">Specify room configurations and quantities to auto-generate rooms.</p>

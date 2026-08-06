@@ -4,7 +4,7 @@ import Button from '../../components/common/Button'
 import Modal from '../../components/common/Modal'
 import { bookings as BOOKINGS } from '../../services/mockData'
 
-// Status Badge Component matching the requested design
+// Equal-width Status Badge Component matching the design
 function CustomStatusTag({ status }) {
   const normalized = status?.toUpperCase()
 
@@ -18,7 +18,7 @@ function CustomStatusTag({ status }) {
 
   return (
     <span
-      className={`inline-block rounded-full px-3 py-1 text-[11px] font-semibold tracking-wider ${bgClass}`}
+      className={`inline-flex items-center justify-center min-w-[110px] rounded-full px-3 py-1 text-[11px] font-semibold tracking-wider text-center ${bgClass}`}
     >
       {normalized}
     </span>
@@ -163,7 +163,6 @@ export default function BookingManagement() {
                     <CustomStatusTag status={booking.status} />
                   </td>
                   <td className="px-4 py-3.5 whitespace-nowrap">
-                    {/* Actions formatted as View, Approve, Reject text links */}
                     <div className="flex items-center gap-3 font-serif text-sm">
                       <button
                         onClick={() => openViewModal(booking)}

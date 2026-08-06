@@ -16,7 +16,7 @@ const ADMIN_ITEMS = [
   { to: '/admin/reports', label: 'Reports', icon: BarChart3 },
 ]
 
-export default function Sidebar({ collapsed = false }) {
+export default function Sidebar({ collapsed = true }) {
   // width classes used for fixed positioning and spacing
   const widthClass = collapsed ? 'w-20' : 'w-64'
 

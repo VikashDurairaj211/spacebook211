@@ -4,7 +4,7 @@ import Card from '../../components/common/Card'
 import DashboardCard from '../../components/cards/DashboardCard'
 import { rooms as ROOMS, bookings as BOOKINGS } from '../../services/mockData'
 
-// Status Badge Component matching the updated design system
+// Status Badge Component matching the design system
 function CustomStatusTag({ status }) {
   const normalized = status?.toUpperCase()
 
@@ -23,7 +23,7 @@ function CustomStatusTag({ status }) {
 
   return (
     <span
-      className={`inline-block rounded-full px-3 py-1 text-[11px] font-semibold tracking-wider ${bgClass}`}
+      className={`inline-flex items-center justify-center min-w-[110px] rounded-full px-3 py-1 text-[11px] font-semibold tracking-wider text-center ${bgClass}`}
     >
       {normalized}
     </span>
