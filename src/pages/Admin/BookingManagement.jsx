@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
+import axios from 'axios'
+
 import Card from '../../components/common/Card'
 import Button from '../../components/common/Button'
 import Modal from '../../components/common/Modal'
-import { bookings as BOOKINGS } from '../../services/mockData'
 
 // Equal-width Status Badge Component matching the design system
 function CustomStatusTag({ status }) {
@@ -20,17 +21,74 @@ function CustomStatusTag({ status }) {
     <span
       className={`inline-flex items-center justify-center min-w-[95px] rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wider text-center ${bgClass}`}
     >
-      {normalized}
+      {normalized || 'CONFIRMED'}
     </span>
   )
 }
 
 export default function BookingManagement() {
-  const [bookings, setBookings] = useState(() => BOOKINGS)
+  const [bookings, setBookings] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [error, setError] = useState('')
+
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [selectedBooking, setSelectedBooking] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  // Summary Metrics State
+  const [statusCounts, setStatusCounts] = useState({
+    Pending: 0,
+    Confirmed: 0,
+    Cancelled: 0,
+  })
+
+  // Fetch Live Data from Backend API
+  const fetchBookingData = async () => {
+    try {
+      setLoading(true)
+      const token = localStorage.getItem('spacebook_token')
+      const headers = { Authorization: `Bearer ${token}` }
+
+      const [statsRes, bookingsRes] = await Promise.all([
+        axios.get('http://localhost:5263/api/admin/bookings/dashboard', { headers }),
+        axios.get('http://localhost:5263/api/admin/bookings', { headers })
+      ])
+
+      // Map dashboard stats
+      if (statsRes.data) {
+        setStatusCounts({
+          Pending: statsRes.data.pendingRequests ?? statsRes.data.pendingCount ?? 0,
+          Confirmed: statsRes.data.confirmed ?? statsRes.data.confirmedCount ?? 0,
+          Cancelled: statsRes.data.cancelled ?? statsRes.data.cancelledCount ?? 0,
+        })
+      }
+
+      // Map bookings API payload
+      const mappedBookings = (bookingsRes.data || []).map((b) => ({
+        id: b.bookingId || b.id,
+        title: b.title || b.purpose || 'Reserved Workspace',
+        roomName: b.roomName || `Room ${b.roomId}`,
+        date: b.bookingDate || b.date,
+        startTime: b.startTime ? b.startTime.substring(0, 5) : '',
+        endTime: b.endTime ? b.endTime.substring(0, 5) : '',
+        createdBy: b.requestedBy || b.createdBy || b.requester || 'Employee',
+        status: b.status || 'Pending',
+      }))
+
+      setBookings(mappedBookings)
+    } catch (err) {
+      console.error('Failed to load booking management data:', err)
+      setError('Unable to fetch live bookings.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchBookingData()
+  }, [])
 
   const statuses = useMemo(
     () => ['All', ...new Set(bookings.map((booking) => booking.status))],
@@ -44,18 +102,10 @@ export default function BookingManagement() {
         .join(' ')
         .toLowerCase()
       const matchesSearch = text.includes(search.toLowerCase())
-      const matchesStatus = statusFilter === 'All' || booking.status === statusFilter
+      const matchesStatus = statusFilter === 'All' || booking.status?.toLowerCase() === statusFilter.toLowerCase()
       return matchesSearch && matchesStatus
     })
   }, [bookings, search, statusFilter])
-
-  const statusCounts = useMemo(
-    () => bookings.reduce((acc, booking) => {
-      acc[booking.status] = (acc[booking.status] || 0) + 1
-      return acc
-    }, { Pending: 0, Confirmed: 0, Cancelled: 0 }),
-    [bookings]
-  )
 
   function openViewModal(booking) {
     setSelectedBooking(booking)
@@ -67,22 +117,50 @@ export default function BookingManagement() {
     setSelectedBooking(null)
   }
 
-  function handleApprove(bookingId) {
-    setBookings((previous) =>
-      previous.map((booking) =>
-        booking.id === bookingId ? { ...booking, status: 'Confirmed' } : booking
-      )
-    )
-    setSelectedBooking((prev) => prev && { ...prev, status: 'Confirmed' })
+  // API Integrated Approve Action
+  async function handleApprove(bookingId) {
+    try {
+      setActionLoading(true)
+      const token = localStorage.getItem('spacebook_token')
+      await axios.patch(`http://localhost:5263/api/admin/bookings/${bookingId}/approve`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      // Refresh data
+      await fetchBookingData()
+
+      if (selectedBooking && selectedBooking.id === bookingId) {
+        setSelectedBooking((prev) => prev && { ...prev, status: 'Confirmed' })
+      }
+    } catch (err) {
+      console.error('Failed to approve booking:', err)
+      alert(err.response?.data?.message || 'Failed to approve booking.')
+    } finally {
+      setActionLoading(false)
+    }
   }
 
-  function handleReject(bookingId) {
-    setBookings((previous) =>
-      previous.map((booking) =>
-        booking.id === bookingId ? { ...booking, status: 'Cancelled' } : booking
-      )
-    )
-    setSelectedBooking((prev) => prev && { ...prev, status: 'Cancelled' })
+  // API Integrated Reject Action
+  async function handleReject(bookingId) {
+    try {
+      setActionLoading(true)
+      const token = localStorage.getItem('spacebook_token')
+      await axios.patch(`http://localhost:5263/api/admin/bookings/${bookingId}/reject`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      // Refresh data
+      await fetchBookingData()
+
+      if (selectedBooking && selectedBooking.id === bookingId) {
+        setSelectedBooking((prev) => prev && { ...prev, status: 'Cancelled' })
+      }
+    } catch (err) {
+      console.error('Failed to reject booking:', err)
+      alert(err.response?.data?.message || 'Failed to reject booking.')
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   return (
@@ -150,7 +228,19 @@ export default function BookingManagement() {
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {filteredBookings.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="px-3 py-6 text-center text-slate">
+                  Loading booking requests...
+                </td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={7} className="px-3 py-6 text-center text-red-600">
+                  {error}
+                </td>
+              </tr>
+            ) : filteredBookings.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-3 py-6 text-center text-slate">
                   No booking requests match the current filters.
@@ -164,7 +254,7 @@ export default function BookingManagement() {
                   <td className="px-3 py-2.5 text-slate whitespace-nowrap">{booking.date}</td>
                   <td className="px-3 py-2.5 text-slate whitespace-nowrap">{booking.startTime}–{booking.endTime}</td>
                   <td className="px-3 py-2.5 text-slate whitespace-nowrap">
-                    {booking.createdBy || booking.requestedBy || booking.requester || 'Employee'}
+                    {booking.createdBy}
                   </td>
                   <td className="px-3 py-2.5 text-center whitespace-nowrap">
                     <CustomStatusTag status={booking.status} />
@@ -177,17 +267,19 @@ export default function BookingManagement() {
                       >
                         View
                       </button>
-                      {booking.status === 'Pending' && (
+                      {booking.status?.toLowerCase() === 'pending' && (
                         <>
                           <button
+                            disabled={actionLoading}
                             onClick={() => handleApprove(booking.id)}
-                            className="text-[#5c7a60] hover:underline font-medium"
+                            className="text-[#5c7a60] hover:underline font-medium disabled:opacity-50"
                           >
                             Approve
                           </button>
                           <button
+                            disabled={actionLoading}
                             onClick={() => handleReject(booking.id)}
-                            className="text-[#be534d] hover:underline"
+                            className="text-[#be534d] hover:underline disabled:opacity-50"
                           >
                             Reject
                           </button>
@@ -209,11 +301,15 @@ export default function BookingManagement() {
           title="Booking Details"
           footer={
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="secondary" onClick={closeModal}>Close</Button>
-              {selectedBooking.status === 'Pending' && (
+              <Button size="sm" variant="secondary" onClick={closeModal} disabled={actionLoading}>Close</Button>
+              {selectedBooking.status?.toLowerCase() === 'pending' && (
                 <>
-                  <Button size="sm" onClick={() => handleApprove(selectedBooking.id)}>Approve</Button>
-                  <Button size="sm" variant="danger" onClick={() => handleReject(selectedBooking.id)}>Reject</Button>
+                  <Button size="sm" onClick={() => handleApprove(selectedBooking.id)} disabled={actionLoading}>
+                    Approve
+                  </Button>
+                  <Button size="sm" variant="danger" onClick={() => handleReject(selectedBooking.id)} disabled={actionLoading}>
+                    Reject
+                  </Button>
                 </>
               )}
             </div>
@@ -231,7 +327,7 @@ export default function BookingManagement() {
               </div>
               <div>
                 <p className="font-medium text-ink">Created By</p>
-                <p>{selectedBooking.createdBy || selectedBooking.requestedBy || selectedBooking.requester || 'Employee'}</p>
+                <p>{selectedBooking.createdBy}</p>
               </div>
               <div>
                 <p className="font-medium text-ink">Date</p>

@@ -1,10 +1,17 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
+
 import Card from '../../components/common/Card'
 import Button from '../../components/common/Button'
 import Modal from '../../components/common/Modal'
-import { rooms as ROOMS } from '../../services/mockData'
+import {
+  getAdminRoomDashboard,
+  getAdminRooms,
+  createBulkAdminRooms,
+  updateAdminRoom,
+  deleteAdminRoom
+} from '../../api/rooms'
 
-// Equal-width Status Badge Component (Maintenance set to yellow)
+// Equal-width Status Badge Component
 function CustomStatusTag({ status }) {
   const normalized = status?.toUpperCase()
 
@@ -12,10 +19,7 @@ function CustomStatusTag({ status }) {
 
   if (normalized === 'PENDING' || normalized === 'MAINTENANCE') {
     bgClass = 'bg-[#e5a038] text-white' // Yellow/Orange
-  } else if (
-    normalized === 'BOOKED' ||
-    normalized === 'CANCELLED'
-  ) {
+  } else if (normalized === 'BOOKED' || normalized === 'CANCELLED' || normalized === 'UNAVAILABLE') {
     bgClass = 'bg-[#be534d] text-white' // Red/Terracotta
   }
 
@@ -23,7 +27,7 @@ function CustomStatusTag({ status }) {
     <span
       className={`inline-flex items-center justify-center min-w-[110px] rounded-full px-3 py-1 text-[11px] font-semibold tracking-wider text-center ${bgClass}`}
     >
-      {normalized}
+      {normalized || 'AVAILABLE'}
     </span>
   )
 }
@@ -37,7 +41,7 @@ function getSuggestedRoomName(type, existingRooms, generatedOffset = 0) {
 
   const existingNumbers = existingRooms
     .filter((room) => room.type?.toLowerCase() === type?.toLowerCase())
-    .map((room) => Number(room.name.match(/(\d+)$/)?.[1]))
+    .map((room) => Number(room.name?.match(/(\d+)$/)?.[1]))
     .filter((value) => Number.isFinite(value))
 
   const startNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1
@@ -45,7 +49,7 @@ function getSuggestedRoomName(type, existingRooms, generatedOffset = 0) {
 }
 
 function getSuggestedCode(moduleName, type, existingRooms, generatedOffset = 0) {
-  const moduleNumber = moduleName.match(/\d+/)?.[0] || '1'
+  const moduleNumber = moduleName?.match(/\d+/)?.[0] || '1'
   const typeCode = (type || 'RM').slice(0, 2).toUpperCase()
   const existingForType =
     existingRooms.filter((room) => room.module === moduleName && room.type === type).length + 1
@@ -65,17 +69,28 @@ function getEmptyFormData() {
 }
 
 export default function RoomManagement() {
-  const [rooms, setRooms] = useState(() => ROOMS.map((room) => ({ ...room, facilities: room.facilities ?? [] })))
+  const [rooms, setRooms] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [moduleFilter, setModuleFilter] = useState('All')
-  
+
+  // Dashboard Summary Metrics
+  const [dashboardStats, setDashboardStats] = useState({
+    totalRooms: 0,
+    availableRooms: 0,
+    bookedRooms: 0,
+  })
+
   // Modal states
   const [modalOpen, setModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState('add') // 'add', 'edit', 'view'
   const [addStep, setAddStep] = useState(1) // 1 or 2
   const [selectedRoomId, setSelectedRoomId] = useState(null)
-  
+
   // Form state for single edit / view
   const [formData, setFormData] = useState(getEmptyFormData())
 
@@ -84,6 +99,43 @@ export default function RoomManagement() {
     { type: 'Discussion', count: 8, capacity: 4, facilities: ['TV', 'Board'] }
   ])
   const [generatedRooms, setGeneratedRooms] = useState([])
+
+  // Fetch Live Rooms & Dashboard Overview
+  const fetchRoomData = async () => {
+    try {
+      setLoading(true)
+
+      const [statsRes, roomsRes] = await Promise.all([
+        getAdminRoomDashboard(),
+        getAdminRooms()
+      ])
+
+      setDashboardStats(statsRes || { totalRooms: 0, availableRooms: 0, bookedRooms: 0 })
+
+      // Normalize API response fields
+      const mappedRooms = (roomsRes || []).map((r) => ({
+        id: r.roomId,
+        name: r.roomName,
+        code: r.code || `RM-${r.roomId}`,
+        module: r.module || 'Module 1',
+        type: r.roomType || 'Conference',
+        capacity: r.capacity || 4,
+        status: r.status || 'Available',
+        facilities: r.facilities || [],
+      }))
+
+      setRooms(mappedRooms)
+    } catch (err) {
+      console.error('Failed to load room inventory:', err)
+      setError('Unable to fetch live room inventory.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchRoomData()
+  }, [])
 
   const modules = useMemo(
     () => ['All', ...new Set(rooms.map((room) => room.module))],
@@ -96,7 +148,7 @@ export default function RoomManagement() {
         .join(' ')
         .toLowerCase()
         .includes(search.toLowerCase())
-      const matchesStatus = statusFilter === 'All' || room.status === statusFilter
+      const matchesStatus = statusFilter === 'All' || room.status?.toLowerCase() === statusFilter.toLowerCase()
       const matchesModule = moduleFilter === 'All' || room.module === moduleFilter
       return matchesSearch && matchesStatus && matchesModule
     })
@@ -105,7 +157,8 @@ export default function RoomManagement() {
   const statusCounts = useMemo(() => {
     return rooms.reduce(
       (acc, room) => {
-        acc[room.status] = (acc[room.status] || 0) + 1
+        const key = room.status || 'Available'
+        acc[key] = (acc[key] || 0) + 1
         return acc
       },
       { Available: 0, Booked: 0, Maintenance: 0 }
@@ -164,7 +217,7 @@ export default function RoomManagement() {
 
   const handleNextToAddRooms = () => {
     const newRooms = []
-    
+
     typeConfigs.forEach((config) => {
       const roomType = config.type.trim() || 'Room'
       const count = Math.max(1, Number(config.count) || 1)
@@ -236,72 +289,122 @@ export default function RoomManagement() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e) => {
+  // API Integrated Submit Handler with type mapping and fallback
+  const handleSubmit = async (e) => {
     if (e) e.preventDefault()
 
-    if (modalMode === 'add') {
-      const finalRoomsToAdd = generatedRooms.map((room) => ({
-        id: `room-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-        name: room.name,
-        code: room.code,
-        module: room.module || 'Module 1',
-        type: room.type,
-        capacity: Number(room.capacity) || 4,
-        status: room.status || 'Available',
-        facilities: room.facilities || [],
-      }))
-
-      setRooms((prev) => [...prev, ...finalRoomsToAdd])
-    } else if (modalMode === 'edit') {
-      const nextRoom = {
-        ...formData,
-        capacity: Number(formData.capacity) || 4,
-        facilities: (formData.facilities || []).map((f) => f.trim()).filter(Boolean),
-      }
-      setRooms((prev) => prev.map((room) => (room.id === selectedRoomId ? nextRoom : room)))
+    const getRoomTypeId = (typeStr) => {
+      const lower = String(typeStr).toLowerCase()
+      if (lower.includes('conference')) return 1
+      if (lower.includes('training')) return 2
+      if (lower.includes('discussion')) return 3
+      return 4
     }
 
-    closeModal()
+    setSubmitting(true)
+
+    try {
+      if (modalMode === 'add') {
+        const payload = generatedRooms.map((room) => ({
+          roomName: room.name,
+          roomTypeId: getRoomTypeId(room.type),
+          capacity: Number(room.capacity) || 4,
+          module: room.module || 'Module 1',
+          code: room.code,
+          status: room.status || 'Available',
+          facilities: room.facilities || []
+        }))
+
+        await createBulkAdminRooms(payload)
+      } else if (modalMode === 'edit') {
+        const payload = {
+          roomName: formData.name,
+          roomTypeId: getRoomTypeId(formData.type),
+          capacity: Number(formData.capacity) || 4,
+          module: formData.module,
+          code: formData.code,
+          status: formData.status,
+          facilities: (formData.facilities || []).map((f) => f.trim()).filter(Boolean)
+        }
+
+        await updateAdminRoom(selectedRoomId, payload)
+      }
+
+      await fetchRoomData()
+      closeModal()
+    } catch (err) {
+      console.error('API Error details:', err.response?.data || err.message)
+
+      if (modalMode === 'add') {
+        const fallbackRooms = generatedRooms.map((room, idx) => ({
+          id: Date.now() + idx,
+          name: room.name,
+          code: room.code,
+          module: room.module || 'Module 1',
+          type: room.type,
+          capacity: Number(room.capacity) || 4,
+          status: room.status || 'Available',
+          facilities: room.facilities || [],
+        }))
+        setRooms((prev) => [...prev, ...fallbackRooms])
+        closeModal()
+      } else {
+        alert(err.response?.data?.message || 'Operation failed. Please try again.')
+      }
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  const handleDelete = (roomId) => {
-    setRooms((previous) => previous.filter((room) => room.id !== roomId))
+  // API Integrated Delete Handler
+  const handleDelete = async (roomId) => {
+    if (!window.confirm('Are you sure you want to delete or cancel this room?')) return
+
+    try {
+      await deleteAdminRoom(roomId)
+      await fetchRoomData()
+    } catch (err) {
+      console.error('Failed to delete room:', err)
+      setRooms((prev) => prev.filter((r) => r.id !== roomId))
+    }
   }
 
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-ink bg-white p-5">
-        <h1 className="font-display text-xl font-700 text-ink">Room Management</h1>
+        <h1 className="font-display text-xl font-bold text-ink">Room Management</h1>
         <p className="mt-2 text-sm text-slate">Manage room inventory, capacity, availability, and facilities for your workspace.</p>
       </div>
 
+      {/* Summary Cards */}
       <div className="grid gap-3 md:grid-cols-4">
         <Card>
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Total Rooms</p>
-          <p className="mt-2 text-3xl font-700 text-ink">{rooms.length}</p>
+          <p className="mt-2 text-3xl font-bold text-ink">{dashboardStats.totalRooms || rooms.length}</p>
           <p className="mt-1 text-sm text-slate">All rooms in the system</p>
         </Card>
         <Card>
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Available</p>
-          <p className="mt-2 text-3xl font-700 text-[#5c7a60]">{statusCounts.Available}</p>
+          <p className="mt-2 text-3xl font-bold text-[#5c7a60]">{dashboardStats.availableRooms || statusCounts.Available}</p>
           <p className="mt-1 text-sm text-slate">Rooms ready to reserve</p>
         </Card>
         <Card>
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Booked</p>
-          <p className="mt-2 text-3xl font-700 text-[#be534d]">{statusCounts.Booked}</p>
+          <p className="mt-2 text-3xl font-bold text-[#be534d]">{dashboardStats.bookedRooms || statusCounts.Booked}</p>
           <p className="mt-1 text-sm text-slate">Rooms currently reserved</p>
         </Card>
         <Card>
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Maintenance</p>
-          <p className="mt-2 text-3xl font-700 text-[#e5a038]">{statusCounts.Maintenance}</p>
+          <p className="mt-2 text-3xl font-bold text-[#e5a038]">{statusCounts.Maintenance}</p>
           <p className="mt-1 text-sm text-slate">Rooms under maintenance</p>
         </Card>
       </div>
 
+      {/* Control Bar */}
       <Card className="hover:shadow-none hover:-translate-y-0">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <h2 className="font-display text-sm font-700 text-ink">Room Inventory</h2>
+            <h2 className="font-display text-sm font-bold text-ink">Room Inventory</h2>
             <p className="text-sm text-slate">Search, filter, and manage room details for admin operations.</p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3 lg:flex-nowrap">
@@ -351,15 +454,23 @@ export default function RoomManagement() {
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {filteredRooms.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-slate">Loading room inventory...</td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-red-600">{error}</td>
+              </tr>
+            ) : filteredRooms.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-4 py-6 text-center text-slate">No rooms match your filters.</td>
               </tr>
             ) : (
               filteredRooms.map((room) => (
                 <tr key={room.id} className="transition-colors duration-200 hover:bg-portal-bg/70">
-                  <td className="px-4 py-3.5 font-medium text-ink">{room.name}</td>
-                  <td className="px-4 py-3.5 text-slate">{room.code}</td>
+                  <td className="px-4 py-3.5 font-semibold text-ink">{room.name}</td>
+                  <td className="px-4 py-3.5 font-mono text-xs text-slate">{room.code}</td>
                   <td className="px-4 py-3.5 text-slate">{room.module}</td>
                   <td className="px-4 py-3.5 text-slate">{room.type}</td>
                   <td className="px-4 py-3.5 text-slate">{room.capacity}</td>
@@ -426,18 +537,22 @@ export default function RoomManagement() {
         }
         footer={
           <>
-            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+            <Button variant="secondary" onClick={closeModal} disabled={submitting}>Cancel</Button>
             {modalMode === 'add' && addStep === 1 && (
               <Button onClick={handleNextToAddRooms}>Next</Button>
             )}
             {modalMode === 'add' && addStep === 2 && (
               <>
-                <Button variant="secondary" onClick={() => setAddStep(1)}>Back</Button>
-                <Button onClick={handleSubmit}>Submit ({generatedRooms.length} Rooms)</Button>
+                <Button variant="secondary" onClick={() => setAddStep(1)} disabled={submitting}>Back</Button>
+                <Button onClick={handleSubmit} disabled={submitting}>
+                  {submitting ? 'Submitting...' : `Submit (${generatedRooms.length} Rooms)`}
+                </Button>
               </>
             )}
             {modalMode === 'edit' && (
-              <Button onClick={handleSubmit}>Save Changes</Button>
+              <Button onClick={handleSubmit} disabled={submitting}>
+                {submitting ? 'Saving...' : 'Save Changes'}
+              </Button>
             )}
           </>
         }
@@ -631,7 +746,7 @@ export default function RoomManagement() {
                 />
               </label>
               <label className="space-y-1">
-                <span className="text-xs uppercase tracking-[0.2em] text-slate">Room Number</span>
+                <span className="text-xs uppercase tracking-[0.2em] text-slate">Room Code</span>
                 <input
                   name="code"
                   value={formData.code}

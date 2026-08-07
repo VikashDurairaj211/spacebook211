@@ -1,8 +1,9 @@
 import { Search, Bell, User, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { useState, useMemo, useRef } from 'react'
-import { rooms as ROOMS, bookings as BOOKINGS, notifications as NOTIFS } from '../../services/mockData'
+import { useState, useMemo, useRef, useEffect } from 'react'
+import axios from 'axios'
+import { rooms as ROOMS, bookings as BOOKINGS } from '../../services/mockData'
 import NotificationDropdown from '../common/NotificationDropdown'
 import Logo from '../../../Logo.jpg'
 
@@ -11,13 +12,68 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
-  const [notificationsRead, setNotificationsRead] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [showSearchResults, setShowSearchResults] = useState(false)
-  const [notifications, setNotifications] = useState(() => NOTIFS)
+  const [notifications, setNotifications] = useState([])
+  const [loadingNotifications, setLoadingNotifications] = useState(false)
   const notificationButtonRef = useRef(null)
 
-  const unreadCount = notificationsRead ? 0 : notifications.length
+  // Fetch Live Notifications from Backend
+  const fetchNotifications = async () => {
+    try {
+      setLoadingNotifications(true)
+      const token = localStorage.getItem('spacebook_token')
+      if (!token) return
+
+      const res = await axios.get('http://localhost:5263/api/employee/notifications', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      setNotifications(res.data || [])
+    } catch (err) {
+      console.error('Failed to fetch notifications in TopNav:', err)
+    } finally {
+      setLoadingNotifications(false)
+    }
+  }
+
+  // Handle Mark All As Read API Call
+  const handleMarkAllRead = async () => {
+    try {
+      const token = localStorage.getItem('spacebook_token')
+      await axios.patch(
+        'http://localhost:5263/api/notifications/read-all',
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+      // Update local state immediately
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+
+      // Notify other pages/components to refresh
+      window.dispatchEvent(new Event('notificationsRead'))
+    } catch (err) {
+      console.error('Failed to mark notifications as read:', err)
+    }
+  }
+
+  useEffect(() => {
+    if (!publicOnly) {
+      fetchNotifications()
+    }
+
+    // Listen for read-all events triggered anywhere in the app
+    window.addEventListener('notificationsRead', fetchNotifications)
+    return () => window.removeEventListener('notificationsRead', fetchNotifications)
+  }, [publicOnly])
+
+  const unreadCount = useMemo(() => {
+    return notifications.filter((n) => !n.isRead).length
+  }, [notifications])
 
   const searchResults = useMemo(() => {
     if (!searchInput.trim()) return { rooms: [], bookings: [] }
@@ -167,8 +223,9 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
               open={notificationOpen}
               buttonRef={notificationButtonRef}
               notifications={notifications}
+              loading={loadingNotifications}
               onClose={() => setNotificationOpen(false)}
-              onMarkAllRead={() => setNotifications((prev) => prev.map((notification) => ({ ...notification, unread: false })))}
+              onMarkAllRead={handleMarkAllRead}
               onViewAll={() => {
                 navigate('/notifications')
                 setNotificationOpen(false)

@@ -1,96 +1,150 @@
-import { useMemo } from 'react'
-import { Link, Navigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import Card from '../components/common/Card'
-import StatusTag from '../components/common/StatusTag'
-import DashboardCard from '../components/cards/DashboardCard'
-import { rooms as ROOMS, bookings as BOOKINGS } from '../services/mockData'
+import { useEffect, useState } from "react";
+import { Link, Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import Card from "../components/common/Card";
+import StatusTag from "../components/common/StatusTag";
+import DashboardCard from "../components/cards/DashboardCard";
+import * as employeeApi from "../api/employee";
 
 export default function Dashboard() {
-  const { user } = useAuth()
+  const { user } = useAuth();
 
-  if (user?.role === 'Admin') {
-    return <Navigate to="/admin/dashboard" replace />
+  const [dashboard, setDashboard] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        const data = await employeeApi.getDashboard();
+
+console.log("Dashboard Data:", data);
+
+setDashboard(data);
+      } catch (err) {
+        console.error("Dashboard Error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadDashboard();
+  }, []);
+
+  if (user?.role === "Admin") {
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
-  const rooms = useMemo(() => ROOMS, [])
-  const bookings = useMemo(() => BOOKINGS, [])
-  const today = new Date().toISOString().slice(0, 10)
-  const todaysMeetings = bookings.filter((b) => b.date === today && b.status !== 'Cancelled')
-  const upcoming = bookings.filter((b) => b.status !== 'Cancelled').slice(0, 5)
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64 text-slate-600">
+        Loading dashboard...
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 font-serif">
-      {/* Welcome banner */}
-      <div className="border border-slate-200/80 bg-white p-5 rounded-2xl shadow-sm">
-        <p className="font-serif text-[11px] uppercase tracking-wider text-slate-500">
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+    <div className="space-y-8">
+      {/* Welcome Banner */}
+      <Card className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <p className="text-xs uppercase tracking-[0.25em] text-slate-500">
+          {new Date().toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })}
         </p>
-        <h1 className="mt-1 font-serif text-xl font-bold text-slate-900">
-          Welcome, {user?.name || 'there'}
+
+        <h1 className="mt-2 text-4xl font-bold">
+          Welcome, {user?.name}
         </h1>
-        <p className="mt-2 text-sm text-slate-600 font-serif">
+
+        <p className="mt-3 text-slate-600">
           Find and reserve a workspace for your next meeting.
         </p>
-      </div>
+      </Card>
 
-      {/* Summary cards */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <DashboardCard title="Bookings Today" value={bookings.filter((b) => b.date === today).length} tone="warning" />
-        <DashboardCard title="Upcoming" value={upcoming.length} />
-        <DashboardCard title="Today's Meetings" value={todaysMeetings.length} />
+        <DashboardCard
+          title="Bookings Today"
+          value={dashboard?.bookingsToday ?? 0}
+          tone="warning"
+        />
+
+        <DashboardCard
+          title="Upcoming"
+          value={dashboard?.upcomingCount ?? 0}
+        />
+
+        <DashboardCard
+          title="Today's Meetings"
+          value={dashboard?.bookingsToday ?? 0}
+        />
       </div>
 
-      {/* Recent Reservations Table */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm font-serif">
+      {/* Recent Reservations */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-serif text-base font-semibold text-slate-800">Recent Reservations</h2>
-          <Link to="/my-bookings" className="text-xs text-slate-500 hover:underline font-serif">
+          <h2 className="text-lg font-semibold">
+            Recent Reservations
+          </h2>
+
+          <Link
+            to="/my-bookings"
+            className="text-sm text-blue-600 hover:underline"
+          >
             View all
           </Link>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm font-serif">
+          <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-slate-200 text-[11px] font-bold uppercase tracking-widest text-slate-500 font-serif">
-                <th className="py-3 px-4 font-semibold">ROOM</th>
-                <th className="py-3 px-4 font-semibold">DATE</th>
-                <th className="py-3 px-4 font-semibold">TIME</th>
-                <th className="py-3 px-4 font-semibold">STATUS</th>
+              <tr className="border-b">
+                <th className="py-3">ROOM</th>
+                <th className="py-3">DATE</th>
+                <th className="py-3">TIME</th>
+                <th className="py-3">STATUS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {upcoming.length === 0 && (
+
+            <tbody>
+              {dashboard?.recentReservations?.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-6 px-4 text-slate-500 font-serif">
-                    No upcoming bookings yet.
+                  <td
+                    colSpan={4}
+                    className="py-6 text-center text-slate-500"
+                  >
+                    No reservations found.
                   </td>
                 </tr>
+              ) : (
+                dashboard?.recentReservations?.map((booking) => (
+                  <tr
+                    key={booking.bookingId}
+                    className="border-b hover:bg-slate-50"
+                  >
+                    <td className="py-4">
+                      {booking.roomName}
+                    </td>
+
+                    <td>{booking.bookingDate}</td>
+
+                    <td>
+                      {booking.startTime.substring(0, 5)} -{" "}
+                      {booking.endTime.substring(0, 5)}
+                    </td>
+
+                    <td>
+                      <StatusTag status={booking.status} />
+                    </td>
+                  </tr>
+                ))
               )}
-              {upcoming.map((b) => (
-                <tr key={b.id} className="hover:bg-slate-50/50">
-                  <td className="py-3.5 px-4 text-slate-700 font-serif">{b.roomName}</td>
-                  
-                  {/* Clean standard numbers for date */}
-                  <td className="py-3.5 px-4 text-slate-700 font-sans text-xs tracking-normal tabular-nums">
-                    {b.date}
-                  </td>
-                  
-                  {/* Clean standard numbers for time */}
-                  <td className="py-3.5 px-4 text-slate-700 font-sans text-xs tracking-normal tabular-nums">
-                    {b.startTime}–{b.endTime}
-                  </td>
-                  
-                  <td className="py-3.5 px-4">
-                    <StatusTag status={b.status} />
-                  </td>
-                </tr>
-              ))}
             </tbody>
           </table>
         </div>
       </div>
     </div>
-  )
+  );
 }
