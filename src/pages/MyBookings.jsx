@@ -6,7 +6,6 @@ import {
 } from "../api/bookings";
 
 import Card from "../components/common/Card";
-import StatusTag from "../components/common/StatusTag";
 import Button from "../components/common/Button";
 import Modal from "../components/common/Modal";
 import { Field, Input } from "../components/common/Input";
@@ -52,7 +51,23 @@ export default function MyBookings() {
     const startDate = new Date(`2000-01-01T${start}`);
     const endDate = new Date(`2000-01-01T${end}`);
     const hours = (endDate - startDate) / 3600000;
-    return `${hours}h`;
+    
+    return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(2)}h`;
+  };
+
+  // Helper function matching your exact color scheme and compact width
+  const getStatusBadgeClass = (status) => {
+    const s = status?.toLowerCase() || "";
+    if (s === "approved" || s === "confirmed" || s === "available") {
+      return "bg-[#658362] text-white"; // Muted green matching the design
+    }
+    if (s === "pending") {
+      return "bg-[#E09F3E] text-white"; // Warm amber/orange matching the design
+    }
+    if (s === "rejected" || s === "cancelled") {
+      return "bg-[#B85450] text-white"; // Terracotta red matching the design
+    }
+    return "bg-slate-500 text-white";
   };
 
   async function cancel() {
@@ -122,29 +137,30 @@ export default function MyBookings() {
       </div>
 
       <Card className="overflow-x-auto p-0">
-        <table className="w-full min-w-[760px] text-sm">
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-left font-mono text-[11px] uppercase tracking-wider text-slate">
-              <th className="px-4 py-3">Booking ID</th>
-              <th className="px-4 py-3">Room</th>
-              <th className="px-4 py-3">Purpose</th>
-              <th className="px-4 py-3">Date / Time</th>
-              <th className="px-4 py-3">Duration</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
+              <th className="px-3 py-3">ID</th>
+              <th className="px-3 py-3">Room</th>
+              <th className="px-3 py-3">Purpose</th>
+              <th className="px-3 py-3">Date</th>
+              <th className="px-3 py-3">Time</th>
+              <th className="px-3 py-3">Duration</th>
+              <th className="px-3 py-3 text-center">Status</th>
+              <th className="px-3 py-3 text-center">Actions</th>
             </tr>
           </thead>
 
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-slate-500">
+                <td colSpan={8} className="py-8 text-center text-slate-500">
                   Loading bookings...
                 </td>
               </tr>
             ) : bookings.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-slate-500">
+                <td colSpan={8} className="py-8 text-center text-slate-500">
                   No bookings found.
                 </td>
               </tr>
@@ -154,37 +170,42 @@ export default function MyBookings() {
                   key={b.bookingId}
                   className="border-b border-line last:border-0"
                 >
-                  <td className="px-4 py-4 font-mono">{b.bookingId}</td>
+                  <td className="px-3 py-4 font-mono whitespace-nowrap">{b.bookingId}</td>
 
-                  <td className="px-4 py-4">
-                    <div className="font-semibold">
-                      {b.roomName || `Room ${b.roomId}`}
-                    </div>
+                  <td className="px-3 py-4 whitespace-nowrap font-semibold">
+                    {b.roomName || `Room ${b.roomId}`}
                   </td>
 
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-4 truncate max-w-[140px]">
                     {b.purpose && b.purpose.trim() ? b.purpose : "Reserved Workspace"}
                   </td>
 
-                  <td className="px-4 py-4">
-                    <div>{b.bookingDate}</div>
-                    <div className="text-xs text-slate-500">
-                      {b.startTime ? b.startTime.substring(0, 5) : ""} -{" "}
-                      {b.endTime ? b.endTime.substring(0, 5) : ""}
-                    </div>
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    {b.bookingDate}
                   </td>
 
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-4 whitespace-nowrap text-slate-600">
+                    {b.startTime ? b.startTime.substring(0, 5) : ""} -{" "}
+                    {b.endTime ? b.endTime.substring(0, 5) : ""}
+                  </td>
+
+                  <td className="px-3 py-4 whitespace-nowrap">
                     {getDuration(b.startTime, b.endTime)}
                   </td>
 
-                  <td className="px-4 py-4">
-                    <StatusTag status={b.status} />
+                  <td className="px-3 py-4 text-center whitespace-nowrap">
+                    <span
+                      className={`inline-block w-24 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${getStatusBadgeClass(
+                        b.status
+                      )}`}
+                    >
+                      {b.status}
+                    </span>
                   </td>
 
-                  <td className="px-4 py-4 whitespace-nowrap">
+                  <td className="px-3 py-4 whitespace-nowrap text-center">
                     <button
-                      className="mr-3 text-blue-600 hover:underline font-medium"
+                      className="mr-2.5 text-sky-600 hover:text-sky-800 font-bold text-sm hover:underline"
                       onClick={() => {
                         setSelected(b);
                         setMode("view");
@@ -196,7 +217,7 @@ export default function MyBookings() {
                     {isUpcomingBooking(b) && (
                       <>
                         <button
-                          className="mr-3 text-blue-600 hover:underline font-medium"
+                          className="mr-2.5 text-emerald-600 hover:text-emerald-800 font-bold text-sm hover:underline"
                           onClick={() => {
                             setSelected({ ...b });
                             setMode("edit");
@@ -206,7 +227,7 @@ export default function MyBookings() {
                         </button>
 
                         <button
-                          className="text-red-600 hover:underline font-medium"
+                          className="text-red-600 hover:text-red-800 font-bold text-sm hover:underline"
                           onClick={() => {
                             setSelected(b);
                             setMode("cancel");
@@ -252,7 +273,13 @@ export default function MyBookings() {
 
             <dt className="font-medium">Status</dt>
             <dd>
-              <StatusTag status={selected.status} />
+              <span
+                className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${getStatusBadgeClass(
+                  selected.status
+                )}`}
+              >
+                {selected.status}
+              </span>
             </dd>
           </dl>
         )}

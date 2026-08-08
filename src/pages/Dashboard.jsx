@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Card from "../components/common/Card";
-import StatusTag from "../components/common/StatusTag";
 import DashboardCard from "../components/cards/DashboardCard";
 import * as employeeApi from "../api/employee";
 
@@ -16,10 +15,8 @@ export default function Dashboard() {
     async function loadDashboard() {
       try {
         const data = await employeeApi.getDashboard();
-
-console.log("Dashboard Data:", data);
-
-setDashboard(data);
+        console.log("Dashboard Data:", data);
+        setDashboard(data);
       } catch (err) {
         console.error("Dashboard Error:", err);
       } finally {
@@ -41,6 +38,21 @@ setDashboard(data);
       </div>
     );
   }
+
+  // Helper function matching your exact color scheme
+  const getStatusBadgeClass = (status) => {
+    const s = status?.toLowerCase() || "";
+    if (s === "approved" || s === "confirmed") {
+      return "bg-[#658362] text-white"; // Muted green matching the screenshot
+    }
+    if (s === "pending") {
+      return "bg-[#E09F3E] text-white"; // Warm amber/orange matching the screenshot
+    }
+    if (s === "rejected" || s === "cancelled") {
+      return "bg-[#B85450] text-white"; // Terracotta red matching the screenshot
+    }
+    return "bg-slate-500 text-white";
+  };
 
   return (
     <div className="space-y-8">
@@ -100,7 +112,7 @@ setDashboard(data);
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b">
+              <tr className="border-b text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 <th className="py-3">ROOM</th>
                 <th className="py-3">DATE</th>
                 <th className="py-3">TIME</th>
@@ -113,7 +125,7 @@ setDashboard(data);
                 <tr>
                   <td
                     colSpan={4}
-                    className="py-6 text-center text-slate-500"
+                    className="py-6 text-center text-slate-500 text-sm"
                   >
                     No reservations found.
                   </td>
@@ -122,21 +134,27 @@ setDashboard(data);
                 dashboard?.recentReservations?.map((booking) => (
                   <tr
                     key={booking.bookingId}
-                    className="border-b hover:bg-slate-50"
+                    className="border-b hover:bg-slate-50 text-sm"
                   >
-                    <td className="py-4">
+                    <td className="py-4 font-medium text-slate-900">
                       {booking.roomName}
                     </td>
 
-                    <td>{booking.bookingDate}</td>
+                    <td className="text-slate-600">{booking.bookingDate}</td>
 
-                    <td>
+                    <td className="text-slate-600">
                       {booking.startTime.substring(0, 5)} -{" "}
                       {booking.endTime.substring(0, 5)}
                     </td>
 
-                    <td>
-                      <StatusTag status={booking.status} />
+                    <td className="py-4">
+                      <span
+                        className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${getStatusBadgeClass(
+                          booking.status
+                        )}`}
+                      >
+                        {booking.status}
+                      </span>
                     </td>
                   </tr>
                 ))

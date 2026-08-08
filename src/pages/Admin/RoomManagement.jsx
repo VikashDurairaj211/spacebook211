@@ -15,17 +15,17 @@ import {
 function CustomStatusTag({ status }) {
   const normalized = status?.toUpperCase()
 
-  let bgClass = 'bg-[#5c7a60] text-white' // Green (Available / Confirmed)
+  let bgClass = 'bg-[#658362] text-white' // Green (Available / Confirmed)
 
   if (normalized === 'PENDING' || normalized === 'MAINTENANCE') {
-    bgClass = 'bg-[#e5a038] text-white' // Yellow/Orange
+    bgClass = 'bg-[#E09F3E] text-white' // Yellow/Orange
   } else if (normalized === 'BOOKED' || normalized === 'CANCELLED' || normalized === 'UNAVAILABLE') {
-    bgClass = 'bg-[#be534d] text-white' // Red/Terracotta
+    bgClass = 'bg-[#B85450] text-white' // Red/Terracotta
   }
 
   return (
     <span
-      className={`inline-flex items-center justify-center min-w-[110px] rounded-full px-3 py-1 text-[11px] font-semibold tracking-wider text-center ${bgClass}`}
+      className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${bgClass}`}
     >
       {normalized || 'AVAILABLE'}
     </span>
@@ -385,17 +385,17 @@ export default function RoomManagement() {
         </Card>
         <Card>
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Available</p>
-          <p className="mt-2 text-3xl font-bold text-[#5c7a60]">{dashboardStats.availableRooms || statusCounts.Available}</p>
+          <p className="mt-2 text-3xl font-bold text-[#658362]">{dashboardStats.availableRooms || statusCounts.Available}</p>
           <p className="mt-1 text-sm text-slate">Rooms ready to reserve</p>
         </Card>
         <Card>
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Booked</p>
-          <p className="mt-2 text-3xl font-bold text-[#be534d]">{dashboardStats.bookedRooms || statusCounts.Booked}</p>
+          <p className="mt-2 text-3xl font-bold text-[#B85450]">{dashboardStats.bookedRooms || statusCounts.Booked}</p>
           <p className="mt-1 text-sm text-slate">Rooms currently reserved</p>
         </Card>
         <Card>
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Maintenance</p>
-          <p className="mt-2 text-3xl font-bold text-[#e5a038]">{statusCounts.Maintenance}</p>
+          <p className="mt-2 text-3xl font-bold text-[#E09F3E]">{statusCounts.Maintenance}</p>
           <p className="mt-1 text-sm text-slate">Rooms under maintenance</p>
         </Card>
       </div>
@@ -442,15 +442,15 @@ export default function RoomManagement() {
       <Card className="overflow-x-auto">
         <table className="w-full min-w-[900px] text-left text-sm">
           <thead>
-            <tr className="border-b border-line text-[11px] font-bold uppercase tracking-wider text-slate">
+            <tr className="border-b border-line font-mono text-[11px] font-extrabold uppercase tracking-wider text-black">
               <th className="px-4 py-3">Room</th>
               <th className="px-4 py-3">Code</th>
               <th className="px-4 py-3">Module</th>
               <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Capacity</th>
               <th className="px-4 py-3">Facilities</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
+              <th className="px-4 py-3 text-center">Status</th>
+              <th className="px-4 py-3 text-center">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -487,26 +487,26 @@ export default function RoomManagement() {
                       <span className="text-slate">None</span>
                     )}
                   </td>
-                  <td className="px-4 py-3.5">
+                  <td className="px-4 py-3.5 text-center">
                     <CustomStatusTag status={room.status} />
                   </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-3 font-sans text-sm">
+                  <td className="px-4 py-3.5 text-center">
+                    <div className="inline-flex items-center gap-3 font-sans text-sm">
                       <button
                         onClick={() => openViewModal(room)}
-                        className="text-ink hover:underline"
+                        className="text-sky-600 hover:text-sky-800 font-bold text-sm hover:underline"
                       >
                         View
                       </button>
                       <button
                         onClick={() => openEditModal(room)}
-                        className="text-ink hover:underline"
+                        className="text-emerald-600 hover:text-emerald-800 font-bold text-sm hover:underline"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(room.id)}
-                        className="text-[#be534d] hover:underline"
+                        className="text-red-600 hover:text-red-800 font-bold text-sm hover:underline"
                       >
                         Cancel
                       </button>

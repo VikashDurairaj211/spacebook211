@@ -5,7 +5,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import axios from 'axios'
 import { rooms as ROOMS, bookings as BOOKINGS } from '../../services/mockData'
 import NotificationDropdown from '../common/NotificationDropdown'
-import Logo from '../../../Logo.jpg'
+import Logo from '../../../Logo.png'
 
 export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly = false }) {
   const { user, logout } = useAuth()
@@ -18,14 +18,22 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
   const [loadingNotifications, setLoadingNotifications] = useState(false)
   const notificationButtonRef = useRef(null)
 
-  // Fetch Live Notifications from Backend
+  // Determine if the logged-in user is an admin based on user role/properties
+  const isAdmin = user?.role === 'Admin' || user?.isAdmin === true
+
+  // Fetch Live Notifications from Backend based on role
   const fetchNotifications = async () => {
     try {
       setLoadingNotifications(true)
       const token = localStorage.getItem('spacebook_token')
       if (!token) return
 
-      const res = await axios.get('http://localhost:5263/api/employee/notifications', {
+      // Dynamically select endpoint based on whether user is admin or employee
+      const endpoint = isAdmin 
+        ? 'http://localhost:5263/api/admin/notifications' 
+        : 'http://localhost:5263/api/employee/notifications'
+
+      const res = await axios.get(endpoint, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -62,14 +70,14 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
   }
 
   useEffect(() => {
-    if (!publicOnly) {
+    if (!publicOnly && user) {
       fetchNotifications()
     }
 
     // Listen for read-all events triggered anywhere in the app
     window.addEventListener('notificationsRead', fetchNotifications)
     return () => window.removeEventListener('notificationsRead', fetchNotifications)
-  }, [publicOnly])
+  }, [publicOnly, user])
 
   const unreadCount = useMemo(() => {
     return notifications.filter((n) => !n.isRead).length
@@ -124,11 +132,9 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
             {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
           </button>
         )}
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/dashboard')}>
-          <img src={Logo} alt="Spacebook logo" className="h-10 w-10 rounded-full border border-white/20 bg-white/10 object-cover" />
-          <div>
-            <span className="block font-display text-sm font-bold tracking-tight text-white">Spacebook</span>
-          </div>
+        <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/dashboard')}>
+          <img src={Logo} alt="Spacebook logo" className="h-9 w-auto object-contain" />
+          <span className="font-display text-base font-bold tracking-widest text-white uppercase leading-none">Spacebook</span>
         </div>
       </div>
 

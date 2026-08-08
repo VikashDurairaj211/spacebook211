@@ -4,7 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Field, Input } from "../components/common/Input";
 import Button from "../components/common/Button";
-import Logo from "../../Logo.jpg";
+import Logo from "../../Logo.png";
 
 const BACKGROUND_IMAGE_URL =
   "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1920&q=80";
@@ -49,16 +49,12 @@ export default function Login() {
         <img
           src={Logo}
           alt="SpaceBook"
-          className="h-9 w-9 rounded-sm object-cover"
+          className="h-10 w-auto object-contain"
         />
 
-        <div className="flex flex-col">
+        <div className="flex items-center">
           <span className="text-lg font-bold tracking-widest text-white uppercase leading-none">
             SpaceBook
-          </span>
-
-          <span className="text-[10px] text-slate-300 tracking-wide">
-            Workspace Portal
           </span>
         </div>
       </header>

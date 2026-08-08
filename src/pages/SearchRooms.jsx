@@ -149,6 +149,21 @@ export default function SearchRooms() {
     return `/book-room?${params.toString()}`;
   }
 
+  // Helper function matching the exact color scheme used previously
+  const getStatusBadgeClass = (status) => {
+    const s = status?.toLowerCase() || "";
+    if (s === "approved" || s === "confirmed" || s === "available") {
+      return "bg-[#658362] text-white"; // Muted green matching the design
+    }
+    if (s === "pending") {
+      return "bg-[#E09F3E] text-white"; // Warm amber/orange matching the design
+    }
+    if (s === "rejected" || s === "cancelled") {
+      return "bg-[#B85450] text-white"; // Terracotta red matching the design
+    }
+    return "bg-slate-500 text-white";
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -291,7 +306,13 @@ export default function SearchRooms() {
                   </p>
                 </div>
 
-                <StatusTag status={booking.status} />
+                <span
+                  className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${getStatusBadgeClass(
+                    booking.status
+                  )}`}
+                >
+                  {booking.status}
+                </span>
               </div>
             ))}
           </div>
@@ -328,7 +349,13 @@ export default function SearchRooms() {
                     <p className="text-sm text-slate-500">{room.module}</p>
                   </div>
 
-                  <StatusTag status="Available" />
+                  <span
+                    className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${getStatusBadgeClass(
+                      "Available"
+                    )}`}
+                  >
+                    Available
+                  </span>
                 </div>
 
                 <div className="mt-4 space-y-2 text-sm">
@@ -383,7 +410,13 @@ export default function SearchRooms() {
                   <p className="text-sm text-slate-500">{room.module}</p>
                 </div>
 
-                <StatusTag status="Available" />
+                <span
+                  className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${getStatusBadgeClass(
+                    "Available"
+                  )}`}
+                >
+                  Available
+                </span>
               </div>
 
               <p className="text-sm">

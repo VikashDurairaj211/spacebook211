@@ -96,6 +96,21 @@ export default function AvailabilityCalendar() {
     return `/book-room?${params.toString()}`
   }
 
+  // Helper function matching the exact color scheme used previously
+  const getStatusBadgeClass = (status) => {
+    const s = status?.toLowerCase() || "";
+    if (s === "approved" || s === "confirmed" || s === "available") {
+      return "bg-[#658362] text-white"; // Muted green matching the design
+    }
+    if (s === "pending") {
+      return "bg-[#E09F3E] text-white"; // Warm amber/orange matching the design
+    }
+    if (s === "rejected" || s === "cancelled") {
+      return "bg-[#B85450] text-white"; // Terracotta red matching the design
+    }
+    return "bg-slate-500 text-white";
+  };
+
   const modalTitle = selectedSlot?.status === 'Available'
     ? 'Book this room'
     : selectedSlot?.status === 'Pending'
@@ -167,12 +182,21 @@ export default function AvailabilityCalendar() {
         }
       >
         {selectedSlot && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <p className="font-display text-base font-700 text-ink">{selectedSlot.room.name}</p>
             <p>{selectedSlot.room.type} · Capacity {selectedSlot.room.capacity}</p>
             <p>{selectedDate}, {selectedSlot.slot.start} - {selectedSlot.slot.end}</p>
             <p>Facilities: {selectedSlot.room.facilities?.join(', ') || 'None'}</p>
-            <p>Status: <strong>{selectedSlot.status}</strong></p>
+            <div className="flex items-center gap-2">
+              <span>Status:</span>
+              <span
+                className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${getStatusBadgeClass(
+                  selectedSlot.status
+                )}`}
+              >
+                {selectedSlot.status}
+              </span>
+            </div>
             {selectedSlot.booking && <p>Booking: {selectedSlot.booking.title || 'Reserved workspace'}</p>}
           </div>
         )}

@@ -9,17 +9,17 @@ import Modal from '../../components/common/Modal'
 function CustomStatusTag({ status }) {
   const normalized = status?.toUpperCase()
 
-  let bgClass = 'bg-[#5c7a60] text-white' // Green (Confirmed / Approved)
+  let bgClass = 'bg-[#658362] text-white' // Green (Confirmed / Approved)
 
   if (normalized === 'PENDING') {
-    bgClass = 'bg-[#e5a038] text-white' // Yellow/Orange
+    bgClass = 'bg-[#E09F3E] text-white' // Yellow/Orange
   } else if (normalized === 'CANCELLED' || normalized === 'REJECTED') {
-    bgClass = 'bg-[#be534d] text-white' // Red/Terracotta
+    bgClass = 'bg-[#B85450] text-white' // Red/Terracotta
   }
 
   return (
     <span
-      className={`inline-flex items-center justify-center min-w-[95px] rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wider text-center ${bgClass}`}
+      className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${bgClass}`}
     >
       {normalized || 'CONFIRMED'}
     </span>
@@ -173,17 +173,17 @@ export default function BookingManagement() {
       <div className="grid gap-3 md:grid-cols-3">
         <Card>
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Pending Requests</p>
-          <p className="mt-2 text-3xl font-700 text-[#e5a038]">{statusCounts.Pending}</p>
+          <p className="mt-2 text-3xl font-700 text-[#E09F3E]">{statusCounts.Pending}</p>
           <p className="mt-1 text-sm text-slate">Awaiting admin approval</p>
         </Card>
         <Card>
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Confirmed</p>
-          <p className="mt-2 text-3xl font-700 text-[#5c7a60]">{statusCounts.Confirmed}</p>
+          <p className="mt-2 text-3xl font-700 text-[#658362]">{statusCounts.Confirmed}</p>
           <p className="mt-1 text-sm text-slate">Approved and scheduled bookings</p>
         </Card>
         <Card>
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Cancelled</p>
-          <p className="mt-2 text-3xl font-700 text-[#be534d]">{statusCounts.Cancelled}</p>
+          <p className="mt-2 text-3xl font-700 text-[#B85450]">{statusCounts.Cancelled}</p>
           <p className="mt-1 text-sm text-slate">Bookings that were cancelled</p>
         </Card>
       </div>
@@ -217,14 +217,14 @@ export default function BookingManagement() {
       <Card className="overflow-x-auto p-4">
         <table className="w-full text-left text-xs">
           <thead>
-            <tr className="border-b border-line text-[10px] font-bold uppercase tracking-wider text-slate">
+            <tr className="border-b border-line font-mono text-[11px] font-extrabold uppercase tracking-wider text-black">
               <th className="px-3 py-2.5">Meeting Title</th>
               <th className="px-3 py-2.5">Room</th>
               <th className="px-3 py-2.5">Date</th>
               <th className="px-3 py-2.5">Time</th>
               <th className="px-3 py-2.5">Created By</th>
               <th className="px-3 py-2.5 text-center">Status</th>
-              <th className="px-3 py-2.5 text-right">Actions</th>
+              <th className="px-3 py-2.5 text-center">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -249,41 +249,46 @@ export default function BookingManagement() {
             ) : (
               filteredBookings.map((booking) => (
                 <tr key={booking.id} className="transition-colors duration-200 hover:bg-portal-bg/70">
-                  <td className="px-3 py-2.5 font-medium text-ink whitespace-nowrap">{booking.title}</td>
-                  <td className="px-3 py-2.5 text-slate whitespace-nowrap">{booking.roomName}</td>
-                  <td className="px-3 py-2.5 text-slate whitespace-nowrap">{booking.date}</td>
-                  <td className="px-3 py-2.5 text-slate whitespace-nowrap">{booking.startTime}–{booking.endTime}</td>
-                  <td className="px-3 py-2.5 text-slate whitespace-nowrap">
+                  <td className="px-3 py-3 font-medium text-ink whitespace-nowrap">{booking.title}</td>
+                  <td className="px-3 py-3 text-slate whitespace-nowrap">{booking.roomName}</td>
+                  <td className="px-3 py-3 text-slate whitespace-nowrap">{booking.date}</td>
+                  <td className="px-3 py-3 text-slate whitespace-nowrap">{booking.startTime}–{booking.endTime}</td>
+                  <td className="px-3 py-3 text-slate whitespace-nowrap">
                     {booking.createdBy}
                   </td>
-                  <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                  <td className="px-3 py-3 text-center whitespace-nowrap">
                     <CustomStatusTag status={booking.status} />
                   </td>
-                  <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                    <div className="inline-flex items-center gap-2.5 font-sans text-xs">
+                  <td className="px-3 py-3 text-center whitespace-nowrap">
+                    <div className="inline-flex items-center gap-2.5 font-sans text-sm">
                       <button
                         onClick={() => openViewModal(booking)}
-                        className="text-ink hover:underline"
+                        className="text-sky-600 hover:text-sky-800 font-bold text-sm hover:underline"
                       >
                         View
                       </button>
-                      {booking.status?.toLowerCase() === 'pending' && (
+                      {booking.status?.toLowerCase() === 'pending' ? (
                         <>
                           <button
                             disabled={actionLoading}
                             onClick={() => handleApprove(booking.id)}
-                            className="text-[#5c7a60] hover:underline font-medium disabled:opacity-50"
+                            className="text-emerald-600 hover:text-emerald-800 font-bold text-sm hover:underline disabled:opacity-50"
                           >
                             Approve
                           </button>
                           <button
                             disabled={actionLoading}
                             onClick={() => handleReject(booking.id)}
-                            className="text-[#be534d] hover:underline disabled:opacity-50"
+                            className="text-red-600 hover:text-red-800 font-bold text-sm hover:underline disabled:opacity-50"
                           >
                             Reject
                           </button>
                         </>
+                      ) : (
+                        <span className="invisible inline-flex gap-2.5">
+                          <span className="font-bold text-sm">Approve</span>
+                          <span className="font-bold text-sm">Reject</span>
+                        </span>
                       )}
                     </div>
                   </td>
