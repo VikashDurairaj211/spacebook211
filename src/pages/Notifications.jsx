@@ -1,16 +1,26 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import NotificationCard from '../components/cards/NotificationCard'
+import { useAuth } from '../context/AuthContext' // Changed from '../../' to '../'
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'Admin' || user?.isAdmin === true
+
   const fetchNotifications = async () => {
     try {
       setLoading(true)
       const token = localStorage.getItem('spacebook_token')
-      const res = await axios.get('http://localhost:5263/api/employee/notifications', {
+      if (!token) return
+
+      const endpoint = isAdmin
+        ? 'http://localhost:5263/api/admin/notifications'
+        : 'http://localhost:5263/api/employee/notifications'
+
+      const res = await axios.get(endpoint, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -23,16 +33,20 @@ export default function Notifications() {
     }
   }
 
-  // 1. Automatically mark all as read when the page loads
   const markAllAsRead = async () => {
     try {
       const token = localStorage.getItem('spacebook_token')
-      await axios.put('http://localhost:5263/api/employee/notifications/read-all', {}, {
+      if (!token) return
+
+      const endpoint = isAdmin
+        ? 'http://localhost:5263/api/admin/notifications/read-all'
+        : 'http://localhost:5263/api/employee/notifications/read-all'
+
+      await axios.patch(endpoint, {}, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       })
-      // Dispatch custom event to notify other UI components (like badges/navbars)
       window.dispatchEvent(new Event('notificationsRead'))
     } catch (err) {
       console.error('Failed to mark notifications as read:', err)
@@ -40,23 +54,25 @@ export default function Notifications() {
   }
 
   useEffect(() => {
-    fetchNotifications()
-    markAllAsRead() // <--- Triggers read update on mount
+    if (user) {
+      fetchNotifications()
+      markAllAsRead()
+    }
 
     window.addEventListener('notificationsRead', fetchNotifications)
     return () => window.removeEventListener('notificationsRead', fetchNotifications)
-  }, [])
+  }, [user, isAdmin])
 
   const unreadCount = notifications.filter((item) => !item.isRead).length
 
   return (
     <div className="space-y-6 p-6">
-      <div className="border border-line bg-white p-5 rounded-2xl">
+      <div className="border border-line bg-white p-5 rounded-2xl shadow-sm">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="font-display text-xl font-bold text-ink">Notifications</h1>
             <p className="mt-1 text-sm text-slate-500">
-              System and booking alerts for your account.
+              {isAdmin ? 'System and booking request alerts for admin management.' : 'System and booking alerts for your account.'}
             </p>
           </div>
           <div className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700">

@@ -12,10 +12,9 @@ import StatusTag from "../components/common/StatusTag";
 import Modal from "../components/common/Modal";
 
 const MODULES = [
-  "Block A",
-  "Block B",
-  "Block C",
-  "Module A",
+  
+  "Module 2",
+  "Module 1",
 ];
 
 const ROOM_TYPES = [
