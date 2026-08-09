@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Home } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Field, Input } from "../components/common/Input";
 import Button from "../components/common/Button";
@@ -45,18 +45,31 @@ export default function Login() {
       <div className="absolute inset-0 -z-10 bg-[#001D4A]/70" />
 
       {/* Header */}
-      <header className="w-full bg-[#001D4A]/90 px-6 py-3 shadow-lg flex items-center gap-3 backdrop-blur-md border-b border-white/10 shrink-0">
-        <img
-          src={Logo}
-          alt="SpaceBook"
-          className="h-10 w-auto object-contain"
-        />
+      <header className="w-full bg-[#001D4A]/90 px-6 py-3 shadow-lg flex items-center justify-between backdrop-blur-md border-b border-white/10 shrink-0">
+        <div className="flex items-center gap-3">
+          <img
+            src={Logo}
+            alt="SpaceBook"
+            className="h-10 w-auto object-contain"
+          />
 
-        <div className="flex items-center">
-          <span className="text-lg font-bold tracking-widest text-white uppercase leading-none">
-            SpaceBook
-          </span>
+          <div className="flex items-center">
+            <span className="text-lg font-bold tracking-widest text-white uppercase leading-none">
+              SpaceBook
+            </span>
+          </div>
         </div>
+
+        {/* SharePoint Home Link Button */}
+        <a
+          href="https://vmivsp.sharepoint.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-lg p-2 text-white hover:bg-white/10 transition"
+          aria-label="SharePoint Home"
+        >
+          <Home size={18} />
+        </a>
       </header>
 
       {/* Main */}

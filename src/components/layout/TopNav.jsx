@@ -1,4 +1,4 @@
-import { Search, Bell, User, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Search, Bell, User, PanelLeftClose, PanelLeftOpen, Home } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { useState, useMemo, useRef, useEffect } from 'react'
@@ -207,6 +207,17 @@ export default function TopNav({ onToggleSidebar, sidebarCollapsed, publicOnly =
 
       {!publicOnly && (
         <div className="flex items-center gap-3">
+          {/* Sharepoint Home Link Button */}
+          <a
+            href="https://vmivsp.sharepoint.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg p-2 text-white hover:bg-white/10 transition"
+            aria-label="SharePoint Home"
+          >
+            <Home size={18} />
+          </a>
+
           <div className="relative">
             <button
               ref={notificationButtonRef}
