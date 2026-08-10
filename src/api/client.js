@@ -1,26 +1,33 @@
 import axios from "axios";
 
-const baseURL = "https://spacebook-505h.onrender.com/api";
-
 const client = axios.create({
-  baseURL,
+  baseURL: "https://spacebook-505h.onrender.com/api",
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-client.interceptors.request.use((config) => {
-  const token = localStorage.getItem("spacebook_token");
+// Automatically attach JWT token to every request
+client.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("spacebook_token");
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
+);
 
-  return config;
-});
-
+// Handle authentication errors
 client.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("spacebook_token");
