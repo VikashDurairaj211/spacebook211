@@ -1,181 +1,190 @@
-```jsx
-import { useEffect, useState } from "react";
-import NotificationCard from "../components/cards/NotificationCard";
-import { useAuth } from "../context/AuthContext";
-import client from "../api/client";
+import { useEffect, useState } from 'react'
+import NotificationCard from '../components/cards/NotificationCard'
+import { useAuth } from '../context/AuthContext'
+import client from '../api/client'
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const { user } = useAuth();
-
-  // =====================================================
-  // Determine user role
-  // =====================================================
+  const { user } = useAuth()
 
   const isAdmin =
-    user?.role === "Admin" ||
-    user?.role === "admin" ||
-    user?.isAdmin === true;
+    user?.role === 'Admin' ||
+    user?.role === 'admin' ||
+    user?.isAdmin === true
 
   // =====================================================
-  // Fetch notifications
+  // Fetch Notifications
   // =====================================================
 
   const fetchNotifications = async () => {
-    if (!user) return;
-
     try {
-      setLoading(true);
+      setLoading(true)
+      setError('')
+
+      const token = localStorage.getItem('spacebook_token')
+
+      if (!token || !user) {
+        setNotifications([])
+        return
+      }
 
       const endpoint = isAdmin
-        ? "/admin/notifications"
-        : "/employee/notifications";
+        ? '/admin/notifications'
+        : '/employee/notifications'
 
-      const response = await client.get(endpoint);
+      const response = await client.get(endpoint)
 
-      setNotifications(response.data || []);
-    } catch (error) {
+      setNotifications(response.data || [])
+    } catch (err) {
       console.error(
-        "Failed to fetch notifications:",
-        error
-      );
+        'Failed to fetch notifications:',
+        err
+      )
 
-      setNotifications([]);
+      setError('Unable to load notifications.')
+      setNotifications([])
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   // =====================================================
-  // Mark all notifications as read
+  // Mark All As Read
   // =====================================================
 
   const markAllAsRead = async () => {
-    if (!user) return;
-
     try {
+      const token = localStorage.getItem('spacebook_token')
+
+      if (!token || !user) {
+        return
+      }
+
       const endpoint = isAdmin
-        ? "/admin/notifications/read-all"
-        : "/employee/notifications/read-all";
+        ? '/admin/notifications/read-all'
+        : '/employee/notifications/read-all'
 
-      await client.patch(endpoint);
+      await client.patch(endpoint, {})
 
-      // Update current page immediately
       setNotifications((previous) =>
         previous.map((notification) => ({
           ...notification,
           isRead: true,
         }))
-      );
+      )
 
-      // Notify TopNav and other components
       window.dispatchEvent(
-        new Event("notificationsRead")
-      );
-    } catch (error) {
+        new Event('notificationsRead')
+      )
+    } catch (err) {
       console.error(
-        "Failed to mark notifications as read:",
-        error
-      );
+        'Failed to mark notifications as read:',
+        err
+      )
     }
-  };
+  }
 
   // =====================================================
-  // Load notifications
+  // Load Notifications
   // =====================================================
 
   useEffect(() => {
     if (!user) {
-      setNotifications([]);
-      setLoading(false);
-      return;
+      setLoading(false)
+      return
     }
 
-    fetchNotifications();
+    fetchNotifications()
 
-    const handleNotificationsRead = () => {
-      fetchNotifications();
-    };
+    const handleNotificationRefresh = () => {
+      fetchNotifications()
+    }
 
     window.addEventListener(
-      "notificationsRead",
-      handleNotificationsRead
-    );
+      'notificationsRead',
+      handleNotificationRefresh
+    )
 
     return () => {
       window.removeEventListener(
-        "notificationsRead",
-        handleNotificationsRead
-      );
-    };
-  }, [user, isAdmin]);
+        'notificationsRead',
+        handleNotificationRefresh
+      )
+    }
+  }, [user, isAdmin])
 
   // =====================================================
-  // Unread count
+  // Unread Count
   // =====================================================
 
   const unreadCount = notifications.filter(
-    (item) => !item.isRead
-  ).length;
+    (notification) => !notification.isRead
+  ).length
 
   // =====================================================
   // Render
   // =====================================================
 
   return (
-    <div className="space-y-6">
-      {/* =================================================
-          PAGE HEADER
-      ================================================= */}
+    <div className="space-y-5">
+      {/* Header */}
 
       <div>
-        <h1 className="text-2xl font-semibold text-ink">
+        <h1 className="font-display text-xl font-bold text-ink">
           Notifications
         </h1>
 
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate">
           {isAdmin
-            ? "System and booking request alerts for admin management."
-            : "System and booking alerts for your account."}
+            ? 'System and booking request alerts for admin management.'
+            : 'System and booking alerts for your account.'}
         </p>
       </div>
 
-      {/* =================================================
-          UNREAD COUNT + MARK ALL READ
-      ================================================= */}
+      {/* Unread Count */}
 
       <div className="flex items-center justify-between rounded-2xl border border-line bg-white p-4">
-        <div className="text-sm text-slate-600">
-          <span className="font-semibold text-ink">
-            {unreadCount}
-          </span>{" "}
-          unread notification
-          {unreadCount === 1 ? "" : "s"}
+        <div>
+          <p className="text-sm font-medium text-ink">
+            Notification status
+          </p>
+
+          <p className="mt-1 text-xs text-slate">
+            {unreadCount} unread notification
+            {unreadCount === 1 ? '' : 's'}
+          </p>
         </div>
 
         {unreadCount > 0 && (
           <button
             type="button"
             onClick={markAllAsRead}
-            className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink transition hover:bg-slate-50"
+            className="rounded-xl bg-[#17324D] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
           >
             Mark all as read
           </button>
         )}
       </div>
 
-      {/* =================================================
-          NOTIFICATION LIST
-      ================================================= */}
+      {/* Error */}
+
+      {error && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+
+      {/* Notification List */}
 
       {loading ? (
-        <div className="rounded-2xl border border-line bg-white p-5 text-sm text-slate-500">
+        <div className="rounded-2xl border border-line bg-white p-5 text-sm text-slate">
           Loading notifications...
         </div>
       ) : notifications.length === 0 ? (
-        <div className="rounded-2xl border border-line bg-white p-5 text-sm text-slate-500">
+        <div className="rounded-2xl border border-line bg-white p-5 text-sm text-slate">
           No notifications available.
         </div>
       ) : (
@@ -188,14 +197,13 @@ export default function Notifications() {
               time={item.timeAgo}
               tone={
                 item.isRead
-                  ? "normal"
-                  : "urgent"
+                  ? 'normal'
+                  : 'urgent'
               }
             />
           ))}
         </div>
       )}
     </div>
-  );
+  )
 }
-```
