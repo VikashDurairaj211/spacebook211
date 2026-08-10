@@ -13,7 +13,7 @@ export function Field({ label, children, hint }) {
 export function Input({ className = '', ...props }) {
   return (
     <input
-      className={`w-full border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-slate/60 focus:border-ink focus:outline-none ${className}`}
+      className={`w-full border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-slate/60 focus:border-ink focus:outline-none [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden ${className}`}
       {...props}
     />
   )

@@ -12,7 +12,6 @@ import StatusTag from "../components/common/StatusTag";
 import Modal from "../components/common/Modal";
 
 const MODULES = [
-  
   "Module 2",
   "Module 1",
 ];
@@ -44,6 +43,10 @@ export default function SearchRooms() {
   const [bookings, setBookings] = useState([]);
 
   const [resultsOpen, setResultsOpen] = useState(false);
+  
+  // State for inspecting an individual room's details
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     loadBookings();
@@ -99,6 +102,25 @@ export default function SearchRooms() {
       return;
     }
 
+    // Validate that the booking date is not more than 7 days in advance
+    const selectedDate = new Date(filters.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const maxAllowedDate = new Date();
+    maxAllowedDate.setDate(maxAllowedDate.getDate() + 7);
+    maxAllowedDate.setHours(0, 0, 0, 0);
+
+    if (selectedDate < today) {
+      setError("Cannot book rooms for past dates.");
+      return;
+    }
+
+    if (selectedDate > maxAllowedDate) {
+      setError("Rooms can only be booked up to 1 week in advance.");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -124,16 +146,9 @@ export default function SearchRooms() {
     }
   }
 
-  function roomDetailsLink(roomId) {
-    const params = new URLSearchParams({
-      roomId,
-      date: filters.date,
-      startTime: filters.startTime,
-      endTime: filters.endTime,
-      attendees: filters.capacity,
-    });
-
-    return `/room-details?${params.toString()}`;
+  function handleOpenDetails(room) {
+    setSelectedRoom(room);
+    setDetailsOpen(true);
   }
 
   function bookRoomLink(roomId) {
@@ -162,6 +177,12 @@ export default function SearchRooms() {
     }
     return "bg-slate-500 text-white";
   };
+
+  // Calculate max date string (7 days from today) for the date input attribute
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const maxDateObj = new Date();
+  maxDateObj.setDate(maxDateObj.getDate() + 7);
+  const maxDateStr = maxDateObj.toISOString().slice(0, 10);
 
   return (
     <div className="space-y-6">
@@ -225,7 +246,8 @@ export default function SearchRooms() {
             <Field label="4. Booking Date">
               <Input
                 type="date"
-                min={new Date().toISOString().slice(0, 10)}
+                min={todayStr}
+                max={maxDateStr}
                 disabled={!canChooseDetails}
                 value={filters.date}
                 onChange={(e) => updateFilter("date", e.target.value)}
@@ -375,14 +397,13 @@ export default function SearchRooms() {
                 </div>
 
                 <div className="mt-5 flex gap-3">
-                  <Link
-                    to={roomDetailsLink(room.roomId)}
+                  <Button
+                    variant="secondary"
                     className="flex-1"
+                    onClick={() => handleOpenDetails(room)}
                   >
-                    <Button variant="secondary" className="w-full">
-                      View Details
-                    </Button>
-                  </Link>
+                    View Details
+                  </Button>
 
                   <Link
                     to={bookRoomLink(room.roomId)}
@@ -394,6 +415,54 @@ export default function SearchRooms() {
                 </div>
               </Card>
             ))}
+          </div>
+        )}
+      </Modal>
+
+      {/* Individual Room Details Modal */}
+      <Modal
+        open={detailsOpen}
+        title={selectedRoom ? selectedRoom.roomName : "Room Details"}
+        footer={
+          <Button variant="secondary" onClick={() => setDetailsOpen(false)}>
+            Back
+          </Button>
+        }
+      >
+        {selectedRoom && (
+          <div className="space-y-4 text-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-base font-bold text-slate-900">{selectedRoom.roomName}</p>
+                <p className="text-slate-500">{selectedRoom.module}</p>
+              </div>
+              <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${getStatusBadgeClass("Available")}`}>
+                Available
+              </span>
+            </div>
+
+            <div className="border-t border-line pt-3 space-y-2">
+              <p><span className="font-medium text-slate-700">Room Type:</span> {selectedRoom.roomType}</p>
+              <p><span className="font-medium text-slate-700">Capacity:</span> {selectedRoom.capacity} People</p>
+              <p>
+                <span className="font-medium text-slate-700">Facilities:</span>{" "}
+                {selectedRoom.facilities?.length ? selectedRoom.facilities.join(", ") : "None"}
+              </p>
+              <p><span className="font-medium text-slate-700">Selected Date:</span> {filters.date}</p>
+              <p><span className="font-medium text-slate-700">Time Slot:</span> {filters.startTime} - {filters.endTime}</p>
+            </div>
+
+            <div className="pt-2">
+              <Link
+                to={bookRoomLink(selectedRoom.roomId)}
+                onClick={() => {
+                  setDetailsOpen(false);
+                  setResultsOpen(false);
+                }}
+              >
+                <Button className="w-full">Proceed to Book</Button>
+              </Link>
+            </div>
           </div>
         )}
       </Modal>
@@ -431,9 +500,18 @@ export default function SearchRooms() {
                   : "None"}
               </p>
 
-              <Link to={bookRoomLink(room.roomId)}>
-                <Button className="w-full">Book Room</Button>
-              </Link>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  className="flex-1 text-xs py-2"
+                  onClick={() => handleOpenDetails(room)}
+                >
+                  Details
+                </Button>
+                <Link to={bookRoomLink(room.roomId)} className="flex-1">
+                  <Button className="w-full text-xs py-2">Book Room</Button>
+                </Link>
+              </div>
             </Card>
           ))}
         </div>

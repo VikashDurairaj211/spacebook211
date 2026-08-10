@@ -9,11 +9,21 @@ export async function getRoomById(id) {
   try {
     const { data } = await client.get("/employee/availability");
     const rooms = data.rooms || [];
-    return rooms.find((room) => String(room.roomId) === String(id));
+    const found = rooms.find((room) => String(room.roomId) === String(id));
+    if (found) return found;
+    
+    // If not found in availability, try direct employee room endpoint
+    const fallbackRes = await client.get(`/employee/rooms/${id}`);
+    return fallbackRes.data;
   } catch (error) {
-    // Fallback to admin route
-    const { data } = await client.get(`/admin/rooms/${id}`);
-    return data;
+    // Final fallback to admin route if employee route fails or lacks permission
+    try {
+      const { data } = await client.get(`/admin/rooms/${id}`);
+      return data;
+    } catch (adminError) {
+      console.error("Failed to fetch room by ID from all sources:", adminError);
+      throw adminError;
+    }
   }
 }
 
