@@ -1,8 +1,6 @@
 import axios from "axios";
 
-const baseURL =
-  import.meta.env.VITE_API_BASE_URL ||
-  "http://localhost:5263/api";
+const baseURL = "https://spacebook-505h.onrender.com/api";
 
 const client = axios.create({
   baseURL,
