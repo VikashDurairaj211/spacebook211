@@ -112,7 +112,7 @@ export default function Sidebar({ collapsed = true }) {
                   </div>
 
                   <div className="flex items-baseline justify-between pt-1">
-                    <span className="text-sm font-semibold text-slate-900">09:00 - 18:00 IST</span>
+                    <span className="text-sm font-semibold text-slate-900">10:00 - 18:00 IST</span>
                     <span className="text-[10px] text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-full">
                       Active Hours
                     </span>
