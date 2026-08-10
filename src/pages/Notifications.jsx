@@ -1,85 +1,174 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
-import NotificationCard from '../components/cards/NotificationCard'
-import { useAuth } from '../context/AuthContext' // Changed from '../../' to '../'
+```jsx
+import { useEffect, useState } from "react";
+import NotificationCard from "../components/cards/NotificationCard";
+import { useAuth } from "../context/AuthContext";
+import client from "../api/client";
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const { user } = useAuth()
-  const isAdmin = user?.role === 'Admin' || user?.isAdmin === true
+  const { user } = useAuth();
+
+  // =====================================================
+  // Determine user role
+  // =====================================================
+
+  const isAdmin =
+    user?.role === "Admin" ||
+    user?.role === "admin" ||
+    user?.isAdmin === true;
+
+  // =====================================================
+  // Fetch notifications
+  // =====================================================
 
   const fetchNotifications = async () => {
+    if (!user) return;
+
     try {
-      setLoading(true)
-      const token = localStorage.getItem('spacebook_token')
-      if (!token) return
+      setLoading(true);
 
       const endpoint = isAdmin
-        ? 'http://localhost:5263/api/admin/notifications'
-        : 'http://localhost:5263/api/employee/notifications'
+        ? "/admin/notifications"
+        : "/employee/notifications";
 
-      const res = await axios.get(endpoint, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      })
-      setNotifications(res.data || [])
-    } catch (err) {
-      console.error('Failed to fetch notifications:', err)
+      const response = await client.get(endpoint);
+
+      setNotifications(response.data || []);
+    } catch (error) {
+      console.error(
+        "Failed to fetch notifications:",
+        error
+      );
+
+      setNotifications([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  // =====================================================
+  // Mark all notifications as read
+  // =====================================================
 
   const markAllAsRead = async () => {
+    if (!user) return;
+
     try {
-      const token = localStorage.getItem('spacebook_token')
-      if (!token) return
-
       const endpoint = isAdmin
-        ? 'http://localhost:5263/api/admin/notifications/read-all'
-        : 'http://localhost:5263/api/employee/notifications/read-all'
+        ? "/admin/notifications/read-all"
+        : "/employee/notifications/read-all";
 
-      await axios.patch(endpoint, {}, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      })
-      window.dispatchEvent(new Event('notificationsRead'))
-    } catch (err) {
-      console.error('Failed to mark notifications as read:', err)
+      await client.patch(endpoint);
+
+      // Update current page immediately
+      setNotifications((previous) =>
+        previous.map((notification) => ({
+          ...notification,
+          isRead: true,
+        }))
+      );
+
+      // Notify TopNav and other components
+      window.dispatchEvent(
+        new Event("notificationsRead")
+      );
+    } catch (error) {
+      console.error(
+        "Failed to mark notifications as read:",
+        error
+      );
     }
-  }
+  };
+
+  // =====================================================
+  // Load notifications
+  // =====================================================
 
   useEffect(() => {
-    if (user) {
-      fetchNotifications()
-      markAllAsRead()
+    if (!user) {
+      setNotifications([]);
+      setLoading(false);
+      return;
     }
 
-    window.addEventListener('notificationsRead', fetchNotifications)
-    return () => window.removeEventListener('notificationsRead', fetchNotifications)
-  }, [user, isAdmin])
+    fetchNotifications();
 
-  const unreadCount = notifications.filter((item) => !item.isRead).length
+    const handleNotificationsRead = () => {
+      fetchNotifications();
+    };
+
+    window.addEventListener(
+      "notificationsRead",
+      handleNotificationsRead
+    );
+
+    return () => {
+      window.removeEventListener(
+        "notificationsRead",
+        handleNotificationsRead
+      );
+    };
+  }, [user, isAdmin]);
+
+  // =====================================================
+  // Unread count
+  // =====================================================
+
+  const unreadCount = notifications.filter(
+    (item) => !item.isRead
+  ).length;
+
+  // =====================================================
+  // Render
+  // =====================================================
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="border border-line bg-white p-5 rounded-2xl shadow-sm">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="font-display text-xl font-bold text-ink">Notifications</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              {isAdmin ? 'System and booking request alerts for admin management.' : 'System and booking alerts for your account.'}
-            </p>
-          </div>
-          <div className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700">
-            {unreadCount} unread notification{unreadCount === 1 ? '' : 's'}
-          </div>
-        </div>
+    <div className="space-y-6">
+      {/* =================================================
+          PAGE HEADER
+      ================================================= */}
+
+      <div>
+        <h1 className="text-2xl font-semibold text-ink">
+          Notifications
+        </h1>
+
+        <p className="mt-1 text-sm text-slate-500">
+          {isAdmin
+            ? "System and booking request alerts for admin management."
+            : "System and booking alerts for your account."}
+        </p>
       </div>
+
+      {/* =================================================
+          UNREAD COUNT + MARK ALL READ
+      ================================================= */}
+
+      <div className="flex items-center justify-between rounded-2xl border border-line bg-white p-4">
+        <div className="text-sm text-slate-600">
+          <span className="font-semibold text-ink">
+            {unreadCount}
+          </span>{" "}
+          unread notification
+          {unreadCount === 1 ? "" : "s"}
+        </div>
+
+        {unreadCount > 0 && (
+          <button
+            type="button"
+            onClick={markAllAsRead}
+            className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink transition hover:bg-slate-50"
+          >
+            Mark all as read
+          </button>
+        )}
+      </div>
+
+      {/* =================================================
+          NOTIFICATION LIST
+      ================================================= */}
 
       {loading ? (
         <div className="rounded-2xl border border-line bg-white p-5 text-sm text-slate-500">
@@ -97,11 +186,16 @@ export default function Notifications() {
               title={item.title}
               message={item.message}
               time={item.timeAgo}
-              tone={item.isRead ? 'normal' : 'urgent'}
+              tone={
+                item.isRead
+                  ? "normal"
+                  : "urgent"
+              }
             />
           ))}
         </div>
       )}
     </div>
-  )
+  );
 }
+```
