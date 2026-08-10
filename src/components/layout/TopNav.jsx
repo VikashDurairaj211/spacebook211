@@ -237,7 +237,7 @@ export default function TopNav({
   // =====================================================
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-white/10 bg-[#17324D] px-4 shadow-sm">
+    <header className="flex h-14 items-center justify-between border-b border-white/10 bg-[#17324D] px-4 shadow-sm">
       {/* =================================================
           LEFT SIDE
       ================================================= */}
@@ -247,7 +247,7 @@ export default function TopNav({
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="mr-3 rounded-lg p-2 text-white hover:bg-white/10 transition"
+            className="mr-3 rounded-lg p-1.5 text-white hover:bg-white/10 transition"
             aria-label={
               sidebarCollapsed
                 ? 'Open sidebar'
@@ -255,24 +255,24 @@ export default function TopNav({
             }
           >
             {sidebarCollapsed ? (
-              <PanelLeftOpen size={19} />
+              <PanelLeftOpen size={18} />
             ) : (
-              <PanelLeftClose size={19} />
+              <PanelLeftClose size={18} />
             )}
           </button>
         )}
 
         <div
-          className="flex cursor-pointer items-center gap-2.5"
+          className="flex cursor-pointer items-center gap-2"
           onClick={() => navigate('/dashboard')}
         >
           <img
             src={Logo}
             alt="SpaceBook"
-            className="h-8 w-8 object-contain"
+            className="h-7 w-7 object-contain"
           />
 
-          <span className="hidden font-display text-lg font-bold text-white sm:block">
+          <span className="hidden font-display text-base font-bold text-white sm:block">
             Spacebook
           </span>
         </div>
@@ -285,16 +285,16 @@ export default function TopNav({
       {!publicOnly && (
         <form
           onSubmit={handleSearchSubmit}
-          className="relative mx-6 hidden max-w-md flex-1 md:flex"
+          className="relative mx-6 hidden max-w-sm flex-1 md:flex"
         >
-          <div className="flex w-full items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 focus-within:border-white/50">
+          <div className="flex w-full items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-1 focus-within:border-white/50">
             <button
               type="submit"
               className="text-white transition-opacity hover:opacity-80"
               aria-label="Search"
             >
               <Search
-                size={15}
+                size={14}
                 className="text-white"
               />
             </button>
@@ -312,7 +312,7 @@ export default function TopNav({
                   setShowSearchResults(true)
                 }
               }}
-              className="w-full bg-transparent text-sm font-sans text-white outline-none placeholder:text-slate-200"
+              className="w-full bg-transparent text-xs font-sans text-white outline-none placeholder:text-slate-200"
             />
           </div>
 
@@ -399,17 +399,17 @@ export default function TopNav({
       ================================================= */}
 
       {!publicOnly && (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* SharePoint */}
 
           <a
             href="https://vmivsp.sharepoint.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-lg p-2 text-white transition hover:bg-white/10"
+            className="rounded-lg p-1.5 text-white transition hover:bg-white/10"
             aria-label="SharePoint Home"
           >
-            <Home size={18} />
+            <Home size={16} />
           </a>
 
           {/* Notifications */}
@@ -425,13 +425,13 @@ export default function TopNav({
 
                 setMenuOpen(false)
               }}
-              className="relative rounded-lg p-2 text-white hover:bg-white/10"
+              className="relative rounded-lg p-1.5 text-white hover:bg-white/10"
               aria-label="Notifications"
             >
-              <Bell size={18} />
+              <Bell size={16} />
 
               {unreadCount > 0 && (
-                <span className="pointer-events-none absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-400 px-1.5 text-[10px] font-semibold text-white">
+                <span className="pointer-events-none absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[9px] font-semibold text-white">
                   {unreadCount}
                 </span>
               )}
@@ -461,11 +461,11 @@ export default function TopNav({
               onClick={() =>
                 setMenuOpen((value) => !value)
               }
-              className="flex items-center gap-2 rounded-lg border border-white/20 px-2 py-1 text-sm text-white hover:bg-white/10"
+              className="flex items-center gap-2 rounded-lg border border-white/20 px-2 py-1 text-xs text-white hover:bg-white/10"
             >
-              <User size={15} />
+              <User size={14} />
 
-              <span className="max-w-[120px] truncate font-mono text-xs">
+              <span className="max-w-[100px] truncate font-mono text-xs">
                 {user?.name || 'Employee'}
               </span>
             </button>

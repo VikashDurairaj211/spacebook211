@@ -21,7 +21,7 @@ export default function Sidebar({ collapsed = true }) {
   const isAdmin = user?.role === 'Admin' || user?.isAdmin === true
 
   return (
-    <aside className={`hidden md:fixed md:top-14 md:left-0 md:h-[calc(100%-3.5rem)] md:overflow-auto md:flex md:flex-col border-r border-slate-200 bg-portal-bg transition-all duration-200 ${widthClass}`}>
+    <aside className={`hidden md:fixed md:top-14 md:left-0 md:h-[calc(100%-3.5rem)] md:overflow-y-auto md:flex md:flex-col border-r border-slate-200 bg-portal-bg transition-all duration-200 ${widthClass}`}>
       <div className="px-4 py-4 space-y-6">
         {/* Show workspace menu only for non-admin users */}
         {!isAdmin && (
