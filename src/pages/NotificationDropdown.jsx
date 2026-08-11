@@ -10,8 +10,63 @@ export default function NotificationDropdown({ onClose }) {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  // Determine whether logged-in user is Admin
-  const isAdmin = user?.role === 'Admin' || user?.isAdmin === true
+  const isAdmin =
+    user?.role === 'Admin' ||
+    user?.role === 'admin' ||
+    user?.isAdmin === true
+
+  // =====================================================
+  // Format Booking Date
+  // =====================================================
+
+  const formatBookingDate = (date) => {
+    if (!date) return ''
+
+    const parsedDate = new Date(date)
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return date
+    }
+
+    return parsedDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  }
+
+  // =====================================================
+  // Format Time
+  // =====================================================
+
+  const formatTime = (time) => {
+    if (!time) return ''
+
+    // Handles "08:00:00"
+    const parts = time.split(':')
+
+    if (parts.length < 2) {
+      return time
+    }
+
+    const hours = Number(parts[0])
+    const minutes = Number(parts[1])
+
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+      return time
+    }
+
+    const date = new Date()
+
+    date.setHours(hours)
+    date.setMinutes(minutes)
+    date.setSeconds(0)
+
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
 
   // =====================================================
   // Fetch Notifications
@@ -52,7 +107,6 @@ export default function NotificationDropdown({ onClose }) {
 
       await client.patch(endpoint, {})
 
-      // Update UI immediately
       setNotifications((prev) =>
         prev.map((item) => ({
           ...item,
@@ -60,15 +114,12 @@ export default function NotificationDropdown({ onClose }) {
         }))
       )
 
-      // Notify other components
       window.dispatchEvent(new Event('notificationsRead'))
     } catch (error) {
-      console.error('Failed to mark notifications as read:', error)
-
-      if (error.response) {
-        console.error('Status:', error.response.status)
-        console.error('Response:', error.response.data)
-      }
+      console.error(
+        'Failed to mark notifications as read:',
+        error
+      )
     }
   }
 
@@ -85,7 +136,6 @@ export default function NotificationDropdown({ onClose }) {
 
     fetchNotifications()
 
-    // Refresh when another component marks notifications as read
     const handleNotificationsRead = () => {
       fetchNotifications()
     }
@@ -108,9 +158,10 @@ export default function NotificationDropdown({ onClose }) {
   // =====================================================
 
   return (
-    <div className="absolute right-0 top-full z-50 mt-2 w-[380px] max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+    <div className="absolute right-0 top-full z-50 mt-2 w-[420px] max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
 
       {/* Header */}
+
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h3 className="font-display text-sm font-bold text-slate-900">
@@ -136,7 +187,8 @@ export default function NotificationDropdown({ onClose }) {
       </div>
 
       {/* Notifications List */}
-      <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
+
+      <div className="max-h-[380px] space-y-3 overflow-y-auto pr-1">
 
         {loading ? (
           <p className="py-6 text-center text-sm text-slate-400">
@@ -150,16 +202,16 @@ export default function NotificationDropdown({ onClose }) {
           notifications.map((item) => (
             <div
               key={item.notificationId}
-              className={`flex items-start justify-between rounded-xl border p-3.5 transition ${
+              className={`rounded-xl border p-3.5 transition ${
                 !item.isRead
                   ? 'border-slate-200 bg-slate-50/70'
                   : 'border-slate-100 bg-white'
               }`}
             >
 
-              {/* Notification Content */}
-              <div className="space-y-1 pr-2">
+              {/* Header */}
 
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-slate-900">
                     {item.title}
@@ -172,16 +224,61 @@ export default function NotificationDropdown({ onClose }) {
                   )}
                 </div>
 
-                <p className="text-xs leading-relaxed text-slate-600">
-                  {item.message}
+                <span className="whitespace-nowrap font-mono text-[10px] uppercase text-slate-400">
+                  {item.timeAgo}
+                </span>
+              </div>
+
+              {/* Employee */}
+
+              {item.employeeName && (
+                <p className="mt-2 text-sm font-semibold text-slate-900">
+                  {item.employeeName}
                 </p>
+              )}
 
-              </div>
+              {/* Message */}
 
-              {/* Time */}
-              <div className="whitespace-nowrap pt-0.5 text-right font-mono text-[10px] uppercase leading-tight text-slate-400">
-                {item.timeAgo}
-              </div>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                {item.message}
+              </p>
+
+              {/* Booking Details */}
+
+              {(item.roomName ||
+                item.bookingDate ||
+                item.startTime ||
+                item.endTime) && (
+                <div className="mt-3 rounded-lg bg-white p-2.5">
+
+                  {item.roomName && (
+                    <p className="text-xs text-slate-700">
+                      <span className="font-semibold">
+                        Room:
+                      </span>{' '}
+                      {item.roomName}
+                    </p>
+                  )}
+
+                  {item.bookingDate && (
+                    <p className="mt-1 text-xs text-slate-600">
+                      <span className="font-semibold">
+                        📅
+                      </span>{' '}
+                      {formatBookingDate(item.bookingDate)}
+                      {item.startTime && item.endTime && (
+                        <>
+                          {' · '}
+                          {formatTime(item.startTime)}
+                          {'–'}
+                          {formatTime(item.endTime)}
+                        </>
+                      )}
+                    </p>
+                  )}
+
+                </div>
+              )}
 
             </div>
           ))
@@ -190,6 +287,7 @@ export default function NotificationDropdown({ onClose }) {
       </div>
 
       {/* Footer */}
+
       <div className="mt-3 border-t border-slate-100 pt-3 text-center">
         <button
           type="button"
@@ -209,4 +307,3 @@ export default function NotificationDropdown({ onClose }) {
     </div>
   )
 }
-

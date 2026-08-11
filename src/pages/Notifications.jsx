@@ -16,6 +16,58 @@ export default function Notifications() {
     user?.isAdmin === true
 
   // =====================================================
+  // Format Booking Date
+  // =====================================================
+
+  const formatBookingDate = (date) => {
+    if (!date) return ''
+
+    const parsedDate = new Date(date)
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return date
+    }
+
+    return parsedDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  }
+
+  // =====================================================
+  // Format Time
+  // =====================================================
+
+  const formatTime = (time) => {
+    if (!time) return ''
+
+    const parts = time.split(':')
+
+    if (parts.length < 2) {
+      return time
+    }
+
+    const hours = Number(parts[0])
+    const minutes = Number(parts[1])
+
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+      return time
+    }
+
+    const date = new Date()
+
+    date.setHours(hours)
+    date.setMinutes(minutes)
+    date.setSeconds(0)
+
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  // =====================================================
   // Fetch Notifications
   // =====================================================
 
@@ -24,7 +76,8 @@ export default function Notifications() {
       setLoading(true)
       setError('')
 
-      const token = localStorage.getItem('spacebook_token')
+      const token =
+        localStorage.getItem('spacebook_token')
 
       if (!token || !user) {
         setNotifications([])
@@ -44,7 +97,10 @@ export default function Notifications() {
         err
       )
 
-      setError('Unable to load notifications.')
+      setError(
+        'Unable to load notifications.'
+      )
+
       setNotifications([])
     } finally {
       setLoading(false)
@@ -57,7 +113,8 @@ export default function Notifications() {
 
   const markAllAsRead = async () => {
     try {
-      const token = localStorage.getItem('spacebook_token')
+      const token =
+        localStorage.getItem('spacebook_token')
 
       if (!token || !user) {
         return
@@ -130,6 +187,7 @@ export default function Notifications() {
 
   return (
     <div className="space-y-5">
+
       {/* Header */}
 
       <div>
@@ -144,9 +202,11 @@ export default function Notifications() {
         </p>
       </div>
 
+
       {/* Unread Count */}
 
       <div className="flex items-center justify-between rounded-2xl border border-line bg-white p-4">
+
         <div>
           <p className="text-sm font-medium text-ink">
             Notification status
@@ -167,7 +227,9 @@ export default function Notifications() {
             Mark all as read
           </button>
         )}
+
       </div>
+
 
       {/* Error */}
 
@@ -177,33 +239,146 @@ export default function Notifications() {
         </div>
       )}
 
+
       {/* Notification List */}
 
       {loading ? (
         <div className="rounded-2xl border border-line bg-white p-5 text-sm text-slate">
           Loading notifications...
         </div>
+
       ) : notifications.length === 0 ? (
         <div className="rounded-2xl border border-line bg-white p-5 text-sm text-slate">
           No notifications available.
         </div>
+
       ) : (
+
         <div className="space-y-3">
+
           {notifications.map((item) => (
-            <NotificationCard
+
+            <div
               key={item.notificationId}
-              title={item.title}
-              message={item.message}
-              time={item.timeAgo}
-              tone={
+              className={`rounded-2xl border p-4 transition ${
                 item.isRead
-                  ? 'normal'
-                  : 'urgent'
-              }
-            />
+                  ? 'border-line bg-white'
+                  : 'border-slate-200 bg-slate-50/70'
+              }`}
+            >
+
+              {/* Top Row */}
+
+              <div className="flex items-start justify-between gap-4">
+
+                <div className="flex items-center gap-2">
+
+                  <span className="text-sm font-bold text-ink">
+                    {item.title}
+                  </span>
+
+                  {!item.isRead && (
+                    <span className="rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                      NEW
+                    </span>
+                  )}
+
+                </div>
+
+                <span className="whitespace-nowrap font-mono text-[10px] uppercase text-slate">
+                  {item.timeAgo}
+                </span>
+
+              </div>
+
+
+              {/* Employee */}
+
+              {item.employeeName && (
+                <p className="mt-3 text-sm font-semibold text-ink">
+                  {item.employeeName}
+                </p>
+              )}
+
+
+              {/* Main Message */}
+
+              <p className="mt-1 text-sm leading-relaxed text-slate">
+                {item.message}
+              </p>
+
+
+              {/* Booking Information */}
+
+              {(item.roomName ||
+                item.bookingDate ||
+                item.startTime ||
+                item.endTime) && (
+
+                <div className="mt-3 rounded-xl border border-line bg-white p-3">
+
+                  {/* Room */}
+
+                  {item.roomName && (
+                    <div className="flex items-center gap-2 text-sm text-ink">
+
+                      <span>
+                        🏢
+                      </span>
+
+                      <span>
+                        <span className="font-semibold">
+                          Room:
+                        </span>{' '}
+                        {item.roomName}
+                      </span>
+
+                    </div>
+                  )}
+
+
+                  {/* Date and Time */}
+
+                  {item.bookingDate && (
+                    <div className="mt-2 flex items-center gap-2 text-sm text-slate">
+
+                      <span>
+                        📅
+                      </span>
+
+                      <span>
+                        {formatBookingDate(
+                          item.bookingDate
+                        )}
+
+                        {item.startTime &&
+                          item.endTime && (
+                            <>
+                              {' · '}
+                              {formatTime(
+                                item.startTime
+                              )}
+                              {'–'}
+                              {formatTime(
+                                item.endTime
+                              )}
+                            </>
+                          )}
+                      </span>
+
+                    </div>
+                  )}
+
+                </div>
+              )}
+
+            </div>
+
           ))}
+
         </div>
       )}
+
     </div>
   )
 }

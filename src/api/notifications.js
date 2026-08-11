@@ -1,20 +1,30 @@
 import client from "./client";
 
+// Get notifications for the logged-in user
 export async function getNotifications() {
-  const role = localStorage.getItem("user_role") || "Admin"; // Fallback to Admin if not set
-  const endpoint = role === "Admin" ? "/admin/notifications" : "/employee/notifications";
+  const role = localStorage.getItem("user_role");
 
-  try {
-    const { data } = await client.get(endpoint);
-    return data;
-  } catch (error) {
-    // Secondary fallback
-    const { data } = await client.get("/notifications");
-    return data;
-  }
+  const endpoint =
+    role === "Admin"
+      ? "/admin/notifications"
+      : "/employee/notifications";
+
+  const { data } = await client.get(endpoint);
+
+  return data || [];
 }
 
+// Mark all notifications as read
 export async function markAllNotificationsAsRead() {
-  const { data } = await client.patch("/notifications/read-all");
+  const role = localStorage.getItem("user_role");
+
+  const endpoint =
+    role === "Admin"
+      ? "/admin/notifications/read-all"
+      : "/employee/notifications/read-all";
+
+  const { data } = await client.patch(endpoint, {});
+
   return data;
+
 }
