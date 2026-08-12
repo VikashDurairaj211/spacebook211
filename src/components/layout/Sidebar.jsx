@@ -21,13 +21,13 @@ export default function Sidebar({ collapsed = true }) {
   const isAdmin = user?.role === 'Admin' || user?.isAdmin === true
 
   return (
-    <aside className={`hidden md:fixed md:top-14 md:left-0 md:h-[calc(100%-3.5rem)] md:overflow-y-auto md:flex md:flex-col border-r border-slate-200 bg-portal-bg transition-all duration-200 ${widthClass}`}>
+    <aside className={`hidden md:fixed md:top-14 md:left-0 md:h-[calc(100%-3.5rem)] md:overflow-y-auto md:flex md:flex-col border-r border-sky-200 bg-sky-50/60 transition-all duration-200 ${widthClass}`}>
       <div className="px-4 py-4 space-y-6">
         {/* Show workspace menu only for non-admin users */}
         {!isAdmin && (
           <>
             <div>
-              <p className={`mb-2 font-mono text-[11px] uppercase tracking-[0.25em] text-slate-500 ${collapsed ? 'hidden' : 'block'}`}>Workspace</p>
+              <p className={`mb-2 font-mono text-[11px] uppercase tracking-[0.25em] text-sky-800/70 ${collapsed ? 'hidden' : 'block'}`}>Workspace</p>
               <ul className="space-y-1.5">
                 {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
                   <li key={to}>
@@ -37,8 +37,8 @@ export default function Sidebar({ collapsed = true }) {
                       className={({ isActive }) =>
                         `flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-all duration-200 ${
                           isActive
-                            ? 'bg-portal-nav text-white font-medium'
-                            : 'text-slate-700 hover:bg-white/80 hover:text-ink'
+                            ? 'bg-sky-600 text-white font-medium shadow-sm'
+                            : 'text-sky-950 hover:bg-sky-200/60 hover:text-sky-900'
                         } ${collapsed ? 'justify-center px-2' : ''}`
                       }
                     >
@@ -53,21 +53,21 @@ export default function Sidebar({ collapsed = true }) {
             {/* Employee Office Policy Reminder Widget */}
             {!collapsed && (
               <div className="pt-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm space-y-2">
+                <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-800">
                       Office Policy
                     </span>
-                    <Clock size={14} className="text-[#658362]" />
+                    <Clock size={14} className="text-sky-600" />
                   </div>
 
                   <div className="flex items-baseline justify-between pt-1">
-                    <span className="text-sm font-semibold text-slate-900">09:00 - 18:00 IST</span>
-                    <span className="text-[10px] text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-full">
+                    <span className="text-sm font-semibold text-sky-950">09:00 - 18:00 IST</span>
+                    <span className="text-[10px] text-sky-800 font-medium bg-sky-100 px-2 py-0.5 rounded-full">
                       Active Hours
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-tight">
+                  <p className="text-[11px] text-sky-900/70 leading-tight">
                     Ensure standard room reservations comply with operational office time slots.
                   </p>
                 </div>
@@ -79,7 +79,7 @@ export default function Sidebar({ collapsed = true }) {
         {/* Admin menu only for admins */}
         {isAdmin && (
           <div>
-            <p className={`mb-2 font-mono text-[11px] uppercase tracking-[0.25em] text-slate-500 ${collapsed ? 'hidden' : 'block'}`}>Admin</p>
+            <p className={`mb-2 font-mono text-[11px] uppercase tracking-[0.25em] text-sky-800/70 ${collapsed ? 'hidden' : 'block'}`}>Admin</p>
             <ul className="space-y-1.5">
               {ADMIN_ITEMS.map(({ to, label, icon: Icon }) => (
                 <li key={to}>
@@ -88,8 +88,8 @@ export default function Sidebar({ collapsed = true }) {
                     className={({ isActive }) =>
                       `flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-all duration-200 ${
                         isActive
-                          ? 'bg-portal-nav text-white font-medium'
-                          : 'text-slate-700 hover:bg-white/80 hover:text-ink'
+                          ? 'bg-sky-600 text-white font-medium shadow-sm'
+                          : 'text-sky-950 hover:bg-sky-200/60 hover:text-sky-900'
                       } ${collapsed ? 'justify-center px-2' : ''}`
                     }
                   >
@@ -103,21 +103,21 @@ export default function Sidebar({ collapsed = true }) {
             {/* Admin Policy Reminder Widget */}
             {!collapsed && (
               <div className="mt-6 pt-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm space-y-2">
+                <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-800">
                       Office Policy
                     </span>
-                    <Clock size={14} className="text-[#658362]" />
+                    <Clock size={14} className="text-sky-600" />
                   </div>
 
                   <div className="flex items-baseline justify-between pt-1">
-                    <span className="text-sm font-semibold text-slate-900">10:00 - 18:00 IST</span>
-                    <span className="text-[10px] text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded-full">
+                    <span className="text-sm font-semibold text-sky-950">10:00 - 18:00 IST</span>
+                    <span className="text-[10px] text-sky-800 font-medium bg-sky-100 px-2 py-0.5 rounded-full">
                       Active Hours
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-tight">
+                  <p className="text-[11px] text-sky-900/70 leading-tight">
                     Ensure standard booking approvals comply with operational office time slots.
                   </p>
                 </div>

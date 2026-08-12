@@ -12,8 +12,8 @@ export default function Layout() {
 
   return (
     <ToastProvider>
-      {/* 1. Lock root container height to exact screen viewport and hide window scrolling */}
-      <div className="flex h-screen w-full flex-col overflow-hidden bg-portal-bg">
+      {/* 1. Root container uses light sky background to match the nav */}
+      <div className="flex h-screen w-full flex-col overflow-hidden bg-sky-50/40">
         
         {/* 2. TopNav stays fixed at the top */}
         <TopNav onToggleSidebar={() => setSidebarCollapsed((v) => !v)} sidebarCollapsed={sidebarCollapsed} />
@@ -24,10 +24,11 @@ export default function Layout() {
           {/* Sidebar stays fixed on the left */}
           <Sidebar collapsed={sidebarCollapsed} />
 
-          {/* 4. Only this main container handles independent scrolling */}
-          <main className={`flex-1 overflow-y-auto ${mainMarginClass} transition-all duration-200 bg-portal-bg`}>
+          {/* 4. Main container handles independent scrolling with matching tint */}
+          <main className={`flex-1 overflow-y-auto ${mainMarginClass} transition-all duration-200 bg-sky-50/40`}>
             <div className="mx-auto max-w-7xl">
-              <div className="rounded-[24px] bg-white p-6 m-6 shadow-md">
+              {/* Optional: If you want content pages to sit on a clean white surface with soft borders */}
+              <div className="rounded-[24px] bg-white/80 backdrop-blur-sm border border-sky-100 p-6 m-6 shadow-sm">
                 <Outlet />
               </div>
             </div>

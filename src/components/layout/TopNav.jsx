@@ -237,7 +237,7 @@ export default function TopNav({
   // =====================================================
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-white/10 bg-[#17324D] px-4 shadow-sm">
+    <header className="fixed top-0 left-0 right-0 z-40 flex h-[52px] items-center justify-between border-b border-sky-200 bg-sky-100 px-4 shadow-sm">
       {/* =================================================
           LEFT SIDE
       ================================================= */}
@@ -247,7 +247,7 @@ export default function TopNav({
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="mr-3 rounded-lg p-1.5 text-white hover:bg-white/10 transition"
+            className="mr-3 rounded-lg p-1.5 text-sky-900 hover:bg-sky-200 transition"
             aria-label={
               sidebarCollapsed
                 ? 'Open sidebar'
@@ -272,7 +272,7 @@ export default function TopNav({
             className="h-7 w-7 object-contain"
           />
 
-          <span className="hidden font-display text-base font-bold text-white sm:block">
+          <span className="hidden font-display text-base font-bold text-sky-950 sm:block">
             Spacebook
           </span>
         </div>
@@ -287,15 +287,15 @@ export default function TopNav({
           onSubmit={handleSearchSubmit}
           className="relative mx-6 hidden max-w-sm flex-1 md:flex"
         >
-          <div className="flex w-full items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-1 focus-within:border-white/50">
+          <div className="flex w-full items-center gap-2 rounded-lg border border-sky-300 bg-white/60 px-3 py-1 focus-within:border-sky-500">
             <button
               type="submit"
-              className="text-white transition-opacity hover:opacity-80"
+              className="text-sky-900 transition-opacity hover:opacity-80"
               aria-label="Search"
             >
               <Search
                 size={14}
-                className="text-white"
+                className="text-sky-900"
               />
             </button>
 
@@ -312,7 +312,7 @@ export default function TopNav({
                   setShowSearchResults(true)
                 }
               }}
-              className="w-full bg-transparent text-xs font-sans text-white outline-none placeholder:text-slate-200"
+              className="w-full bg-transparent text-xs font-sans text-sky-950 outline-none placeholder:text-sky-700/60"
             />
           </div>
 
@@ -400,13 +400,11 @@ export default function TopNav({
 
       {!publicOnly && (
         <div className="flex items-center gap-2">
-          {/* SharePoint */}
+          {/* SharePoint - Opens in the same tab */}
 
           <a
             href="https://vmivsp.sharepoint.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-lg p-1.5 text-white transition hover:bg-white/10"
+            className="rounded-lg p-1.5 text-sky-900 transition hover:bg-sky-200"
             aria-label="SharePoint Home"
           >
             <Home size={16} />
@@ -425,13 +423,13 @@ export default function TopNav({
 
                 setMenuOpen(false)
               }}
-              className="relative rounded-lg p-1.5 text-white hover:bg-white/10"
+              className="relative rounded-lg p-1.5 text-sky-900 hover:bg-sky-200"
               aria-label="Notifications"
             >
               <Bell size={16} />
 
               {unreadCount > 0 && (
-                <span className="pointer-events-none absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[9px] font-semibold text-white">
+                <span className="pointer-events-none absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-semibold text-white">
                   {unreadCount}
                 </span>
               )}
@@ -461,7 +459,7 @@ export default function TopNav({
               onClick={() =>
                 setMenuOpen((value) => !value)
               }
-              className="flex items-center gap-2 rounded-lg border border-white/20 px-2 py-1 text-xs text-white hover:bg-white/10"
+              className="flex items-center gap-2 rounded-lg border border-sky-300 px-2 py-1 text-xs text-sky-950 hover:bg-sky-200"
             >
               <User size={14} />
 

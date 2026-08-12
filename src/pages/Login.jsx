@@ -6,8 +6,9 @@ import { Field, Input } from "../components/common/Input";
 import Button from "../components/common/Button";
 import Logo from "../../Logo.png";
 
+// Bright, modern, sunlit architectural office background that matches the light blue theme
 const BACKGROUND_IMAGE_URL =
-  "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1920&q=80";
+  "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1920&q=80";
 
 export default function Login() {
   const { login, error, loading } = useAuth();
@@ -41,34 +42,32 @@ export default function Login() {
         style={{ backgroundImage: `url('${BACKGROUND_IMAGE_URL}')` }}
       />
 
-      {/* Dark Overlay */}
-      <div className="absolute inset-0 -z-10 bg-[#001D4A]/70" />
+      {/* Soft Light-Blue Tinted Overlay to make the header and image sync seamlessly */}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-sky-900/60 via-sky-950/70 to-slate-900/80 backdrop-blur-[2px]" />
 
-      {/* Header */}
-      <header className="w-full bg-[#001D4A]/90 px-6 py-3 shadow-lg flex items-center justify-between backdrop-blur-md border-b border-white/10 shrink-0">
+      {/* Header - Styled with light blue theme */}
+      <header className="w-full bg-sky-100 px-6 py-3 shadow-sm flex items-center justify-between border-b border-sky-200 shrink-0">
         <div className="flex items-center gap-3">
           <img
             src={Logo}
             alt="SpaceBook"
-            className="h-10 w-auto object-contain"
+            className="h-7 w-auto object-contain"
           />
 
           <div className="flex items-center">
-            <span className="text-lg font-bold tracking-widest text-white uppercase leading-none">
-              SpaceBook
+            <span className="text-base font-bold tracking-normal text-sky-950">
+              Spacebook
             </span>
           </div>
         </div>
 
-        {/* SharePoint Home Link Button */}
+        {/* SharePoint Home Link Button - Same tab navigation */}
         <a
           href="https://vmivsp.sharepoint.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-lg p-2 text-white hover:bg-white/10 transition"
+          className="rounded-lg p-1.5 text-sky-900 hover:bg-sky-200 transition"
           aria-label="SharePoint Home"
         >
-          <Home size={18} />
+          <Home size={16} />
         </a>
       </header>
 
@@ -76,20 +75,20 @@ export default function Login() {
       <main className="flex-1 w-full max-w-7xl mx-auto px-8 py-6 flex flex-col justify-center overflow-hidden">
         {/* Title */}
         <div className="max-w-3xl mb-6 text-white">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-normal leading-tight tracking-tight whitespace-nowrap">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-normal leading-tight tracking-tight whitespace-nowrap drop-shadow-sm">
             Reserve Your Workspace
           </h1>
 
-          <p className="mt-3 text-base text-slate-200">
+          <p className="mt-3 text-base text-sky-100 drop-shadow-sm">
             Log in to manage bookings and schedule meeting rooms.
           </p>
         </div>
 
         {/* Login Card */}
         <div className="w-full max-w-md">
-          <div className="overflow-hidden rounded-lg bg-white/95 shadow-2xl backdrop-blur-md border border-white/20">
-            <div className="border-b border-slate-100 bg-slate-50/80 px-6 py-3.5">
-              <h2 className="text-sm font-semibold text-slate-700">
+          <div className="overflow-hidden rounded-2xl bg-white/95 shadow-2xl backdrop-blur-md border border-sky-100">
+            <div className="border-b border-sky-100 bg-sky-50/80 px-6 py-3.5">
+              <h2 className="text-sm font-semibold text-sky-900">
                 Log in to SpaceBook
               </h2>
             </div>
@@ -142,7 +141,7 @@ export default function Login() {
                 <Button
                   type="submit"
                   disabled={loading || !email.trim() || !password}
-                  className="w-full rounded-md bg-[#001D4A] py-2.5 text-sm font-semibold text-white hover:bg-[#001433] transition-colors shadow-md"
+                  className="w-full rounded-md bg-sky-600 py-2.5 text-sm font-semibold text-white hover:bg-sky-700 transition-colors shadow-md"
                 >
                   {loading ? "Signing in..." : "Log in"}
                 </Button>
