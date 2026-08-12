@@ -51,10 +51,6 @@ function CustomStatusTag({ status }) {
 
 // =====================================================
 // GET ROOM TYPE ID
-// Backend:
-// Discussion = 1
-// Conference = 2
-// Training = 3
 // =====================================================
 
 function getRoomTypeId(type) {
@@ -100,7 +96,6 @@ function getRoomTypeName(room) {
     return room.type
   }
 
-  // Some APIs return roomTypeId directly
   const roomTypeId =
     room.roomTypeId ??
     room.RoomTypeId
@@ -122,7 +117,6 @@ function getRoomTypeName(room) {
 
 // =====================================================
 // NORMALIZE FACILITIES
-// Keeps both name and ID
 // =====================================================
 
 function normalizeFacilities(facilities) {
@@ -160,6 +154,69 @@ function normalizeFacilities(facilities) {
 }
 
 // =====================================================
+// NORMALIZE FACILITY LIST FROM BACKEND
+//
+// Supports responses such as:
+//
+// [
+//   { facilityId: 1, facilityName: "Projector" }
+// ]
+//
+// OR
+//
+// {
+//   data: [
+//     { facilityId: 1, facilityName: "Projector" }
+//   ]
+// }
+//
+// OR
+//
+// {
+//   facilities: [...]
+// }
+// =====================================================
+
+function normalizeFacilityList(data) {
+  let facilities = []
+
+  if (Array.isArray(data)) {
+    facilities = data
+  } else if (Array.isArray(data?.data)) {
+    facilities = data.data
+  } else if (Array.isArray(data?.facilities)) {
+    facilities = data.facilities
+  } else if (Array.isArray(data?.Facilities)) {
+    facilities = data.Facilities
+  }
+
+  return facilities
+    .map((facility) => {
+      const id =
+        facility?.facilityId ??
+        facility?.id ??
+        facility?.FacilityId
+
+      const name =
+        facility?.facilityName ??
+        facility?.name ??
+        facility?.Name ??
+        facility?.FacilityName
+
+      return {
+        id: Number(id),
+        name: String(name || '').trim(),
+      }
+    })
+    .filter(
+      (facility) =>
+        Number.isInteger(facility.id) &&
+        facility.id > 0 &&
+        facility.name
+    )
+}
+
+// =====================================================
 // GET FACILITY NAMES
 // =====================================================
 
@@ -168,18 +225,19 @@ function getFacilityNames(facilities) {
     return []
   }
 
-  return facilities.map((facility) => {
-    if (typeof facility === 'string') {
-      return facility
-    }
+  return facilities
+    .map((facility) => {
+      if (typeof facility === 'string') {
+        return facility
+      }
 
-    return facility?.name || ''
-  }).filter(Boolean)
+      return facility?.name || ''
+    })
+    .filter(Boolean)
 }
 
 // =====================================================
 // GET FACILITY IDS
-// Only send valid integer IDs to backend
 // =====================================================
 
 function getFacilityIds(facilities) {
@@ -191,6 +249,14 @@ function getFacilityIds(facilities) {
     .map((facility) => {
       if (typeof facility === 'number') {
         return facility
+      }
+
+      if (typeof facility === 'string') {
+        const numericId = Number(facility)
+
+        return Number.isInteger(numericId)
+          ? numericId
+          : null
       }
 
       if (typeof facility === 'object') {
@@ -265,8 +331,6 @@ function getSuggestedRoomName(
 
 // =====================================================
 // SUGGESTED ROOM CODE
-// Frontend display only.
-// Current backend does not accept room code.
 // =====================================================
 
 function getSuggestedCode(
@@ -337,7 +401,10 @@ async function fetchAdminRooms() {
   return []
 }
 
+// =====================================================
 // GET /api/admin/rooms/dashboard
+// =====================================================
+
 async function fetchAdminRoomDashboard() {
   const response =
     await client.get('/admin/rooms/dashboard')
@@ -345,7 +412,25 @@ async function fetchAdminRoomDashboard() {
   return response.data || {}
 }
 
+// =====================================================
+// GET /api/admin/facilities
+//
+// This is the important new API call.
+// =====================================================
+
+async function fetchAdminFacilities() {
+  const response =
+    await client.get('/admin/facilities')
+
+  return normalizeFacilityList(
+    response.data
+  )
+}
+
+// =====================================================
 // POST /api/admin/rooms
+// =====================================================
+
 async function createAdminRoom(room) {
   const response =
     await client.post(
@@ -356,7 +441,10 @@ async function createAdminRoom(room) {
   return response.data
 }
 
+// =====================================================
 // PUT /api/admin/rooms/{id}
+// =====================================================
+
 async function updateAdminRoom(
   roomId,
   room
@@ -370,7 +458,10 @@ async function updateAdminRoom(
   return response.data
 }
 
+// =====================================================
 // DELETE /api/admin/rooms/{id}
+// =====================================================
+
 async function deleteAdminRoom(
   roomId
 ) {
@@ -404,6 +495,16 @@ export default function RoomManagement() {
 
   const [successMessage, setSuccessMessage] =
     useState('')
+
+  // ===================================================
+  // FACILITY STATE
+  // ===================================================
+
+  const [facilities, setFacilities] =
+    useState([])
+
+  const [facilitiesLoading, setFacilitiesLoading] =
+    useState(false)
 
   // ===================================================
   // FILTER STATE
@@ -470,6 +571,46 @@ export default function RoomManagement() {
     useState([])
 
   // ===================================================
+  // FETCH FACILITIES
+  // ===================================================
+
+  const fetchFacilityData = async () => {
+    try {
+      setFacilitiesLoading(true)
+
+      const facilityData =
+        await fetchAdminFacilities()
+
+      console.log(
+        'Admin facilities:',
+        facilityData
+      )
+
+      setFacilities(facilityData)
+    } catch (err) {
+      console.error(
+        'Failed to load facilities:',
+        err
+      )
+
+      console.error(
+        'Facility response:',
+        err.response?.data
+      )
+
+      setFacilities([])
+
+      setError(
+        err.response?.data?.message ||
+        err.response?.data?.title ||
+        'Unable to load facilities.'
+      )
+    } finally {
+      setFacilitiesLoading(false)
+    }
+  }
+
+  // ===================================================
   // FETCH ROOM DATA
   // ===================================================
 
@@ -526,7 +667,7 @@ export default function RoomManagement() {
 
       const mappedRooms =
         roomsResponse.map((room) => {
-          const facilities =
+          const roomFacilities =
             normalizeFacilities(
               room.facilities ??
               room.roomFacilities ??
@@ -573,7 +714,8 @@ export default function RoomManagement() {
               room.Status ??
               'Available',
 
-            facilities,
+            facilities:
+              roomFacilities,
 
             roomTypeId:
               room.roomTypeId ??
@@ -634,6 +776,7 @@ export default function RoomManagement() {
 
   useEffect(() => {
     fetchRoomData()
+    fetchFacilityData()
   }, [])
 
   // ===================================================
@@ -757,6 +900,11 @@ export default function RoomManagement() {
     setError('')
     setSuccessMessage('')
     setModalOpen(true)
+
+    // Make sure facilities are available
+    if (facilities.length === 0) {
+      fetchFacilityData()
+    }
   }
 
   // ===================================================
@@ -768,7 +916,7 @@ export default function RoomManagement() {
       (previous) => [
         ...previous,
         {
-          type: '',
+          type: 'Conference',
           count: 1,
           capacity: 4,
           facilities: [],
@@ -776,6 +924,10 @@ export default function RoomManagement() {
       ]
     )
   }
+
+  // ===================================================
+  // REMOVE TYPE CONFIG
+  // ===================================================
 
   const handleRemoveTypeConfig = (
     index
@@ -788,6 +940,10 @@ export default function RoomManagement() {
         )
     )
   }
+
+  // ===================================================
+  // TYPE CONFIG CHANGE
+  // ===================================================
 
   const handleTypeConfigChange = (
     index,
@@ -807,21 +963,53 @@ export default function RoomManagement() {
   }
 
   // ===================================================
-  // FACILITY UI
+  // ADD FACILITY DROPDOWN
   // ===================================================
 
   const handleAddFacilityToConfig = (
     configIndex
   ) => {
+    if (facilities.length === 0) {
+      setError(
+        'No facilities are available. Please check the Facilities API.'
+      )
+
+      return
+    }
+
     setTypeConfigs((previous) => {
       const updated = [...previous]
+
+      const currentFacilities =
+        updated[configIndex].facilities || []
+
+      // Automatically select first unused facility
+      const selectedIds =
+        currentFacilities.map(
+          (facility) =>
+            Number(facility?.id)
+        )
+
+      const availableFacility =
+        facilities.find(
+          (facility) =>
+            !selectedIds.includes(
+              Number(facility.id)
+            )
+        )
+
+      if (!availableFacility) {
+        return updated
+      }
 
       updated[configIndex] = {
         ...updated[configIndex],
         facilities: [
-          ...updated[configIndex]
-            .facilities,
-          '',
+          ...currentFacilities,
+          {
+            id: availableFacility.id,
+            name: availableFacility.name,
+          },
         ],
       }
 
@@ -829,30 +1017,67 @@ export default function RoomManagement() {
     })
   }
 
+  // ===================================================
+  // FACILITY DROPDOWN CHANGE
+  // ===================================================
+
   const handleFacilityConfigChange = (
     configIndex,
     facilityIndex,
     value
   ) => {
+    const facilityId =
+      Number(value)
+
+    const selectedFacility =
+      facilities.find(
+        (facility) =>
+          Number(facility.id) ===
+          facilityId
+      )
+
+    if (!selectedFacility) {
+      return
+    }
+
     setTypeConfigs((previous) => {
       const updated = [...previous]
 
-      const facilities = [
-        ...updated[configIndex]
-          .facilities,
+      const currentFacilities = [
+        ...(updated[configIndex].facilities || []),
       ]
 
-      facilities[facilityIndex] =
-        value
+      const duplicate =
+        currentFacilities.some(
+          (facility, currentIndex) =>
+            currentIndex !== facilityIndex &&
+            Number(facility?.id) ===
+              facilityId
+        )
+
+      if (duplicate) {
+        return updated
+      }
+
+      currentFacilities[
+        facilityIndex
+      ] = {
+        id: selectedFacility.id,
+        name: selectedFacility.name,
+      }
 
       updated[configIndex] = {
         ...updated[configIndex],
-        facilities,
+        facilities: currentFacilities,
       }
 
       return updated
     })
   }
+
+  // ===================================================
+  // REMOVE FACILITY
+  // ===================================================
 
   const handleRemoveFacilityFromConfig = (
     configIndex,
@@ -894,7 +1119,8 @@ export default function RoomManagement() {
         typeConfigs[configIndex]
 
       const roomType =
-        config.type.trim() ||
+        String(config.type || '')
+          .trim() ||
         'Conference'
 
       const count = Math.max(
@@ -907,12 +1133,21 @@ export default function RoomManagement() {
         Number(config.capacity) || 4
       )
 
-      const cleanFacilities =
-        config.facilities
-          .map((facility) =>
-            String(facility).trim()
-          )
-          .filter(Boolean)
+      const selectedFacilities =
+        Array.isArray(config.facilities)
+          ? config.facilities
+              .filter(
+                (facility) =>
+                  facility?.id
+              )
+              .map((facility) => ({
+                id: Number(
+                  facility.id
+                ),
+                name:
+                  facility.name,
+              }))
+          : []
 
       for (
         let i = 0;
@@ -954,7 +1189,7 @@ export default function RoomManagement() {
           status: 'Available',
 
           facilities:
-            [...cleanFacilities],
+            [...selectedFacilities],
         })
       }
     }
@@ -975,7 +1210,7 @@ export default function RoomManagement() {
   }
 
   // ===================================================
-  // GENERATED ROOM CHANGES
+  // GENERATED ROOM CHANGE
   // ===================================================
 
   const handleGeneratedRoomChange = (
@@ -996,6 +1231,10 @@ export default function RoomManagement() {
       }
     )
   }
+
+  // ===================================================
+  // REMOVE GENERATED ROOM
+  // ===================================================
 
   const handleRemoveGeneratedRoom = (
     index
@@ -1037,6 +1276,10 @@ export default function RoomManagement() {
     setError('')
     setSuccessMessage('')
     setModalOpen(true)
+
+    if (facilities.length === 0) {
+      fetchFacilityData()
+    }
   }
 
   // ===================================================
@@ -1108,6 +1351,134 @@ export default function RoomManagement() {
   }
 
   // ===================================================
+  // EDIT FACILITY DROPDOWN
+  // ===================================================
+
+  const handleEditFacilityChange = (
+    facilityIndex,
+    value
+  ) => {
+    const facilityId =
+      Number(value)
+
+    const selectedFacility =
+      facilities.find(
+        (facility) =>
+          Number(facility.id) ===
+          facilityId
+      )
+
+    if (!selectedFacility) {
+      return
+    }
+
+    setFormData(
+      (previous) => {
+        const currentFacilities = [
+          ...(previous.facilities || []),
+        ]
+
+        const duplicate =
+          currentFacilities.some(
+            (facility, currentIndex) =>
+              currentIndex !== facilityIndex &&
+              Number(facility?.id) ===
+                facilityId
+          )
+
+        if (duplicate) {
+          return previous
+        }
+
+        currentFacilities[
+          facilityIndex
+        ] = {
+          id: selectedFacility.id,
+          name: selectedFacility.name,
+        }
+
+        return {
+          ...previous,
+          facilities:
+            currentFacilities,
+        }
+      }
+    )
+  }
+
+  // ===================================================
+  // ADD FACILITY TO EDIT FORM
+  // ===================================================
+
+  const handleAddFacilityToEdit = () => {
+    if (facilities.length === 0) {
+      setError(
+        'No facilities are available.'
+      )
+
+      return
+    }
+
+    setFormData(
+      (previous) => {
+        const currentFacilities =
+          previous.facilities || []
+
+        const selectedIds =
+          currentFacilities.map(
+            (facility) =>
+              Number(facility?.id)
+          )
+
+        const availableFacility =
+          facilities.find(
+            (facility) =>
+              !selectedIds.includes(
+                Number(facility.id)
+              )
+          )
+
+        if (!availableFacility) {
+          return previous
+        }
+
+        return {
+          ...previous,
+          facilities: [
+            ...currentFacilities,
+            {
+              id:
+                availableFacility.id,
+              name:
+                availableFacility.name,
+            },
+          ],
+        }
+      }
+    )
+  }
+
+  // ===================================================
+  // REMOVE FACILITY FROM EDIT
+  // ===================================================
+
+  const handleRemoveFacilityFromEdit = (
+    facilityIndex
+  ) => {
+    setFormData(
+      (previous) => ({
+        ...previous,
+        facilities:
+          previous.facilities.filter(
+            (_, index) =>
+              index !==
+              facilityIndex
+          ),
+      })
+    )
+  }
+
+  // ===================================================
   // VALIDATE ROOM
   // ===================================================
 
@@ -1136,17 +1507,6 @@ export default function RoomManagement() {
 
   // ===================================================
   // CREATE / UPDATE ROOM
-  //
-  // Backend expects:
-  //
-  // {
-  //   roomTypeId,
-  //   roomName,
-  //   capacity,
-  //   module,
-  //   status,
-  //   facilityIds
-  // }
   // ===================================================
 
   const handleSubmit = async (
@@ -1192,16 +1552,6 @@ export default function RoomManagement() {
             )
           }
 
-          /*
-           * Facility names entered in the
-           * current wizard do not have IDs.
-           *
-           * Therefore only numeric facility
-           * IDs would be sent here.
-           *
-           * Currently this results in [].
-           */
-
           const payload = {
             roomTypeId:
               getRoomTypeId(
@@ -1228,6 +1578,8 @@ export default function RoomManagement() {
               room.status ||
               'Available',
 
+            // IMPORTANT:
+            // Send selected facility IDs
             facilityIds:
               getFacilityIds(
                 room.facilities
@@ -1445,7 +1797,7 @@ export default function RoomManagement() {
 
   // ===================================================
   // UI
-  // ===================================================
+  // =====================================================
 
   return (
     <div className="space-y-6">
@@ -1995,6 +2347,8 @@ export default function RoomManagement() {
                           className="transition-colors hover:bg-portal-bg/50"
                         >
 
+                          {/* ROOM TYPE */}
+
                           <td className="p-3 align-top">
 
                             <select
@@ -2030,6 +2384,8 @@ export default function RoomManagement() {
 
                           </td>
 
+                          {/* COUNT */}
+
                           <td className="p-3 align-top">
 
                             <input
@@ -2052,6 +2408,8 @@ export default function RoomManagement() {
                             />
 
                           </td>
+
+                          {/* CAPACITY */}
 
                           <td className="p-3 align-top">
 
@@ -2076,78 +2434,114 @@ export default function RoomManagement() {
 
                           </td>
 
+                          {/* FACILITIES DROPDOWN */}
+
                           <td className="p-3 align-top">
 
                             <div className="space-y-2.5">
 
-                              <div className="flex flex-wrap items-center gap-2">
-
-                                {config.facilities.map(
-                                  (
-                                    facility,
-                                    facilityIndex
-                                  ) => (
-                                    <div
-                                      key={
-                                        facilityIndex
-                                      }
-                                      className="flex items-center gap-1.5 rounded-full border border-line bg-portal-bg px-3 py-1 text-xs text-ink"
-                                    >
-
-                                      <input
-                                        type="text"
-                                        value={
-                                          facility
+                              {facilitiesLoading ? (
+                                <p className="text-xs text-slate">
+                                  Loading facilities...
+                                </p>
+                              ) : (
+                                <>
+                                  {config.facilities.map(
+                                    (
+                                      facility,
+                                      facilityIndex
+                                    ) => (
+                                      <div
+                                        key={
+                                          `${index}-${facilityIndex}`
                                         }
-                                        onChange={(
-                                          event
-                                        ) =>
-                                          handleFacilityConfigChange(
-                                            index,
-                                            facilityIndex,
-                                            event
-                                              .target
-                                              .value
-                                          )
-                                        }
-                                        placeholder="Facility"
-                                        className="w-20 bg-transparent text-xs font-medium text-ink outline-none"
-                                      />
-
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleRemoveFacilityFromConfig(
-                                            index,
-                                            facilityIndex
-                                          )
-                                        }
-                                        className="px-0.5 text-sm font-bold leading-none text-[#be534d] hover:opacity-70"
+                                        className="flex items-center gap-2"
                                       >
-                                        ×
-                                      </button>
 
-                                    </div>
-                                  )
-                                )}
+                                        <select
+                                          value={
+                                            facility?.id ??
+                                            ''
+                                          }
+                                          onChange={(
+                                            event
+                                          ) =>
+                                            handleFacilityConfigChange(
+                                              index,
+                                              facilityIndex,
+                                              event
+                                                .target
+                                                .value
+                                            )
+                                          }
+                                          className="min-w-0 flex-1 rounded-xl border border-line bg-white px-3 py-2 text-xs text-ink outline-none focus:border-portal-accent"
+                                        >
 
-                              </div>
+                                          <option value="">
+                                            Select Facility
+                                          </option>
 
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleAddFacilityToConfig(
-                                    index
-                                  )
-                                }
-                                className="inline-flex items-center rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink hover:bg-portal-bg"
-                              >
-                                + Add Facility
-                              </button>
+                                          {facilities.map(
+                                            (
+                                              option
+                                            ) => (
+                                              <option
+                                                key={
+                                                  option.id
+                                                }
+                                                value={
+                                                  option.id
+                                                }
+                                              >
+                                                {
+                                                  option.name
+                                                }
+                                              </option>
+                                            )
+                                          )}
+
+                                        </select>
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleRemoveFacilityFromConfig(
+                                              index,
+                                              facilityIndex
+                                            )
+                                          }
+                                          className="shrink-0 text-lg font-bold leading-none text-[#be534d] hover:opacity-70"
+                                        >
+                                          ×
+                                        </button>
+
+                                      </div>
+                                    )
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleAddFacilityToConfig(
+                                        index
+                                      )
+                                    }
+                                    disabled={
+                                      facilities.length ===
+                                      config.facilities.length
+                                    }
+                                    className="inline-flex items-center rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink hover:bg-portal-bg disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    + Add Facility
+                                  </button>
+                                </>
+                              )}
 
                             </div>
 
                           </td>
+
+                          {/* ACTION */}
 
                           <td className="p-3 text-center align-top">
 
@@ -2214,24 +2608,28 @@ export default function RoomManagement() {
 
                     <tr>
 
-                      <th className="w-[18%] p-3.5">
+                      <th className="w-[16%] p-3.5">
                         Room Type
                       </th>
 
-                      <th className="w-[28%] p-3.5">
+                      <th className="w-[23%] p-3.5">
                         Room Name
                       </th>
 
-                      <th className="w-[20%] p-3.5">
+                      <th className="w-[18%] p-3.5">
                         Room Code
                       </th>
 
-                      <th className="w-[18%] p-3.5">
+                      <th className="w-[15%] p-3.5">
                         Module
                       </th>
 
-                      <th className="w-[16%] p-3.5">
+                      <th className="w-[13%] p-3.5">
                         Status
+                      </th>
+
+                      <th className="w-[15%] p-3.5">
+                        Facilities
                       </th>
 
                       <th className="w-16 p-3.5 text-center">
@@ -2349,6 +2747,39 @@ export default function RoomManagement() {
                               </option>
 
                             </select>
+
+                          </td>
+
+                          {/* SHOW SELECTED FACILITIES */}
+
+                          <td className="p-3">
+
+                            <div className="flex flex-wrap gap-1">
+
+                              {room.facilities?.length > 0 ? (
+                                room.facilities.map(
+                                  (
+                                    facility
+                                  ) => (
+                                    <span
+                                      key={
+                                        facility.id
+                                      }
+                                      className="rounded-full bg-portal-bg px-2 py-1 text-[10px] font-medium text-ink"
+                                    >
+                                      {
+                                        facility.name
+                                      }
+                                    </span>
+                                  )
+                                )
+                              ) : (
+                                <span className="text-xs text-slate">
+                                  None
+                                </span>
+                              )}
+
+                            </div>
 
                           </td>
 
@@ -2571,43 +3002,153 @@ export default function RoomManagement() {
 
             </div>
 
-            {/* FACILITIES */}
+            {/* =================================================
+                FACILITIES
+            ================================================= */}
 
             <div className="rounded-xl border border-line bg-portal-bg p-4">
 
-              <p className="mb-2 text-xs uppercase tracking-[0.2em] text-slate">
-                Facilities
-              </p>
+              <div className="mb-3 flex items-center justify-between">
 
-              {formData.facilities?.length >
-              0 ? (
-                <div className="flex flex-wrap gap-2">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate">
+                  Facilities
+                </p>
+
+                {modalMode === 'edit' && (
+                  <button
+                    type="button"
+                    onClick={
+                      handleAddFacilityToEdit
+                    }
+                    disabled={
+                      facilitiesLoading ||
+                      facilities.length ===
+                        formData.facilities.length
+                    }
+                    className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink hover:bg-portal-bg disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    + Add Facility
+                  </button>
+                )}
+
+              </div>
+
+              {facilitiesLoading ? (
+                <p className="text-sm text-slate">
+                  Loading facilities...
+                </p>
+              ) : formData.facilities?.length > 0 ? (
+                <div className="space-y-2">
 
                   {formData.facilities.map(
                     (
                       facility,
                       index
                     ) => (
-                      <span
+                      <div
                         key={
                           facility?.id ??
                           index
                         }
-                        className="rounded-full bg-white px-3 py-1 text-xs font-medium text-ink"
+                        className="flex items-center gap-2"
                       >
-                        {typeof facility ===
-                        'string'
-                          ? facility
-                          : facility.name}
-                      </span>
+
+                        {modalMode === 'edit' ? (
+                          <>
+                            <select
+                              value={
+                                facility?.id ??
+                                ''
+                              }
+                              onChange={(
+                                event
+                              ) =>
+                                handleEditFacilityChange(
+                                  index,
+                                  event.target
+                                    .value
+                                )
+                              }
+                              className="flex-1 rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-portal-accent"
+                            >
+
+                              <option value="">
+                                Select Facility
+                              </option>
+
+                              {facilities.map(
+                                (
+                                  option
+                                ) => (
+                                  <option
+                                    key={
+                                      option.id
+                                    }
+                                    value={
+                                      option.id
+                                    }
+                                  >
+                                    {
+                                      option.name
+                                    }
+                                  </option>
+                                )
+                              )}
+
+                            </select>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleRemoveFacilityFromEdit(
+                                  index
+                                )
+                              }
+                              className="text-lg font-bold text-[#be534d] hover:opacity-70"
+                            >
+                              ×
+                            </button>
+                          </>
+                        ) : (
+                          <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-ink">
+                            {facility?.name}
+                          </span>
+                        )}
+
+                      </div>
                     )
                   )}
 
                 </div>
               ) : (
-                <span className="text-sm text-slate">
-                  No facilities assigned
-                </span>
+                <div>
+
+                  <span className="text-sm text-slate">
+                    No facilities assigned
+                  </span>
+
+                  {modalMode === 'edit' && (
+                    <div className="mt-2">
+
+                      <button
+                        type="button"
+                        onClick={
+                          handleAddFacilityToEdit
+                        }
+                        disabled={
+                          facilitiesLoading ||
+                          facilities.length ===
+                            0
+                        }
+                        className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink hover:bg-portal-bg disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        + Add Facility
+                      </button>
+
+                    </div>
+                  )}
+
+                </div>
               )}
 
             </div>
