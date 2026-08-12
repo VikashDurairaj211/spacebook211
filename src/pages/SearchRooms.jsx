@@ -11,15 +11,14 @@ import Loader from "../components/common/Loader";
 import Modal from "../components/common/Modal";
 
 const MODULES = [
-  "Module 2",
-  "Module 1",
+  "Module 2 - Elcot Park - CMB",
+  "Module 1 - Elcot Park - CMB",
 ];
 
 const ROOM_TYPES = [
   { id: 1, name: "Conference" },
   { id: 2, name: "Training" },
   { id: 3, name: "Discussion" },
-  { id: 4, name: "Meeting" },
 ];
 
 const INITIAL_FILTERS = {
