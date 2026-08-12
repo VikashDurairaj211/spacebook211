@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import client from '../../api/client'
 
@@ -7,15 +7,29 @@ import Button from '../../components/common/Button'
 import Modal from '../../components/common/Modal'
 
 // =====================================================
-// Status Badge
+// ROOM TYPE IDS
+// Must match SpaceBook backend RoomType table
+// =====================================================
+
+const ROOM_TYPE_IDS = {
+  discussion: 1,
+  conference: 2,
+  training: 3,
+}
+
+// =====================================================
+// STATUS BADGE
 // =====================================================
 
 function CustomStatusTag({ status }) {
-  const normalized = status?.toUpperCase()
+  const normalized = String(status || 'Available').toUpperCase()
 
   let bgClass = 'bg-[#658362] text-white'
 
-  if (normalized === 'PENDING' || normalized === 'MAINTENANCE') {
+  if (
+    normalized === 'PENDING' ||
+    normalized === 'MAINTENANCE'
+  ) {
     bgClass = 'bg-[#E09F3E] text-white'
   } else if (
     normalized === 'BOOKED' ||
@@ -28,30 +42,41 @@ function CustomStatusTag({ status }) {
 
   return (
     <span
-      className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${bgClass}`}
+      className={`inline-block w-28 rounded-full py-1 text-center text-xs font-bold uppercase tracking-wider ${bgClass}`}
     >
-      {normalized || 'AVAILABLE'}
+      {normalized}
     </span>
   )
 }
 
 // =====================================================
-// Room Type ID Mapping
-// Must match backend RoomType table
+// GET ROOM TYPE ID
+// Backend:
+// Discussion = 1
+// Conference = 2
+// Training = 3
 // =====================================================
 
 function getRoomTypeId(type) {
-  const lower = String(type || '').toLowerCase()
+  const lower = String(type || '').toLowerCase().trim()
 
-  if (lower.includes('conference')) return 1
-  if (lower.includes('training')) return 2
-  if (lower.includes('discussion')) return 3
+  if (lower.includes('discussion')) {
+    return ROOM_TYPE_IDS.discussion
+  }
 
-  return 1
+  if (lower.includes('conference')) {
+    return ROOM_TYPE_IDS.conference
+  }
+
+  if (lower.includes('training')) {
+    return ROOM_TYPE_IDS.training
+  }
+
+  return ROOM_TYPE_IDS.conference
 }
 
 // =====================================================
-// Room Type Name
+// GET ROOM TYPE NAME
 // =====================================================
 
 function getRoomTypeName(room) {
@@ -63,18 +88,82 @@ function getRoomTypeName(room) {
     return room.roomType.name
   }
 
+  if (room.roomType?.roomTypeName) {
+    return room.roomType.roomTypeName
+  }
+
   if (room.roomTypeName) {
     return room.roomTypeName
+  }
+
+  if (room.type) {
+    return room.type
+  }
+
+  // Some APIs return roomTypeId directly
+  const roomTypeId =
+    room.roomTypeId ??
+    room.RoomTypeId
+
+  if (Number(roomTypeId) === ROOM_TYPE_IDS.discussion) {
+    return 'Discussion'
+  }
+
+  if (Number(roomTypeId) === ROOM_TYPE_IDS.training) {
+    return 'Training'
+  }
+
+  if (Number(roomTypeId) === ROOM_TYPE_IDS.conference) {
+    return 'Conference'
   }
 
   return 'Conference'
 }
 
 // =====================================================
-// Normalize Facilities
+// NORMALIZE FACILITIES
+// Keeps both name and ID
 // =====================================================
 
 function normalizeFacilities(facilities) {
+  if (!Array.isArray(facilities)) {
+    return []
+  }
+
+  return facilities
+    .map((facility) => {
+      if (typeof facility === 'string') {
+        return {
+          id: null,
+          name: facility,
+        }
+      }
+
+      const id =
+        facility?.facilityId ??
+        facility?.id ??
+        facility?.FacilityId ??
+        null
+
+      const name =
+        facility?.name ??
+        facility?.facilityName ??
+        facility?.Name ??
+        (id ? `Facility ${id}` : '')
+
+      return {
+        id,
+        name,
+      }
+    })
+    .filter((facility) => facility.name)
+}
+
+// =====================================================
+// GET FACILITY NAMES
+// =====================================================
+
+function getFacilityNames(facilities) {
   if (!Array.isArray(facilities)) {
     return []
   }
@@ -84,53 +173,100 @@ function normalizeFacilities(facilities) {
       return facility
     }
 
-    return (
-      facility?.name ||
-      facility?.facilityName ||
-      `Facility ${facility?.facilityId ?? ''}`
-    )
-  })
+    return facility?.name || ''
+  }).filter(Boolean)
 }
 
 // =====================================================
-// Suggested Room Name
+// GET FACILITY IDS
+// Only send valid integer IDs to backend
 // =====================================================
 
-function getSuggestedRoomName(type, existingRooms, generatedOffset = 0) {
-  const lowerType = String(type || '').toLowerCase()
+function getFacilityIds(facilities) {
+  if (!Array.isArray(facilities)) {
+    return []
+  }
+
+  return facilities
+    .map((facility) => {
+      if (typeof facility === 'number') {
+        return facility
+      }
+
+      if (typeof facility === 'object') {
+        return Number(
+          facility?.id ??
+          facility?.facilityId ??
+          facility?.FacilityId
+        )
+      }
+
+      return null
+    })
+    .filter(
+      (id) =>
+        Number.isInteger(id) &&
+        id > 0
+    )
+}
+
+// =====================================================
+// SUGGESTED ROOM NAME
+// =====================================================
+
+function getSuggestedRoomName(
+  type,
+  existingRooms,
+  generatedOffset = 0
+) {
+  const normalizedType =
+    String(type || 'Conference')
+      .toLowerCase()
+      .trim()
 
   let baseName = 'Room'
 
-  if (lowerType.includes('discussion')) {
+  if (normalizedType.includes('discussion')) {
     baseName = 'Discussion Room'
-  } else if (lowerType.includes('conference')) {
+  } else if (normalizedType.includes('conference')) {
     baseName = 'Conference Room'
-  } else if (lowerType.includes('training')) {
+  } else if (normalizedType.includes('training')) {
     baseName = 'Training Room'
   } else {
     baseName = `${type || 'Room'} Room`
   }
 
   const existingNumbers = existingRooms
-    .filter(
-      (room) =>
-        room.type?.toLowerCase() === String(type || '').toLowerCase()
-    )
-    .map((room) => Number(room.name?.match(/(\d+)$/)?.[1]))
-    .filter((value) => Number.isFinite(value))
+    .filter((room) => {
+      const roomType =
+        String(room.type || '').toLowerCase()
+
+      return roomType === normalizedType
+    })
+    .map((room) => {
+      const match =
+        String(room.name || '').match(/(\d+)$/)
+
+      return match
+        ? Number(match[1])
+        : NaN
+    })
+    .filter(Number.isFinite)
 
   const startNumber =
     existingNumbers.length > 0
       ? Math.max(...existingNumbers) + 1
       : 1
 
-  return `${baseName} ${startNumber + generatedOffset}`
+  return `${baseName} ${
+    startNumber + generatedOffset
+  }`
 }
 
 // =====================================================
-// Suggested Room Code
-// Frontend-only display value.
-// Not sent to backend because current API does not expect it.
+// SUGGESTED ROOM CODE
+// Frontend display only.
+// Current backend does not accept room code.
 // =====================================================
 
 function getSuggestedCode(
@@ -142,7 +278,7 @@ function getSuggestedCode(
   const moduleNumber =
     String(moduleName || '').match(/\d+/)?.[0] || '1'
 
-  const typeCode = (type || 'RM')
+  const typeCode = String(type || 'RM')
     .slice(0, 2)
     .toUpperCase()
 
@@ -150,16 +286,17 @@ function getSuggestedCode(
     existingRooms.filter(
       (room) =>
         room.module === moduleName &&
-        room.type === type
-    ).length + 1
+        String(room.type || '').toLowerCase() ===
+          String(type || '').toLowerCase()
+    ).length
 
   return `M${moduleNumber}-${typeCode}${
-    existingForType + generatedOffset
+    existingForType + generatedOffset + 1
   }`
 }
 
 // =====================================================
-// Empty Form
+// EMPTY FORM
 // =====================================================
 
 function getEmptyFormData() {
@@ -175,12 +312,13 @@ function getEmptyFormData() {
 }
 
 // =====================================================
-// API Helpers
+// API HELPERS
 // =====================================================
 
 // GET /api/admin/rooms
 async function fetchAdminRooms() {
-  const response = await client.get('/admin/rooms')
+  const response =
+    await client.get('/admin/rooms')
 
   const data = response.data
 
@@ -201,110 +339,152 @@ async function fetchAdminRooms() {
 
 // GET /api/admin/rooms/dashboard
 async function fetchAdminRoomDashboard() {
-  const response = await client.get('/admin/rooms/dashboard')
+  const response =
+    await client.get('/admin/rooms/dashboard')
 
   return response.data || {}
 }
 
 // POST /api/admin/rooms
 async function createAdminRoom(room) {
-  const response = await client.post('/admin/rooms', room)
+  const response =
+    await client.post(
+      '/admin/rooms',
+      room
+    )
 
   return response.data
 }
 
 // PUT /api/admin/rooms/{id}
-async function updateAdminRoom(roomId, room) {
-  const response = await client.put(
-    `/admin/rooms/${roomId}`,
-    room
-  )
+async function updateAdminRoom(
+  roomId,
+  room
+) {
+  const response =
+    await client.put(
+      `/admin/rooms/${roomId}`,
+      room
+    )
 
   return response.data
 }
 
 // DELETE /api/admin/rooms/{id}
-async function deleteAdminRoom(roomId) {
-  const response = await client.delete(
-    `/admin/rooms/${roomId}`
-  )
+async function deleteAdminRoom(
+  roomId
+) {
+  const response =
+    await client.delete(
+      `/admin/rooms/${roomId}`
+    )
 
   return response.data
 }
 
 // =====================================================
-// Room Management
+// ROOM MANAGEMENT
 // =====================================================
 
 export default function RoomManagement() {
+  // ===================================================
+  // ROOM STATE
+  // ===================================================
+
   const [rooms, setRooms] = useState([])
 
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
+  const [loading, setLoading] =
+    useState(true)
 
-  const [error, setError] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
+  const [submitting, setSubmitting] =
+    useState(false)
 
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('All')
-  const [moduleFilter, setModuleFilter] = useState('All')
+  const [error, setError] =
+    useState('')
 
-  // =====================================================
-  // Dashboard Stats
-  // =====================================================
+  const [successMessage, setSuccessMessage] =
+    useState('')
 
-  const [dashboardStats, setDashboardStats] = useState({
-    totalRooms: 0,
-    availableRooms: 0,
-    bookedRooms: 0,
-  })
+  // ===================================================
+  // FILTER STATE
+  // ===================================================
 
-  // =====================================================
-  // Modal State
-  // =====================================================
+  const [search, setSearch] =
+    useState('')
 
-  const [modalOpen, setModalOpen] = useState(false)
-  const [modalMode, setModalMode] = useState('add')
-  const [addStep, setAddStep] = useState(1)
+  const [statusFilter, setStatusFilter] =
+    useState('All')
 
-  const [selectedRoomId, setSelectedRoomId] = useState(null)
+  const [moduleFilter, setModuleFilter] =
+    useState('All')
 
-  // =====================================================
-  // Edit / View Form
-  // =====================================================
+  // ===================================================
+  // DASHBOARD STATS
+  // ===================================================
+
+  const [dashboardStats, setDashboardStats] =
+    useState({
+      totalRooms: 0,
+      availableRooms: 0,
+      bookedRooms: 0,
+    })
+
+  // ===================================================
+  // MODAL STATE
+  // ===================================================
+
+  const [modalOpen, setModalOpen] =
+    useState(false)
+
+  const [modalMode, setModalMode] =
+    useState('add')
+
+  const [addStep, setAddStep] =
+    useState(1)
+
+  const [selectedRoomId, setSelectedRoomId] =
+    useState(null)
+
+  // ===================================================
+  // SINGLE ROOM FORM
+  // ===================================================
 
   const [formData, setFormData] =
     useState(getEmptyFormData())
 
-  // =====================================================
-  // Add Wizard
-  // =====================================================
+  // ===================================================
+  // ADD ROOM WIZARD
+  // ===================================================
 
-  const [typeConfigs, setTypeConfigs] = useState([
-    {
-      type: 'Discussion',
-      count: 8,
-      capacity: 4,
-      facilities: [],
-    },
-  ])
+  const [typeConfigs, setTypeConfigs] =
+    useState([
+      {
+        type: 'Discussion',
+        count: 1,
+        capacity: 4,
+        facilities: [],
+      },
+    ])
 
-  const [generatedRooms, setGeneratedRooms] = useState([])
+  const [generatedRooms, setGeneratedRooms] =
+    useState([])
 
-  // =====================================================
-  // Fetch Room Data
-  // =====================================================
+  // ===================================================
+  // FETCH ROOM DATA
+  // ===================================================
 
   const fetchRoomData = async () => {
     try {
       setLoading(true)
       setError('')
 
-      const [statsResponse, roomsResponse] =
-        await Promise.all([
-          fetchAdminRoomDashboard(),
-          fetchAdminRooms(),
-        ])
+      const [
+        statsResponse,
+        roomsResponse,
+      ] = await Promise.all([
+        fetchAdminRoomDashboard(),
+        fetchAdminRooms(),
+      ])
 
       console.log(
         'Admin room dashboard:',
@@ -316,68 +496,91 @@ export default function RoomManagement() {
         roomsResponse
       )
 
-      // =================================================
-      // Dashboard Statistics
-      // =================================================
+      // ===============================================
+      // DASHBOARD STATISTICS
+      // ===============================================
 
       setDashboardStats({
         totalRooms:
-          statsResponse.totalRooms ??
-          statsResponse.total ??
-          statsResponse.TotalRooms ??
+          statsResponse?.totalRooms ??
+          statsResponse?.total ??
+          statsResponse?.TotalRooms ??
           0,
 
         availableRooms:
-          statsResponse.availableRooms ??
-          statsResponse.available ??
-          statsResponse.AvailableRooms ??
+          statsResponse?.availableRooms ??
+          statsResponse?.available ??
+          statsResponse?.AvailableRooms ??
           0,
 
         bookedRooms:
-          statsResponse.bookedRooms ??
-          statsResponse.booked ??
-          statsResponse.BookedRooms ??
+          statsResponse?.bookedRooms ??
+          statsResponse?.booked ??
+          statsResponse?.BookedRooms ??
           0,
       })
 
-      // =================================================
-      // Normalize Rooms
-      // =================================================
+      // ===============================================
+      // NORMALIZE ROOMS
+      // ===============================================
 
-      const mappedRooms = roomsResponse.map((room) => ({
-        id:
-          room.roomId ??
-          room.id,
+      const mappedRooms =
+        roomsResponse.map((room) => {
+          const facilities =
+            normalizeFacilities(
+              room.facilities ??
+              room.roomFacilities ??
+              room.RoomFacilities
+            )
 
-        name:
-          room.roomName ??
-          room.name ??
-          'Unnamed Room',
+          const roomId =
+            room.roomId ??
+            room.id ??
+            room.RoomId
 
-        code:
-          room.code ??
-          `RM-${room.roomId ?? room.id ?? ''}`,
+          const roomType =
+            getRoomTypeName(room)
 
-        module:
-          room.module ??
-          'Module 1',
+          return {
+            id: roomId,
 
-        type:
-          getRoomTypeName(room),
+            name:
+              room.roomName ??
+              room.name ??
+              room.RoomName ??
+              'Unnamed Room',
 
-        capacity:
-          room.capacity ??
-          4,
+            code:
+              room.code ??
+              room.roomCode ??
+              room.Code ??
+              `RM-${roomId ?? ''}`,
 
-        status:
-          room.status ??
-          'Available',
+            module:
+              room.module ??
+              room.Module ??
+              'Module 1',
 
-        facilities:
-          normalizeFacilities(
-            room.facilities
-          ),
-      }))
+            type: roomType,
+
+            capacity:
+              room.capacity ??
+              room.Capacity ??
+              4,
+
+            status:
+              room.status ??
+              room.Status ??
+              'Available',
+
+            facilities,
+
+            roomTypeId:
+              room.roomTypeId ??
+              room.RoomTypeId ??
+              getRoomTypeId(roomType),
+          }
+        })
 
       console.log(
         'Mapped rooms:',
@@ -401,17 +604,22 @@ export default function RoomManagement() {
         err.response?.status
       )
 
-      if (err.response?.status === 401) {
+      if (
+        err.response?.status === 401
+      ) {
         setError(
           'Your session has expired. Please login again.'
         )
-      } else if (err.response?.status === 403) {
+      } else if (
+        err.response?.status === 403
+      ) {
         setError(
           'You do not have permission to manage rooms.'
         )
       } else {
         setError(
           err.response?.data?.message ||
+          err.response?.data?.title ||
           'Unable to fetch live room inventory.'
         )
       }
@@ -420,17 +628,17 @@ export default function RoomManagement() {
     }
   }
 
-  // =====================================================
-  // Initial Load
-  // =====================================================
+  // ===================================================
+  // INITIAL LOAD
+  // ===================================================
 
   useEffect(() => {
     fetchRoomData()
   }, [])
 
-  // =====================================================
-  // Module Options
-  // =====================================================
+  // ===================================================
+  // MODULE OPTIONS
+  // ===================================================
 
   const modules = useMemo(() => {
     return [
@@ -443,9 +651,9 @@ export default function RoomManagement() {
     ]
   }, [rooms])
 
-  // =====================================================
-  // Filter Rooms
-  // =====================================================
+  // ===================================================
+  // FILTER ROOMS
+  // ===================================================
 
   const filteredRooms = useMemo(() => {
     const searchValue =
@@ -453,9 +661,9 @@ export default function RoomManagement() {
 
     return rooms.filter((room) => {
       const facilitiesText =
-        Array.isArray(room.facilities)
-          ? room.facilities.join(' ')
-          : ''
+        getFacilityNames(
+          room.facilities
+        ).join(' ')
 
       const searchableText = [
         room.name,
@@ -469,11 +677,14 @@ export default function RoomManagement() {
 
       const matchesSearch =
         !searchValue ||
-        searchableText.includes(searchValue)
+        searchableText.includes(
+          searchValue
+        )
 
       const matchesStatus =
         statusFilter === 'All' ||
-        room.status?.toLowerCase() ===
+        String(room.status || '')
+          .toLowerCase() ===
           statusFilter.toLowerCase()
 
       const matchesModule =
@@ -493,29 +704,24 @@ export default function RoomManagement() {
     moduleFilter,
   ])
 
-  // =====================================================
-  // Status Counts
-  // =====================================================
+  // ===================================================
+  // STATUS COUNTS
+  // ===================================================
 
   const statusCounts = useMemo(() => {
     return rooms.reduce(
       (acc, room) => {
         const status =
-          room.status || 'Available'
+          String(
+            room.status || 'Available'
+          ).toLowerCase()
 
-        if (
-          status.toLowerCase() ===
-          'available'
-        ) {
+        if (status === 'available') {
           acc.Available += 1
-        } else if (
-          status.toLowerCase() ===
-          'booked'
-        ) {
+        } else if (status === 'booked') {
           acc.Booked += 1
         } else if (
-          status.toLowerCase() ===
-          'maintenance'
+          status === 'maintenance'
         ) {
           acc.Maintenance += 1
         }
@@ -530,9 +736,9 @@ export default function RoomManagement() {
     )
   }, [rooms])
 
-  // =====================================================
-  // Add Room Modal
-  // =====================================================
+  // ===================================================
+  // OPEN ADD MODAL
+  // ===================================================
 
   const openAddModal = () => {
     setTypeConfigs([
@@ -553,28 +759,33 @@ export default function RoomManagement() {
     setModalOpen(true)
   }
 
-  // =====================================================
-  // Add Type Configuration
-  // =====================================================
+  // ===================================================
+  // ADD TYPE CONFIG
+  // ===================================================
 
   const handleAddTypeConfig = () => {
-    setTypeConfigs((previous) => [
-      ...previous,
-      {
-        type: '',
-        count: 1,
-        capacity: 4,
-        facilities: [],
-      },
-    ])
+    setTypeConfigs(
+      (previous) => [
+        ...previous,
+        {
+          type: '',
+          count: 1,
+          capacity: 4,
+          facilities: [],
+        },
+      ]
+    )
   }
 
-  const handleRemoveTypeConfig = (index) => {
-    setTypeConfigs((previous) =>
-      previous.filter(
-        (_, currentIndex) =>
-          currentIndex !== index
-      )
+  const handleRemoveTypeConfig = (
+    index
+  ) => {
+    setTypeConfigs(
+      (previous) =>
+        previous.filter(
+          (_, currentIndex) =>
+            currentIndex !== index
+        )
     )
   }
 
@@ -595,9 +806,9 @@ export default function RoomManagement() {
     })
   }
 
-  // =====================================================
-  // Facility UI
-  // =====================================================
+  // ===================================================
+  // FACILITY UI
+  // ===================================================
 
   const handleAddFacilityToConfig = (
     configIndex
@@ -608,7 +819,8 @@ export default function RoomManagement() {
       updated[configIndex] = {
         ...updated[configIndex],
         facilities: [
-          ...updated[configIndex].facilities,
+          ...updated[configIndex]
+            .facilities,
           '',
         ],
       }
@@ -626,10 +838,12 @@ export default function RoomManagement() {
       const updated = [...previous]
 
       const facilities = [
-        ...updated[configIndex].facilities,
+        ...updated[configIndex]
+          .facilities,
       ]
 
-      facilities[facilityIndex] = value
+      facilities[facilityIndex] =
+        value
 
       updated[configIndex] = {
         ...updated[configIndex],
@@ -650,7 +864,9 @@ export default function RoomManagement() {
       updated[configIndex] = {
         ...updated[configIndex],
         facilities:
-          updated[configIndex].facilities.filter(
+          updated[
+            configIndex
+          ].facilities.filter(
             (_, index) =>
               index !== facilityIndex
           ),
@@ -660,30 +876,49 @@ export default function RoomManagement() {
     })
   }
 
-  // =====================================================
-  // Generate Rooms
-  // =====================================================
+  // ===================================================
+  // GENERATE ROOMS
+  // ===================================================
 
   const handleNextToAddRooms = () => {
+    setError('')
+
     const newRooms = []
 
-    typeConfigs.forEach((config) => {
+    for (
+      let configIndex = 0;
+      configIndex < typeConfigs.length;
+      configIndex++
+    ) {
+      const config =
+        typeConfigs[configIndex]
+
       const roomType =
-        config.type.trim() || 'Conference'
+        config.type.trim() ||
+        'Conference'
 
       const count = Math.max(
         1,
         Number(config.count) || 1
       )
 
+      const capacity = Math.max(
+        1,
+        Number(config.capacity) || 4
+      )
+
       const cleanFacilities =
         config.facilities
           .map((facility) =>
-            facility.trim()
+            String(facility).trim()
           )
           .filter(Boolean)
 
-      for (let i = 0; i < count; i++) {
+      for (
+        let i = 0;
+        i < count;
+        i++
+      ) {
         const defaultModule =
           'Module 1'
 
@@ -703,7 +938,8 @@ export default function RoomManagement() {
           )
 
         newRooms.push({
-          tempId: `temp-${Date.now()}-${Math.random()}`,
+          tempId:
+            `temp-${Date.now()}-${configIndex}-${i}-${Math.random()}`,
 
           name,
 
@@ -711,8 +947,7 @@ export default function RoomManagement() {
 
           type: roomType,
 
-          capacity:
-            Number(config.capacity) || 4,
+          capacity,
 
           module: defaultModule,
 
@@ -722,61 +957,77 @@ export default function RoomManagement() {
             [...cleanFacilities],
         })
       }
-    })
+    }
 
-    setGeneratedRooms(newRooms)
+    if (newRooms.length === 0) {
+      setError(
+        'Please configure at least one room.'
+      )
+
+      return
+    }
+
+    setGeneratedRooms(
+      newRooms
+    )
 
     setAddStep(2)
   }
 
-  // =====================================================
-  // Generated Room Changes
-  // =====================================================
+  // ===================================================
+  // GENERATED ROOM CHANGES
+  // ===================================================
 
   const handleGeneratedRoomChange = (
     index,
     field,
     value
   ) => {
-    setGeneratedRooms((previous) => {
-      const updated = [...previous]
+    setGeneratedRooms(
+      (previous) => {
+        const updated = [...previous]
 
-      updated[index] = {
-        ...updated[index],
-        [field]: value,
+        updated[index] = {
+          ...updated[index],
+          [field]: value,
+        }
+
+        return updated
       }
-
-      return updated
-    })
+    )
   }
 
   const handleRemoveGeneratedRoom = (
     index
   ) => {
-    setGeneratedRooms((previous) =>
-      previous.filter(
-        (_, currentIndex) =>
-          currentIndex !== index
-      )
+    setGeneratedRooms(
+      (previous) =>
+        previous.filter(
+          (_, currentIndex) =>
+            currentIndex !== index
+        )
     )
   }
 
-  // =====================================================
-  // Edit Modal
-  // =====================================================
+  // ===================================================
+  // OPEN EDIT MODAL
+  // ===================================================
 
   const openEditModal = (room) => {
     setFormData({
       name: room.name || '',
       code: room.code || '',
       module:
-        room.module || 'Module 1',
+        room.module ||
+        'Module 1',
       type:
-        room.type || 'Conference',
+        room.type ||
+        'Conference',
       capacity:
         room.capacity || 4,
       status:
-        room.status || 'Available',
+        room.status ||
+        'Available',
       facilities:
         [...(room.facilities || [])],
     })
@@ -788,22 +1039,25 @@ export default function RoomManagement() {
     setModalOpen(true)
   }
 
-  // =====================================================
-  // View Modal
-  // =====================================================
+  // ===================================================
+  // OPEN VIEW MODAL
+  // ===================================================
 
   const openViewModal = (room) => {
     setFormData({
       name: room.name || '',
       code: room.code || '',
       module:
-        room.module || 'Module 1',
+        room.module ||
+        'Module 1',
       type:
-        room.type || 'Conference',
+        room.type ||
+        'Conference',
       capacity:
         room.capacity || 4,
       status:
-        room.status || 'Available',
+        room.status ||
+        'Available',
       facilities:
         [...(room.facilities || [])],
     })
@@ -815,40 +1069,76 @@ export default function RoomManagement() {
     setModalOpen(true)
   }
 
-  // =====================================================
-  // Close Modal
-  // =====================================================
+  // ===================================================
+  // CLOSE MODAL
+  // ===================================================
 
   const closeModal = () => {
+    if (submitting) {
+      return
+    }
+
     setModalOpen(false)
     setSelectedRoomId(null)
     setAddStep(1)
     setGeneratedRooms([])
+    setFormData(
+      getEmptyFormData()
+    )
   }
 
-  // =====================================================
-  // Edit Form Change
-  // =====================================================
+  // ===================================================
+  // EDIT FORM CHANGE
+  // ===================================================
 
-  const handleSingleFieldChange = (event) => {
+  const handleSingleFieldChange = (
+    event
+  ) => {
     const {
       name,
       value,
     } = event.target
 
-    setFormData((previous) => ({
-      ...previous,
-      [name]: value,
-    }))
+    setFormData(
+      (previous) => ({
+        ...previous,
+        [name]: value,
+      })
+    )
   }
 
-  // =====================================================
-  // Create Rooms
-  //
-  // Backend endpoint:
-  // POST /api/admin/rooms
+  // ===================================================
+  // VALIDATE ROOM
+  // ===================================================
+
+  const validateRoom = (room) => {
+    if (
+      !String(room.name || '').trim()
+    ) {
+      return 'Room name is required.'
+    }
+
+    if (
+      !String(room.module || '').trim()
+    ) {
+      return 'Module is required.'
+    }
+
+    if (
+      !Number(room.capacity) ||
+      Number(room.capacity) < 1
+    ) {
+      return 'Capacity must be at least 1.'
+    }
+
+    return null
+  }
+
+  // ===================================================
+  // CREATE / UPDATE ROOM
   //
   // Backend expects:
+  //
   // {
   //   roomTypeId,
   //   roomName,
@@ -857,11 +1147,17 @@ export default function RoomManagement() {
   //   status,
   //   facilityIds
   // }
-  // =====================================================
+  // ===================================================
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (
+    event
+  ) => {
     if (event) {
       event.preventDefault()
+    }
+
+    if (submitting) {
+      return
     }
 
     setSubmitting(true)
@@ -869,54 +1165,73 @@ export default function RoomManagement() {
     setSuccessMessage('')
 
     try {
-      // =================================================
+      // ===============================================
       // ADD MODE
-      // =================================================
+      // ===============================================
 
       if (modalMode === 'add') {
-        if (generatedRooms.length === 0) {
-          setError(
+        if (
+          generatedRooms.length === 0
+        ) {
+          throw new Error(
             'Please add at least one room.'
           )
-
-          return
         }
 
         let createdCount = 0
 
-        for (const room of generatedRooms) {
+        for (
+          const room of generatedRooms
+        ) {
+          const validationError =
+            validateRoom(room)
+
+          if (validationError) {
+            throw new Error(
+              validationError
+            )
+          }
+
           /*
-           * IMPORTANT:
+           * Facility names entered in the
+           * current wizard do not have IDs.
            *
-           * The current backend API expects
-           * facilityIds as integer IDs.
+           * Therefore only numeric facility
+           * IDs would be sent here.
            *
-           * The current UI contains facility names,
-           * so we cannot safely convert "TV" or
-           * "Board" into IDs without knowing the
-           * facility table IDs.
-           *
-           * Therefore [] is sent until the frontend
-           * has a facility ID selector.
+           * Currently this results in [].
            */
 
           const payload = {
             roomTypeId:
-              getRoomTypeId(room.type),
+              getRoomTypeId(
+                room.type
+              ),
 
             roomName:
-              room.name.trim(),
+              String(
+                room.name
+              ).trim(),
 
             capacity:
-              Number(room.capacity) || 4,
+              Number(
+                room.capacity
+              ) || 4,
 
             module:
-              room.module || 'Module 1',
+              String(
+                room.module ||
+                  'Module 1'
+              ).trim(),
 
             status:
-              room.status || 'Available',
+              room.status ||
+              'Available',
 
-            facilityIds: [],
+            facilityIds:
+              getFacilityIds(
+                room.facilities
+              ),
           }
 
           console.log(
@@ -924,33 +1239,34 @@ export default function RoomManagement() {
             payload
           )
 
-          await createAdminRoom(payload)
+          await createAdminRoom(
+            payload
+          )
 
           createdCount++
         }
 
-        // =================================================
-        // Refresh database data
-        // =================================================
-
         await fetchRoomData()
+
+        setModalOpen(false)
+        setSelectedRoomId(null)
+        setGeneratedRooms([])
+        setAddStep(1)
 
         setSuccessMessage(
           `${createdCount} room${
-            createdCount > 1
+            createdCount !== 1
               ? 's'
               : ''
           } created successfully.`
         )
 
-        closeModal()
-
         return
       }
 
-      // =================================================
+      // ===============================================
       // EDIT MODE
-      // =================================================
+      // ===============================================
 
       if (modalMode === 'edit') {
         if (!selectedRoomId) {
@@ -959,9 +1275,27 @@ export default function RoomManagement() {
           )
         }
 
+        const validationError =
+          validateRoom({
+            name:
+              formData.name,
+            module:
+              formData.module,
+            capacity:
+              formData.capacity,
+          })
+
+        if (validationError) {
+          throw new Error(
+            validationError
+          )
+        }
+
         const payload = {
           roomName:
-            formData.name.trim(),
+            String(
+              formData.name
+            ).trim(),
 
           roomTypeId:
             getRoomTypeId(
@@ -974,19 +1308,19 @@ export default function RoomManagement() {
             ) || 4,
 
           module:
-            formData.module ||
-            'Module 1',
+            String(
+              formData.module ||
+                'Module 1'
+            ).trim(),
 
           status:
             formData.status ||
             'Available',
 
-          /*
-           * Backend expects facilityIds.
-           * Current UI has facility names,
-           * therefore leave it empty.
-           */
-          facilityIds: [],
+          facilityIds:
+            getFacilityIds(
+              formData.facilities
+            ),
         }
 
         console.log(
@@ -1002,7 +1336,8 @@ export default function RoomManagement() {
 
         await fetchRoomData()
 
-        closeModal()
+        setModalOpen(false)
+        setSelectedRoomId(null)
 
         setSuccessMessage(
           'Room updated successfully.'
@@ -1024,24 +1359,46 @@ export default function RoomManagement() {
         err.response?.status
       )
 
-      setError(
-        err.response?.data?.message ||
-        err.response?.data?.title ||
-        err.message ||
-        'Room operation failed.'
-      )
+      if (
+        err.response?.status === 401
+      ) {
+        setError(
+          'Your session has expired. Please login again.'
+        )
+      } else if (
+        err.response?.status === 403
+      ) {
+        setError(
+          'You do not have permission to manage rooms.'
+        )
+      } else {
+        setError(
+          err.response?.data?.message ||
+          err.response?.data?.title ||
+          err.message ||
+          'Room operation failed.'
+        )
+      }
     } finally {
       setSubmitting(false)
     }
   }
 
-  // =====================================================
-  // Delete Room
-  // =====================================================
+  // ===================================================
+  // DELETE ROOM
+  // ===================================================
 
   const handleDelete = async (
     roomId
   ) => {
+    if (!roomId) {
+      setError(
+        'Room ID is missing.'
+      )
+
+      return
+    }
+
     const confirmed =
       window.confirm(
         'Are you sure you want to delete or cancel this room?'
@@ -1055,7 +1412,9 @@ export default function RoomManagement() {
       setError('')
       setSuccessMessage('')
 
-      await deleteAdminRoom(roomId)
+      await deleteAdminRoom(
+        roomId
+      )
 
       await fetchRoomData()
 
@@ -1068,22 +1427,31 @@ export default function RoomManagement() {
         err
       )
 
-      setError(
-        err.response?.data?.message ||
-        'Failed to delete room.'
-      )
+      if (
+        err.response?.status === 403
+      ) {
+        setError(
+          'You do not have permission to delete this room.'
+        )
+      } else {
+        setError(
+          err.response?.data?.message ||
+          err.response?.data?.title ||
+          'Failed to delete room.'
+        )
+      }
     }
   }
 
-  // =====================================================
+  // ===================================================
   // UI
-  // =====================================================
+  // ===================================================
 
   return (
     <div className="space-y-6">
 
       {/* =================================================
-          Header
+          HEADER
       ================================================= */}
 
       <div className="rounded-2xl border border-ink bg-white p-5">
@@ -1094,14 +1462,14 @@ export default function RoomManagement() {
 
         <p className="mt-2 text-sm text-slate">
           Manage room inventory, capacity,
-          availability, and facilities for your
-          workspace.
+          availability, and facilities for
+          your workspace.
         </p>
 
       </div>
 
       {/* =================================================
-          Messages
+          SUCCESS MESSAGE
       ================================================= */}
 
       {successMessage && (
@@ -1110,6 +1478,10 @@ export default function RoomManagement() {
         </div>
       )}
 
+      {/* =================================================
+          ERROR MESSAGE
+      ================================================= */}
+
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {error}
@@ -1117,7 +1489,7 @@ export default function RoomManagement() {
       )}
 
       {/* =================================================
-          Summary Cards
+          SUMMARY CARDS
       ================================================= */}
 
       <div className="grid gap-3 md:grid-cols-4">
@@ -1128,8 +1500,7 @@ export default function RoomManagement() {
           </p>
 
           <p className="mt-2 text-3xl font-bold text-ink">
-            {dashboardStats.totalRooms ||
-              rooms.length}
+            {dashboardStats.totalRooms}
           </p>
 
           <p className="mt-1 text-sm text-slate">
@@ -1143,8 +1514,7 @@ export default function RoomManagement() {
           </p>
 
           <p className="mt-2 text-3xl font-bold text-[#658362]">
-            {dashboardStats.availableRooms ||
-              statusCounts.Available}
+            {dashboardStats.availableRooms}
           </p>
 
           <p className="mt-1 text-sm text-slate">
@@ -1158,8 +1528,7 @@ export default function RoomManagement() {
           </p>
 
           <p className="mt-2 text-3xl font-bold text-[#B85450]">
-            {dashboardStats.bookedRooms ||
-              statusCounts.Booked}
+            {dashboardStats.bookedRooms}
           </p>
 
           <p className="mt-1 text-sm text-slate">
@@ -1184,10 +1553,10 @@ export default function RoomManagement() {
       </div>
 
       {/* =================================================
-          Control Bar
+          CONTROL BAR
       ================================================= */}
 
-      <Card className="hover:shadow-none hover:-translate-y-0">
+      <Card className="hover:-translate-y-0 hover:shadow-none">
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
@@ -1207,7 +1576,7 @@ export default function RoomManagement() {
           <div className="flex flex-wrap items-center justify-end gap-3 lg:flex-nowrap">
 
             <Button
-              className="shrink-0 min-w-[96px] justify-center px-3 py-2"
+              className="min-w-[96px] shrink-0 justify-center px-3 py-2"
               onClick={openAddModal}
             >
               Add Room
@@ -1231,12 +1600,23 @@ export default function RoomManagement() {
                   event.target.value
                 )
               }
-              className="shrink-0 min-w-[140px] rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
+              className="min-w-[140px] shrink-0 rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
             >
-              <option>All</option>
-              <option>Available</option>
-              <option>Booked</option>
-              <option>Maintenance</option>
+              <option value="All">
+                All
+              </option>
+
+              <option value="Available">
+                Available
+              </option>
+
+              <option value="Booked">
+                Booked
+              </option>
+
+              <option value="Maintenance">
+                Maintenance
+              </option>
             </select>
 
             <select
@@ -1246,12 +1626,13 @@ export default function RoomManagement() {
                   event.target.value
                 )
               }
-              className="shrink-0 min-w-[140px] rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
+              className="min-w-[140px] shrink-0 rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
             >
               {modules.map(
                 (module) => (
                   <option
                     key={module}
+                    value={module}
                   >
                     {module}
                   </option>
@@ -1266,7 +1647,7 @@ export default function RoomManagement() {
       </Card>
 
       {/* =================================================
-          Room Table
+          ROOM TABLE
       ================================================= */}
 
       <Card className="overflow-x-auto">
@@ -1314,7 +1695,6 @@ export default function RoomManagement() {
           <tbody className="divide-y divide-line">
 
             {loading ? (
-
               <tr>
                 <td
                   colSpan={8}
@@ -1323,9 +1703,8 @@ export default function RoomManagement() {
                   Loading room inventory...
                 </td>
               </tr>
-
-            ) : error && rooms.length === 0 ? (
-
+            ) : error &&
+              rooms.length === 0 ? (
               <tr>
                 <td
                   colSpan={8}
@@ -1334,9 +1713,7 @@ export default function RoomManagement() {
                   {error}
                 </td>
               </tr>
-
             ) : filteredRooms.length === 0 ? (
-
               <tr>
                 <td
                   colSpan={8}
@@ -1345,12 +1722,9 @@ export default function RoomManagement() {
                   No rooms match your filters.
                 </td>
               </tr>
-
             ) : (
-
               filteredRooms.map(
                 (room) => (
-
                   <tr
                     key={room.id}
                     className="transition-colors duration-200 hover:bg-portal-bg/70"
@@ -1378,9 +1752,7 @@ export default function RoomManagement() {
 
                     <td className="px-4 py-3.5 text-slate">
 
-                      {(room.facilities || [])
-                        .length > 0 ? (
-
+                      {room.facilities?.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
 
                           {room.facilities.map(
@@ -1388,25 +1760,23 @@ export default function RoomManagement() {
                               facility,
                               index
                             ) => (
-
                               <span
-                                key={index}
+                                key={
+                                  facility.id ??
+                                  index
+                                }
                                 className="rounded bg-slate/10 px-1.5 py-0.5 text-xs font-medium text-ink"
                               >
-                                {facility}
+                                {facility.name}
                               </span>
-
                             )
                           )}
 
                         </div>
-
                       ) : (
-
                         <span className="text-slate">
                           None
                         </span>
-
                       )}
 
                     </td>
@@ -1426,34 +1796,37 @@ export default function RoomManagement() {
                       <div className="inline-flex items-center gap-3 font-sans text-sm">
 
                         <button
+                          type="button"
                           onClick={() =>
                             openViewModal(
                               room
                             )
                           }
-                          className="font-bold text-sm text-sky-600 hover:text-sky-800 hover:underline"
+                          className="text-sm font-bold text-sky-600 hover:text-sky-800 hover:underline"
                         >
                           View
                         </button>
 
                         <button
+                          type="button"
                           onClick={() =>
                             openEditModal(
                               room
                             )
                           }
-                          className="font-bold text-sm text-emerald-600 hover:text-emerald-800 hover:underline"
+                          className="text-sm font-bold text-emerald-600 hover:text-emerald-800 hover:underline"
                         >
                           Edit
                         </button>
 
                         <button
+                          type="button"
                           onClick={() =>
                             handleDelete(
                               room.id
                             )
                           }
-                          className="font-bold text-sm text-red-600 hover:text-red-800 hover:underline"
+                          className="text-sm font-bold text-red-600 hover:text-red-800 hover:underline"
                         >
                           Cancel
                         </button>
@@ -1463,10 +1836,8 @@ export default function RoomManagement() {
                     </td>
 
                   </tr>
-
                 )
               )
-
             )}
 
           </tbody>
@@ -1476,7 +1847,7 @@ export default function RoomManagement() {
       </Card>
 
       {/* =================================================
-          Modal
+          MODAL
       ================================================= */}
 
       <Modal
@@ -1572,12 +1943,12 @@ export default function RoomManagement() {
 
         {modalMode === 'add' &&
           addStep === 1 && (
-
             <div className="space-y-4">
 
               <p className="text-xs text-slate">
-                Specify room configurations and
-                quantities to generate rooms.
+                Specify room configurations
+                and quantities to generate
+                rooms.
               </p>
 
               <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
@@ -1619,7 +1990,6 @@ export default function RoomManagement() {
                         config,
                         index
                       ) => (
-
                         <tr
                           key={index}
                           className="transition-colors hover:bg-portal-bg/50"
@@ -1627,8 +1997,7 @@ export default function RoomManagement() {
 
                           <td className="p-3 align-top">
 
-                            <input
-                              type="text"
+                            <select
                               value={
                                 config.type
                               }
@@ -1642,9 +2011,22 @@ export default function RoomManagement() {
                                     .value
                                 )
                               }
-                              placeholder="e.g. Discussion"
-                              className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-portal-accent"
-                            />
+                              className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-portal-accent"
+                            >
+
+                              <option value="Discussion">
+                                Discussion
+                              </option>
+
+                              <option value="Conference">
+                                Conference
+                              </option>
+
+                              <option value="Training">
+                                Training
+                              </option>
+
+                            </select>
 
                           </td>
 
@@ -1666,7 +2048,7 @@ export default function RoomManagement() {
                                     .value
                                 )
                               }
-                              className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-portal-accent"
+                              className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-portal-accent"
                             />
 
                           </td>
@@ -1689,7 +2071,7 @@ export default function RoomManagement() {
                                     .value
                                 )
                               }
-                              className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-portal-accent"
+                              className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-portal-accent"
                             />
 
                           </td>
@@ -1705,7 +2087,6 @@ export default function RoomManagement() {
                                     facility,
                                     facilityIndex
                                   ) => (
-
                                     <div
                                       key={
                                         facilityIndex
@@ -1730,7 +2111,7 @@ export default function RoomManagement() {
                                           )
                                         }
                                         placeholder="Facility"
-                                        className="w-16 bg-transparent text-xs font-medium text-ink outline-none"
+                                        className="w-20 bg-transparent text-xs font-medium text-ink outline-none"
                                       />
 
                                       <button
@@ -1747,7 +2128,6 @@ export default function RoomManagement() {
                                       </button>
 
                                     </div>
-
                                   )
                                 )}
 
@@ -1760,7 +2140,7 @@ export default function RoomManagement() {
                                     index
                                   )
                                 }
-                                className="inline-flex items-center rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-portal-bg"
+                                className="inline-flex items-center rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink hover:bg-portal-bg"
                               >
                                 + Add Facility
                               </button>
@@ -1773,7 +2153,6 @@ export default function RoomManagement() {
 
                             {typeConfigs.length >
                               1 && (
-
                               <button
                                 type="button"
                                 onClick={() =>
@@ -1781,17 +2160,15 @@ export default function RoomManagement() {
                                     index
                                   )
                                 }
-                                className="pt-2 font-sans text-xs text-[#be534d] hover:underline"
+                                className="pt-2 text-xs text-[#be534d] hover:underline"
                               >
                                 Remove
                               </button>
-
                             )}
 
                           </td>
 
                         </tr>
-
                       )
                     )}
 
@@ -1813,7 +2190,6 @@ export default function RoomManagement() {
               </Button>
 
             </div>
-
           )}
 
         {/* =================================================
@@ -1822,13 +2198,12 @@ export default function RoomManagement() {
 
         {modalMode === 'add' &&
           addStep === 2 && (
-
             <div className="space-y-4">
 
               <p className="text-xs text-slate">
                 Review and edit the generated
-                rooms before submitting them to
-                the database.
+                rooms before submitting them
+                to the database.
               </p>
 
               <div className="max-h-[60vh] overflow-y-auto rounded-2xl border border-line bg-white shadow-sm">
@@ -1874,7 +2249,6 @@ export default function RoomManagement() {
                         room,
                         index
                       ) => (
-
                         <tr
                           key={
                             room.tempId
@@ -1903,7 +2277,7 @@ export default function RoomManagement() {
                                     .value
                                 )
                               }
-                              className="w-full rounded-xl border border-line bg-white px-3 py-1.5 text-xs text-ink outline-none transition-colors focus:border-portal-accent"
+                              className="w-full rounded-xl border border-line bg-white px-3 py-1.5 text-xs text-ink outline-none focus:border-portal-accent"
                             />
 
                           </td>
@@ -1938,7 +2312,7 @@ export default function RoomManagement() {
                                     .value
                                 )
                               }
-                              className="w-full rounded-xl border border-line bg-white px-3 py-1.5 text-xs text-ink outline-none transition-colors focus:border-portal-accent"
+                              className="w-full rounded-xl border border-line bg-white px-3 py-1.5 text-xs text-ink outline-none focus:border-portal-accent"
                             />
 
                           </td>
@@ -1959,18 +2333,18 @@ export default function RoomManagement() {
                                     .value
                                 )
                               }
-                              className="w-full rounded-xl border border-line bg-white px-2 py-1.5 text-xs text-ink outline-none transition-colors focus:border-portal-accent"
+                              className="w-full rounded-xl border border-line bg-white px-2 py-1.5 text-xs text-ink outline-none focus:border-portal-accent"
                             >
 
-                              <option>
+                              <option value="Available">
                                 Available
                               </option>
 
-                              <option>
+                              <option value="Booked">
                                 Booked
                               </option>
 
-                              <option>
+                              <option value="Maintenance">
                                 Maintenance
                               </option>
 
@@ -1987,7 +2361,7 @@ export default function RoomManagement() {
                                   index
                                 )
                               }
-                              className="font-serif text-xs text-[#be534d] hover:underline"
+                              className="text-xs text-[#be534d] hover:underline"
                             >
                               Remove
                             </button>
@@ -1995,7 +2369,6 @@ export default function RoomManagement() {
                           </td>
 
                         </tr>
-
                       )
                     )}
 
@@ -2006,7 +2379,6 @@ export default function RoomManagement() {
               </div>
 
             </div>
-
           )}
 
         {/* =================================================
@@ -2014,7 +2386,6 @@ export default function RoomManagement() {
         ================================================= */}
 
         {modalMode !== 'add' && (
-
           <form
             className="space-y-4"
             onSubmit={
@@ -2023,6 +2394,8 @@ export default function RoomManagement() {
           >
 
             <div className="grid gap-4 md:grid-cols-2">
+
+              {/* ROOM NAME */}
 
               <label className="space-y-1">
 
@@ -2047,6 +2420,8 @@ export default function RoomManagement() {
 
               </label>
 
+              {/* ROOM CODE */}
+
               <label className="space-y-1">
 
                 <span className="text-xs uppercase tracking-[0.2em] text-slate">
@@ -2063,6 +2438,8 @@ export default function RoomManagement() {
                 />
 
               </label>
+
+              {/* MODULE */}
 
               <label className="space-y-1">
 
@@ -2087,6 +2464,8 @@ export default function RoomManagement() {
 
               </label>
 
+              {/* TYPE */}
+
               <label className="space-y-1">
 
                 <span className="text-xs uppercase tracking-[0.2em] text-slate">
@@ -2108,21 +2487,23 @@ export default function RoomManagement() {
                   className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none disabled:cursor-not-allowed"
                 >
 
-                  <option>
+                  <option value="Conference">
                     Conference
                   </option>
 
-                  <option>
+                  <option value="Training">
                     Training
                   </option>
 
-                  <option>
+                  <option value="Discussion">
                     Discussion
                   </option>
 
                 </select>
 
               </label>
+
+              {/* CAPACITY */}
 
               <label className="space-y-1">
 
@@ -2149,6 +2530,8 @@ export default function RoomManagement() {
 
               </label>
 
+              {/* STATUS */}
+
               <label className="space-y-1">
 
                 <span className="text-xs uppercase tracking-[0.2em] text-slate">
@@ -2170,15 +2553,15 @@ export default function RoomManagement() {
                   className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none disabled:cursor-not-allowed"
                 >
 
-                  <option>
+                  <option value="Available">
                     Available
                   </option>
 
-                  <option>
+                  <option value="Booked">
                     Booked
                   </option>
 
-                  <option>
+                  <option value="Maintenance">
                     Maintenance
                   </option>
 
@@ -2188,6 +2571,8 @@ export default function RoomManagement() {
 
             </div>
 
+            {/* FACILITIES */}
+
             <div className="rounded-xl border border-line bg-portal-bg p-4">
 
               <p className="mb-2 text-xs uppercase tracking-[0.2em] text-slate">
@@ -2196,7 +2581,6 @@ export default function RoomManagement() {
 
               {formData.facilities?.length >
               0 ? (
-
                 <div className="flex flex-wrap gap-2">
 
                   {formData.facilities.map(
@@ -2204,31 +2588,31 @@ export default function RoomManagement() {
                       facility,
                       index
                     ) => (
-
                       <span
-                        key={index}
+                        key={
+                          facility?.id ??
+                          index
+                        }
                         className="rounded-full bg-white px-3 py-1 text-xs font-medium text-ink"
                       >
-                        {facility}
+                        {typeof facility ===
+                        'string'
+                          ? facility
+                          : facility.name}
                       </span>
-
                     )
                   )}
 
                 </div>
-
               ) : (
-
                 <span className="text-sm text-slate">
                   No facilities assigned
                 </span>
-
               )}
 
             </div>
 
           </form>
-
         )}
 
       </Modal>
