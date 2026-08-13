@@ -22,9 +22,13 @@ export default function MyBookings() {
   const load = async () => {
     try {
       setLoading(true);
+
       const data = await getMyBookings();
-      // Ensure data is sorted by newest bookingId first
-      const sorted = (data || []).sort((a, b) => b.bookingId - a.bookingId);
+
+      const sorted = (data || []).sort(
+        (a, b) => b.bookingId - a.bookingId
+      );
+
       setBookings(sorted);
     } catch (err) {
       console.error("Error loading bookings:", err);
@@ -39,34 +43,50 @@ export default function MyBookings() {
   }, []);
 
   const isUpcomingBooking = (booking) => {
-    if (booking.status === "Cancelled" || booking.status === "Rejected") {
+    if (
+      booking.status === "Cancelled" ||
+      booking.status === "Rejected"
+    ) {
       return false;
     }
+
     const today = new Date().toISOString().split("T")[0];
+
     return booking.bookingDate >= today;
   };
 
   const getDuration = (start, end) => {
     if (!start || !end) return "-";
+
     const startDate = new Date(`2000-01-01T${start}`);
     const endDate = new Date(`2000-01-01T${end}`);
+
     const hours = (endDate - startDate) / 3600000;
-    
-    return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(2)}h`;
+
+    return Number.isInteger(hours)
+      ? `${hours}h`
+      : `${hours.toFixed(2)}h`;
   };
 
-  // Helper function matching your exact color scheme and compact width
   const getStatusBadgeClass = (status) => {
     const s = status?.toLowerCase() || "";
-    if (s === "approved" || s === "confirmed" || s === "available") {
-      return "bg-[#658362] text-white"; // Muted green matching the design
+
+    if (
+      s === "approved" ||
+      s === "confirmed" ||
+      s === "available"
+    ) {
+      return "bg-[#658362] text-white";
     }
+
     if (s === "pending") {
-      return "bg-[#E09F3E] text-white"; // Warm amber/orange matching the design
+      return "bg-[#E09F3E] text-white";
     }
+
     if (s === "rejected" || s === "cancelled") {
-      return "bg-[#B85450] text-white"; // Terracotta red matching the design
+      return "bg-[#B85450] text-white";
     }
+
     return "bg-slate-500 text-white";
   };
 
@@ -75,22 +95,28 @@ export default function MyBookings() {
 
     try {
       await cancelBooking(selected.bookingId);
+
       toast.addToast({
         type: "success",
         title: "Booking cancelled successfully.",
       });
+
       setMode(null);
       load();
     } catch (err) {
       toast.addToast({
         type: "error",
-        title: err.response?.data?.message || err.message || "Unable to cancel booking.",
+        title:
+          err.response?.data?.message ||
+          err.message ||
+          "Unable to cancel booking.",
       });
     }
   }
 
   async function save(e) {
     e.preventDefault();
+
     if (!selected) return;
 
     if (selected.startTime >= selected.endTime) {
@@ -98,11 +124,13 @@ export default function MyBookings() {
         type: "error",
         title: "End time must be after start time.",
       });
+
       return;
     }
 
     try {
-      const formatTime = (t) => (t && t.length === 5 ? `${t}:00` : t);
+      const formatTime = (t) =>
+        t && t.length === 5 ? `${t}:00` : t;
 
       const payload = {
         bookingDate: selected.bookingDate,
@@ -113,29 +141,38 @@ export default function MyBookings() {
       };
 
       await updateBooking(selected.bookingId, payload);
+
       toast.addToast({
         type: "success",
         title: "Booking updated successfully.",
       });
+
       setMode(null);
       load();
     } catch (err) {
       toast.addToast({
         type: "error",
-        title: err.response?.data?.message || "Unable to update booking.",
+        title:
+          err.response?.data?.message ||
+          "Unable to update booking.",
       });
     }
   }
 
   return (
     <div className="space-y-6">
+      {/* Page Header */}
       <div>
-        <h1 className="text-4xl font-semibold">My Bookings</h1>
-        <p className="text-slate-500 mt-2">
+        <h1 className="text-4xl font-semibold">
+          My Bookings
+        </h1>
+
+        <p className="mt-2 text-slate-500">
           View, reschedule or cancel your workspace reservations.
         </p>
       </div>
 
+      {/* Bookings Table */}
       <Card className="overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
@@ -146,21 +183,31 @@ export default function MyBookings() {
               <th className="px-3 py-3">Date</th>
               <th className="px-3 py-3">Time</th>
               <th className="px-3 py-3">Duration</th>
-              <th className="px-3 py-3 text-center">Status</th>
-              <th className="px-3 py-3 text-center">Actions</th>
+              <th className="px-3 py-3 text-center">
+                Status
+              </th>
+              <th className="px-3 py-3 text-center">
+                Actions
+              </th>
             </tr>
           </thead>
 
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-slate-500">
+                <td
+                  colSpan={8}
+                  className="py-8 text-center text-slate-500"
+                >
                   Loading bookings...
                 </td>
               </tr>
             ) : bookings.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-slate-500">
+                <td
+                  colSpan={8}
+                  className="py-8 text-center text-slate-500"
+                >
                   No bookings found.
                 </td>
               </tr>
@@ -170,14 +217,18 @@ export default function MyBookings() {
                   key={b.bookingId}
                   className="border-b border-line last:border-0"
                 >
-                  <td className="px-3 py-4 font-mono whitespace-nowrap">{b.bookingId}</td>
+                  <td className="px-3 py-4 font-mono whitespace-nowrap">
+                    {b.bookingId}
+                  </td>
 
                   <td className="px-3 py-4 whitespace-nowrap font-semibold">
                     {b.roomName || `Room ${b.roomId}`}
                   </td>
 
-                  <td className="px-3 py-4 truncate max-w-[140px]">
-                    {b.purpose && b.purpose.trim() ? b.purpose : "Reserved Workspace"}
+                  <td className="max-w-[140px] truncate px-3 py-4">
+                    {b.purpose && b.purpose.trim()
+                      ? b.purpose
+                      : "Reserved Workspace"}
                   </td>
 
                   <td className="px-3 py-4 whitespace-nowrap">
@@ -185,8 +236,13 @@ export default function MyBookings() {
                   </td>
 
                   <td className="px-3 py-4 whitespace-nowrap text-slate-600">
-                    {b.startTime ? b.startTime.substring(0, 5) : ""} -{" "}
-                    {b.endTime ? b.endTime.substring(0, 5) : ""}
+                    {b.startTime
+                      ? b.startTime.substring(0, 5)
+                      : ""}
+                    {" - "}
+                    {b.endTime
+                      ? b.endTime.substring(0, 5)
+                      : ""}
                   </td>
 
                   <td className="px-3 py-4 whitespace-nowrap">
@@ -195,7 +251,7 @@ export default function MyBookings() {
 
                   <td className="px-3 py-4 text-center whitespace-nowrap">
                     <span
-                      className={`inline-block w-24 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${getStatusBadgeClass(
+                      className={`inline-block w-24 rounded-full py-1 text-center text-xs font-bold uppercase tracking-wider ${getStatusBadgeClass(
                         b.status
                       )}`}
                     >
@@ -203,9 +259,10 @@ export default function MyBookings() {
                     </span>
                   </td>
 
-                  <td className="px-3 py-4 whitespace-nowrap text-center">
+                  <td className="px-3 py-4 text-center whitespace-nowrap">
+                    {/* View */}
                     <button
-                      className="mr-2.5 text-sky-600 hover:text-sky-800 font-bold text-sm hover:underline"
+                      className="mr-2.5 text-sm font-bold text-sky-600 hover:text-sky-800 hover:underline"
                       onClick={() => {
                         setSelected(b);
                         setMode("view");
@@ -214,10 +271,11 @@ export default function MyBookings() {
                       View
                     </button>
 
+                    {/* Edit and Cancel */}
                     {isUpcomingBooking(b) && (
                       <>
                         <button
-                          className="mr-2.5 text-emerald-600 hover:text-emerald-800 font-bold text-sm hover:underline"
+                          className="mr-2.5 text-sm font-bold text-emerald-600 hover:text-emerald-800 hover:underline"
                           onClick={() => {
                             setSelected({ ...b });
                             setMode("edit");
@@ -227,7 +285,7 @@ export default function MyBookings() {
                         </button>
 
                         <button
-                          className="text-red-600 hover:text-red-800 font-bold text-sm hover:underline"
+                          className="text-sm font-bold text-red-600 hover:text-red-800 hover:underline"
                           onClick={() => {
                             setSelected(b);
                             setMode("cancel");
@@ -249,7 +307,12 @@ export default function MyBookings() {
       <Modal
         open={mode === "view"}
         title="Booking Details"
-        footer={<Button onClick={() => setMode(null)}>Back</Button>}
+        footer={
+          <Button onClick={() => setMode(null)}>
+            Back
+          </Button>
+        }
+        className="max-w-lg h-fit"
       >
         {selected && (
           <dl className="grid grid-cols-2 gap-4 text-sm">
@@ -260,21 +323,29 @@ export default function MyBookings() {
             <dd>{selected.roomName}</dd>
 
             <dt className="font-medium">Purpose</dt>
-            <dd>{selected.purpose || "Reserved Workspace"}</dd>
+            <dd>
+              {selected.purpose || "Reserved Workspace"}
+            </dd>
 
             <dt className="font-medium">Date</dt>
             <dd>{selected.bookingDate}</dd>
 
             <dt className="font-medium">Time</dt>
             <dd>
-              {selected.startTime ? selected.startTime.substring(0, 5) : ""} -{" "}
-              {selected.endTime ? selected.endTime.substring(0, 5) : ""}
+              {selected.startTime
+                ? selected.startTime.substring(0, 5)
+                : ""}
+              {" - "}
+              {selected.endTime
+                ? selected.endTime.substring(0, 5)
+                : ""}
             </dd>
 
             <dt className="font-medium">Status</dt>
+
             <dd>
               <span
-                className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${getStatusBadgeClass(
+                className={`inline-block w-28 rounded-full py-1 text-center text-xs font-bold uppercase tracking-wider ${getStatusBadgeClass(
                   selected.status
                 )}`}
               >
@@ -289,45 +360,72 @@ export default function MyBookings() {
       <Modal
         open={mode === "cancel"}
         title="Cancel Booking"
+        className="max-w-md h-fit"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setMode(null)}>
+            <Button
+              variant="secondary"
+              onClick={() => setMode(null)}
+            >
               No
             </Button>
-            <Button onClick={cancel}>Yes</Button>
+
+            <Button onClick={cancel}>
+              Yes
+            </Button>
           </>
         }
       >
-        <p>Are you sure you want to cancel this booking?</p>
+        <p>
+          Are you sure you want to cancel this booking?
+        </p>
       </Modal>
 
       {/* Edit Booking Modal */}
-      <Modal open={mode === "edit"} title="Edit Booking" footer={null}>
+      <Modal
+        open={mode === "edit"}
+        title="Edit Booking"
+        footer={null}
+        className="max-w-xl h-fit"
+      >
         {selected && (
-          <form onSubmit={save} className="space-y-4">
+          <form
+            onSubmit={save}
+            className="space-y-4"
+          >
             <p className="text-xs text-slate-500">
               Booking #{selected.bookingId}
             </p>
 
+            {/* Date */}
             <Field label="Date">
               <Input
                 type="date"
                 value={selected.bookingDate}
                 onChange={(e) =>
-                  setSelected({ ...selected, bookingDate: e.target.value })
+                  setSelected({
+                    ...selected,
+                    bookingDate: e.target.value,
+                  })
                 }
               />
             </Field>
 
+            {/* Start and End Time */}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Start Time">
                 <Input
                   type="time"
                   value={
-                    selected.startTime ? selected.startTime.substring(0, 5) : ""
+                    selected.startTime
+                      ? selected.startTime.substring(0, 5)
+                      : ""
                   }
                   onChange={(e) =>
-                    setSelected({ ...selected, startTime: e.target.value })
+                    setSelected({
+                      ...selected,
+                      startTime: e.target.value,
+                    })
                   }
                 />
               </Field>
@@ -336,25 +434,35 @@ export default function MyBookings() {
                 <Input
                   type="time"
                   value={
-                    selected.endTime ? selected.endTime.substring(0, 5) : ""
+                    selected.endTime
+                      ? selected.endTime.substring(0, 5)
+                      : ""
                   }
                   onChange={(e) =>
-                    setSelected({ ...selected, endTime: e.target.value })
+                    setSelected({
+                      ...selected,
+                      endTime: e.target.value,
+                    })
                   }
                 />
               </Field>
             </div>
 
+            {/* Purpose */}
             <Field label="Purpose">
               <Input
                 value={selected.purpose || ""}
                 onChange={(e) =>
-                  setSelected({ ...selected, purpose: e.target.value })
+                  setSelected({
+                    ...selected,
+                    purpose: e.target.value,
+                  })
                 }
               />
             </Field>
 
-            <div className="flex justify-end gap-2">
+            {/* Buttons */}
+            <div className="flex justify-end gap-2 pt-2">
               <Button
                 type="button"
                 variant="secondary"
@@ -362,7 +470,10 @@ export default function MyBookings() {
               >
                 Cancel
               </Button>
-              <Button type="submit">Save Changes</Button>
+
+              <Button type="submit">
+                Save Changes
+              </Button>
             </div>
           </form>
         )}
