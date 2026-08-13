@@ -7,16 +7,35 @@ import { useToast } from '../components/common/ToastProvider'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
 import Modal from '../components/common/Modal'
+
+// Helper to get local YYYY-MM-DD
+function getLocalDateStr(dateObj = new Date()) {
+  const offset = dateObj.getTimezoneOffset() * 60000
+  return new Date(dateObj.getTime() - offset).toISOString().slice(0, 10)
+}
+
+// Helper to get local HH:mm
+function getLocalTimeStr(dateObj = new Date()) {
+  const hours = String(dateObj.getHours()).padStart(2, '0')
+  const minutes = String(dateObj.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
 export default function BookRoom() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const roomIdParam = searchParams.get('roomId')
-  const prefillDate = searchParams.get('date') || new Date().toISOString().slice(0, 10)
+  
+  const todayStr = getLocalDateStr()
+  const prefillDate = searchParams.get('date') || todayStr
   const prefillStart = searchParams.get('startTime') || ''
   const prefillEnd = searchParams.get('endTime') || ''
   const prefillAttendees = searchParams.get('attendees') || '1'
+
   const [availableRooms, setAvailableRooms] = useState([])
   const [loadingRooms, setLoadingRooms] = useState(false)
+  const [currentTime, setCurrentTime] = useState(getLocalTimeStr())
+
   const [form, setForm] = useState({
     title: '',
     module: '',
@@ -26,9 +45,19 @@ export default function BookRoom() {
     endTime: prefillEnd,
     attendees: prefillAttendees,
   })
+
   const [submitting, setSubmitting] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const toast = useToast()
+
+  // Keep time updated periodically for precise time picker filtering
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(getLocalTimeStr())
+    }, 30000)
+    return () => clearInterval(timer)
+  }, [])
+
   // Load real rooms from backend API
   useEffect(() => {
     let active = true
@@ -58,27 +87,43 @@ export default function BookRoom() {
       active = false
     }
   }, [form.date, roomIdParam])
-  // Extract unique modules dynamically from actual DB rooms
+
+  // Extract unique modules dynamically
   const modules = useMemo(() => {
     const list = availableRooms.map((r) => r.module).filter(Boolean)
     return [...new Set(list)]
   }, [availableRooms])
+
   // Get rooms belonging to the selected module
   const roomsInModule = useMemo(() => {
     if (!form.module) return []
     return availableRooms.filter((r) => r.module === form.module)
   }, [availableRooms, form.module])
+
   const selectedRoomDetails = useMemo(() => {
     return availableRooms.find((r) => String(r.roomId) === String(form.roomId))
   }, [availableRooms, form.roomId])
+
   function update(key, value) {
     setForm((f) => ({ ...f, [key]: value }))
   }
+
   function handleModuleChange(module) {
     setForm((f) => ({ ...f, module, roomId: '' }))
   }
+
+  // Determine minimum allowed time for the time picker dynamically
+  const isSelectedDateToday = form.date === todayStr
+  const minStartTime = isSelectedDateToday ? currentTime : '09:00'
+
   async function handleSubmit(e) {
     e.preventDefault()
+
+    if (form.date < todayStr) {
+      toast.addToast({ type: 'error', title: 'Cannot book a date in the past.' })
+      return
+    }
+
     if (!form.module) {
       toast.addToast({ type: 'error', title: 'Please select a module.' })
       return
@@ -95,6 +140,7 @@ export default function BookRoom() {
       toast.addToast({ type: 'error', title: 'Complete all date, time, and attendee details.' })
       return
     }
+
     if (
       selectedRoomDetails &&
       Number(form.attendees) > Number(selectedRoomDetails.capacity)
@@ -102,33 +148,25 @@ export default function BookRoom() {
       toast.addToast({
         type: 'error',
         title: `This room can accommodate only ${selectedRoomDetails.capacity} participants.`,
-        message: `You entered ${form.attendees} participants. Please select another room or reduce the number of attendees.`
+        message: `You entered ${form.attendees} participants. Please select another room or reduce attendees.`
       })
       return
     }
+
     if (form.startTime >= form.endTime) {
       toast.addToast({ type: 'error', title: 'End time must be after start time.' })
       return
     }
- 
-    // --- NEW VALIDATION: Prevent booking past times on the current date ---
-    const todayStr = new Date().toISOString().slice(0, 10)
-    if (form.date === todayStr) {
-      const now = new Date()
-      const currentHours = String(now.getHours()).padStart(2, '0')
-      const currentMinutes = String(now.getMinutes()).padStart(2, '0')
-      const currentTimeStr = `${currentHours}:${currentMinutes}`
- 
-      if (form.startTime < currentTimeStr) {
-        toast.addToast({
-          type: 'error',
-          title: 'Cannot book a start time in the past for today.',
-        })
-        return
-      }
+
+    // Dynamic past time validation
+    if (isSelectedDateToday && form.startTime < currentTime) {
+      toast.addToast({
+        type: 'error',
+        title: 'Cannot book a start time in the past for today.',
+      })
+      return
     }
-    // ---------------------------------------------------------------------
- 
+
     const OFFICE_START_TIME = '09:00'
     const OFFICE_END_TIME = '18:00'
     if (form.startTime < OFFICE_START_TIME) {
@@ -145,8 +183,10 @@ export default function BookRoom() {
       })
       return
     }
+
     setConfirming(true)
   }
+
   async function confirmBooking() {
     setConfirming(false)
     setSubmitting(true)
@@ -156,7 +196,7 @@ export default function BookRoom() {
         bookingDate: form.date,
         startTime: form.startTime.length === 5 ? `${form.startTime}:00` : form.startTime,
         endTime: form.endTime.length === 5 ? `${form.endTime}:00` : form.endTime,
-        purpose: form.title.trim(), // Connects Meeting Title input to API Purpose field
+        purpose: form.title.trim(),
         participantCount: Number(form.attendees),
         facilityIds: [],
       }
@@ -180,83 +220,95 @@ export default function BookRoom() {
       setSubmitting(false)
     }
   }
+
   return (
-<div className="mx-auto max-w-2xl space-y-6">
-<h1 className="font-display text-xl font-700">Booking</h1>
-<Card>
-<form onSubmit={handleSubmit} className="space-y-4">
-<Field label="Meeting Title">
-<Input
+    <div className="mx-auto max-w-2xl space-y-6">
+      <h1 className="font-display text-xl font-700">Booking</h1>
+      <Card>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Field label="Meeting Title">
+            <Input
               required
               value={form.title}
               onChange={(e) => update('title', e.target.value)}
               placeholder="e.g. sprint"
             />
-</Field>
-<div className="grid grid-cols-2 gap-4">
-<Field label="Module">
-<Select
+          </Field>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Module">
+              <Select
                 required
                 value={form.module}
                 onChange={(e) => handleModuleChange(e.target.value)}
                 disabled={loadingRooms}
->
-<option value="">
+              >
+                <option value="">
                   {loadingRooms ? 'Loading modules...' : 'Select module'}
-</option>
+                </option>
                 {modules.map((m) => (
-<option key={m} value={m}>
+                  <option key={m} value={m}>
                     {m}
-</option>
+                  </option>
                 ))}
-</Select>
-</Field>
-<Field label="Room">
-<Select
+              </Select>
+            </Field>
+
+            <Field label="Room">
+              <Select
                 required
                 value={form.roomId}
                 onChange={(e) => update('roomId', e.target.value)}
                 disabled={!form.module || loadingRooms}
->
-<option value="">
+              >
+                <option value="">
                   {form.module ? 'Select room' : 'Choose a module first'}
-</option>
+                </option>
                 {roomsInModule.map((r, index) => (
-<option key={r.roomId} value={r.roomId}>
+                  <option key={r.roomId} value={r.roomId}>
                     {r.roomName || `Room ${index + 1}`} (Cap: {r.capacity})
-</option>
+                  </option>
                 ))}
-</Select>
-</Field>
-</div>
-<div className="grid grid-cols-3 gap-4">
-<Field label="Date">
-<Input
+              </Select>
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <Field label="Date">
+              <Input
                 type="date"
                 required
+                min={todayStr} /* Disables past dates in picker UI */
                 value={form.date}
                 onChange={(e) => update('date', e.target.value)}
               />
-</Field>
-<Field label="Start Time">
-<Input
+            </Field>
+
+            <Field label="Start Time">
+              <Input
                 type="time"
                 required
+                min={minStartTime} /* Dynamically disables past hours for today */
+                max="18:00"
                 value={form.startTime}
                 onChange={(e) => update('startTime', e.target.value)}
               />
-</Field>
-<Field label="End Time">
-<Input
+            </Field>
+
+            <Field label="End Time">
+              <Input
                 type="time"
                 required
+                min={form.startTime || minStartTime}
+                max="18:00"
                 value={form.endTime}
                 onChange={(e) => update('endTime', e.target.value)}
               />
-</Field>
-</div>
-<Field label="Number of Attendees">
-<Input
+            </Field>
+          </div>
+
+          <Field label="Number of Attendees">
+            <Input
               type="number"
               min="1"
               max={selectedRoomDetails?.capacity}
@@ -265,61 +317,67 @@ export default function BookRoom() {
               onChange={(e) => update('attendees', e.target.value)}
             />
             {selectedRoomDetails && (
-<p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-slate-500">
                 Maximum capacity for this room:{" "}
-<span className="font-semibold">
+                <span className="font-semibold">
                   {selectedRoomDetails.capacity}
-</span>{" "}
+                </span>{" "}
                 participants
-</p>
+              </p>
             )}
             {selectedRoomDetails &&
               Number(form.attendees) > Number(selectedRoomDetails.capacity) && (
-<p className="mt-1 text-sm font-medium text-red-600">
+                <p className="mt-1 text-sm font-medium text-red-600">
                   ⚠ Number of participants cannot exceed the room capacity of{" "}
                   {selectedRoomDetails.capacity}.
-</p>
+                </p>
               )}
-</Field>
-<Button type="submit" className="w-full" disabled={submitting ||
-            (selectedRoomDetails && Number(form.attendees) > Number(selectedRoomDetails.capacity))
-          }
->
+          </Field>
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={
+              submitting ||
+              (selectedRoomDetails && Number(form.attendees) > Number(selectedRoomDetails.capacity))
+            }
+          >
             {submitting ? 'Confirming...' : 'Confirm Booking'}
-</Button>
-</form>
-</Card>
+          </Button>
+        </form>
+      </Card>
+
       {/* Confirmation Modal */}
-<Modal
+      <Modal
         open={confirming}
         title="Confirm booking"
         footer={
-<>
-<Button variant="secondary" onClick={() => setConfirming(false)}>
+          <>
+            <Button variant="secondary" onClick={() => setConfirming(false)}>
               Back
-</Button>
-<Button onClick={confirmBooking}>Confirm Booking</Button>
-</>
+            </Button>
+            <Button onClick={confirmBooking}>Confirm Booking</Button>
+          </>
         }
->
-<div className="space-y-1">
-<p>
-<strong>Meeting Title:</strong> {form.title}
-</p>
-<p>
-<strong>Room:</strong> {selectedRoomDetails?.roomName || 'Selected room'}
-</p>
-<p>
-<strong>Module:</strong> {form.module}
-</p>
-<p>
-<strong>Date & time:</strong> {form.date} · {form.startTime}–{form.endTime}
-</p>
-<p>
-<strong>Attendees:</strong> {form.attendees}
-</p>
-</div>
-</Modal>
-</div>
+      >
+        <div className="space-y-1">
+          <p>
+            <strong>Meeting Title:</strong> {form.title}
+          </p>
+          <p>
+            <strong>Room:</strong> {selectedRoomDetails?.roomName || 'Selected room'}
+          </p>
+          <p>
+            <strong>Module:</strong> {form.module}
+          </p>
+          <p>
+            <strong>Date & time:</strong> {form.date} · {form.startTime}–{form.endTime}
+          </p>
+          <p>
+            <strong>Attendees:</strong> {form.attendees}
+          </p>
+        </div>
+      </Modal>
+    </div>
   )
 }

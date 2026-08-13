@@ -6,11 +6,19 @@ import Modal from '../components/common/Modal'
 import AvailabilityGrid from '../components/calendar/AvailabilityGrid'
 import { getRoomAvailability } from '../api/rooms'
 import { Select } from '../components/common/Input'
+
 const ROOM_TYPE_OPTIONS = ['All Rooms', 'Conference', 'Discussion', 'Training']
+
 function localDate(value = new Date()) {
   const offset = value.getTimezoneOffset() * 60000
   return new Date(value.getTime() - offset).toISOString().slice(0, 10)
 }
+
+function getNowMinutes() {
+  const now = new Date()
+  return now.getHours() * 60 + now.getMinutes()
+}
+
 export default function AvailabilityCalendar() {
   const today = localDate()
   const [selectedDate, setSelectedDate] = useState(today)
@@ -19,6 +27,16 @@ export default function AvailabilityCalendar() {
   const [error, setError] = useState(null)
   const [filters, setFilters] = useState({ type: 'All Rooms', capacity: '', startTime: '', endTime: '' })
   const [selectedSlot, setSelectedSlot] = useState(null)
+  const [nowMinutes, setNowMinutes] = useState(getNowMinutes())
+
+  // Keep live time updated every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowMinutes(getNowMinutes())
+    }, 60000)
+    return () => clearInterval(timer)
+  }, [])
+
   // Fetch live availability from backend when selectedDate changes
   useEffect(() => {
     let isMounted = true
@@ -48,8 +66,7 @@ export default function AvailabilityCalendar() {
       isMounted = false
     }
   }, [selectedDate])
-  const now = new Date()
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+
   const filteredRooms = useMemo(() => {
     return rooms.filter((room) => {
       if (filters.type !== 'All Rooms' && room.type !== filters.type) return false
@@ -57,24 +74,31 @@ export default function AvailabilityCalendar() {
       return true
     })
   }, [filters, rooms])
+
   const selectedDateIsToday = selectedDate === today
+
   function updateFilter(key, value) {
     setFilters((current) => ({ ...current, [key]: value }))
   }
+
   function changeDays(delta) {
     const next = new Date(`${selectedDate}T12:00:00`)
     next.setDate(next.getDate() + delta)
     const nextDate = localDate(next)
     if (nextDate >= today) setSelectedDate(nextDate)
   }
+
   function handleDateChange(value) {
     if (value >= today) setSelectedDate(value)
   }
+
   // Prevent selecting past slots on today's date
   function handleSelectSlot(slot) {
     if (selectedDateIsToday && slot?.status === 'Available') {
       const [hours, minutes] = slot.slot.start.split(':').map(Number)
       const slotMinutes = hours * 60 + minutes
+      
+      // Block selecting slots that have already started/passed
       if (slotMinutes <= nowMinutes) {
         alert('Cannot select or book a time slot in the past for today.')
         return
@@ -82,6 +106,7 @@ export default function AvailabilityCalendar() {
     }
     setSelectedSlot(slot)
   }
+
   function bookingLink(slot) {
     const params = new URLSearchParams({
       roomId: slot.room.id,
@@ -92,20 +117,22 @@ export default function AvailabilityCalendar() {
     })
     return `/book-room?${params.toString()}`
   }
-  // Helper function matching the exact color scheme used previously
+
+  // Helper function matching design badge colors
   const getStatusBadgeClass = (status) => {
-    const s = status?.toLowerCase() || "";
+    const s = status?.toLowerCase() || ""
     if (s === "approved" || s === "confirmed" || s === "available") {
-      return "bg-[#658362] text-white"; // Muted green matching the design
+      return "bg-[#658362] text-white"
     }
     if (s === "pending") {
-      return "bg-[#E09F3E] text-white"; // Warm amber/orange matching the design
+      return "bg-[#E09F3E] text-white"
     }
     if (s === "rejected" || s === "cancelled") {
-      return "bg-[#B85450] text-white"; // Terracotta red matching the design
+      return "bg-[#B85450] text-white"
     }
-    return "bg-slate-500 text-white";
-  };
+    return "bg-slate-500 text-white"
+  }
+
   const modalTitle = selectedSlot?.status === 'Available'
     ? 'Book this room'
     : selectedSlot?.status === 'Pending'
@@ -113,42 +140,54 @@ export default function AvailabilityCalendar() {
     : selectedSlot?.status === 'Completed'
     ? 'Booking history'
     : 'Booking details'
+
   return (
-<div className="space-y-6">
-<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-<div>
-<h1 className="font-display text-2xl font-700 text-ink">Room Availability</h1>
-<p className="mt-1 text-sm text-slate">Find the right workspace and book an available time slot.</p>
-</div>
-<div className="flex flex-nowrap items-center gap-3">
-<Button variant="secondary" onClick={() => changeDays(-1)} disabled={selectedDate <= today} aria-label="Previous day">
-<ChevronLeft size={16} />
-</Button>
-<input
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-700 text-ink">Room Availability</h1>
+          <p className="mt-1 text-sm text-slate">Find the right workspace and book an available time slot.</p>
+        </div>
+
+        <div className="flex flex-nowrap items-center gap-3">
+          <Button 
+            variant="secondary" 
+            onClick={() => changeDays(-1)} 
+            disabled={selectedDate <= today} 
+            aria-label="Previous day"
+          >
+            <ChevronLeft size={16} />
+          </Button>
+
+          <input
             type="date"
             min={today}
             value={selectedDate}
             onChange={(event) => handleDateChange(event.target.value)}
             className="min-w-[170px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
           />
-<Button variant="secondary" onClick={() => changeDays(1)} aria-label="Next day">
-<ChevronRight size={16} />
-</Button>
-<Select
+
+          <Button variant="secondary" onClick={() => changeDays(1)} aria-label="Next day">
+            <ChevronRight size={16} />
+          </Button>
+
+          <Select
             value={filters.type}
             onChange={(event) => updateFilter('type', event.target.value)}
             className="w-auto min-w-[170px] max-w-[220px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
->
+          >
             {ROOM_TYPE_OPTIONS.map((type) => (
-<option key={type} value={type}>{type}</option>
+              <option key={type} value={type}>{type}</option>
             ))}
-</Select>
-</div>
-</div>
+          </Select>
+        </div>
+      </div>
+
       {loading && <div className="p-8 text-center text-sm text-slate">Loading calendar schedule...</div>}
       {error && <div className="p-8 text-center text-sm text-red-500">{error}</div>}
+
       {!loading && !error && (
-<AvailabilityGrid
+        <AvailabilityGrid
           rooms={filteredRooms}
           bookings={[]}
           date={selectedDate}
@@ -157,40 +196,43 @@ export default function AvailabilityCalendar() {
           onSelectSlot={handleSelectSlot}
         />
       )}
-<Modal
+
+      <Modal
         open={Boolean(selectedSlot)}
         title={modalTitle}
         footer={
-<>
-<Button variant="secondary" onClick={() => setSelectedSlot(null)}>Close</Button>
+          <>
+            <Button variant="secondary" onClick={() => setSelectedSlot(null)}>Close</Button>
             {selectedSlot?.status === 'Available' && (
-<Link to={bookingLink(selectedSlot)}>
-<Button onClick={() => setSelectedSlot(null)}>Continue to booking</Button>
-</Link>
+              <Link to={bookingLink(selectedSlot)}>
+                <Button onClick={() => setSelectedSlot(null)}>Continue to booking</Button>
+              </Link>
             )}
-</>
+          </>
         }
->
+      >
         {selectedSlot && (
-<div className="space-y-3">
-<p className="font-display text-base font-700 text-ink">{selectedSlot.room.name}</p>
-<p>{selectedSlot.room.type} · Capacity {selectedSlot.room.capacity}</p>
-<p>{selectedDate}, {selectedSlot.slot.start} - {selectedSlot.slot.end}</p>
-<p>Facilities: {selectedSlot.room.facilities?.join(', ') || 'None'}</p>
-<div className="flex items-center gap-2">
-<span>Status:</span>
-<span
+          <div className="space-y-3">
+            <p className="font-display text-base font-700 text-ink">{selectedSlot.room.name}</p>
+            <p>{selectedSlot.room.type} · Capacity {selectedSlot.room.capacity}</p>
+            <p>{selectedDate}, {selectedSlot.slot.start} - {selectedSlot.slot.end}</p>
+            <p>Facilities: {selectedSlot.room.facilities?.join(', ') || 'None'}</p>
+
+            <div className="flex items-center gap-2">
+              <span>Status:</span>
+              <span
                 className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${getStatusBadgeClass(
                   selectedSlot.status
                 )}`}
->
+              >
                 {selectedSlot.status}
-</span>
-</div>
+              </span>
+            </div>
+
             {selectedSlot.booking && <p>Booking: {selectedSlot.booking.title || 'Reserved workspace'}</p>}
-</div>
+          </div>
         )}
-</Modal>
-</div>
+      </Modal>
+    </div>
   )
 }
