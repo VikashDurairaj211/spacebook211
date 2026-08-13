@@ -1,5 +1,4 @@
-
-import React from 'react'
+import React from "react";
 
 export default function Modal({
   open,
@@ -7,20 +6,20 @@ export default function Modal({
   children,
   footer,
   onClose,
-  className = '',
+  className = "",
 }) {
-  if (!open) return null
+  if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 pt-8 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <div
-        className={`relative w-full transform rounded-2xl bg-white p-6 shadow-xl transition-all ${
-          className || 'max-w-lg'
+        className={`relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl ${
+          className
         }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-line pb-4">
-          <h3 className="font-display text-lg font-700 text-ink">
+          <h3 className="font-display text-lg font-bold text-ink">
             {title}
           </h3>
 
@@ -47,6 +46,5 @@ export default function Modal({
         )}
       </div>
     </div>
-  )
+  );
 }
-
