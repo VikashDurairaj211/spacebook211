@@ -8,12 +8,8 @@ import {
 import StatusTag from "../common/StatusTag";
 import Button from "../common/Button";
 
-
 // =====================================================
 // CONVERT TIME TO MINUTES
-// Supports:
-// "09:00"
-// "09:00:00"
 // =====================================================
 
 const toMinutes = (time) => {
@@ -25,10 +21,8 @@ const toMinutes = (time) => {
   return hours * 60 + minutes;
 };
 
-
 // =====================================================
 // FORMAT TIME
-// "09:00:00" -> "9:00 AM"
 // =====================================================
 
 function formatTime(time) {
@@ -38,19 +32,22 @@ function formatTime(time) {
     time.split(":").map(Number);
 
   const suffix =
-    hour >= 12 ? "PM" : "AM";
+    hour >= 12
+      ? "PM"
+      : "AM";
 
   return `${hour % 12 || 12}:${String(
     minute
   ).padStart(2, "0")} ${suffix}`;
 }
 
-
 // =====================================================
 // FORMAT DATE
 // =====================================================
 
 function formatDate(date) {
+  if (!date) return "";
+
   return new Intl.DateTimeFormat(
     "en-GB",
     {
@@ -63,71 +60,123 @@ function formatDate(date) {
   );
 }
 
-
 // =====================================================
-// GET FLOOR / MODULE
+// GET FLOOR
 // =====================================================
 
-function floor(room) {
+function getFloor(room) {
   const match =
-    room.module?.match(/\d+/);
+    room.module?.match(/\d+/) ||
+    room.floor?.toString().match(/\d+/);
 
   return `Floor ${
-    match?.[0] || "1"
+    match?.[0] || room.floor || "1"
   }`;
 }
 
-
 // =====================================================
-// GET SLOT STATUS FROM BACKEND
+// GET SLOT STATUS
 // =====================================================
 
-function getSlotStatus(slot, room) {
-  // Backend says slot is booked
+function getSlotStatus(room, slot) {
+  // -----------------------------------------------
+  // If backend directly sends a status
+  // -----------------------------------------------
 
-  if (slot.isBooked) {
-    const booking =
-      room.currentBooking;
+  if (slot.status) {
+    const status =
+      String(slot.status)
+        .trim()
+        .toLowerCase();
 
-    if (
-      booking?.status === "Pending"
-    ) {
-      return {
-        status: "Pending",
-        booking,
-      };
+    if (status === "available") {
+      return "Available";
+    }
+
+    if (status === "pending") {
+      return "Pending";
+    }
+
+    if (status === "completed") {
+      return "Completed";
     }
 
     if (
-      booking?.status === "Completed"
+      status === "booked" ||
+      status === "approved" ||
+      status === "confirmed"
     ) {
-      return {
-        status: "Completed",
-        booking,
-      };
+      return "Booked";
     }
-
-    return {
-      status: "Booked",
-      booking,
-    };
   }
 
-  // Slot is available
+  // -----------------------------------------------
+  // BACKEND SAYS SLOT IS BOOKED
+  // -----------------------------------------------
 
-  return {
-    status: "Available",
-    booking: null,
-  };
+  if (slot.isBooked === true) {
+    const bookingStatus =
+      room.currentBooking?.status ||
+      room.booking?.status ||
+      slot.booking?.status ||
+      "";
+
+    const normalizedStatus =
+      String(bookingStatus)
+        .trim()
+        .toLowerCase();
+
+    if (normalizedStatus === "pending") {
+      return "Pending";
+    }
+
+    if (normalizedStatus === "completed") {
+      return "Completed";
+    }
+
+    return "Booked";
+  }
+
+  // -----------------------------------------------
+  // BACKEND SAYS AVAILABLE
+  // -----------------------------------------------
+
+  return "Available";
 }
 
+// =====================================================
+// NORMALIZE FACILITIES
+// =====================================================
+
+function getFacilities(room) {
+  const facilities =
+    room.facilities ||
+    room.roomFacilities ||
+    [];
+
+  if (!Array.isArray(facilities)) {
+    return [];
+  }
+
+  return facilities.map((facility) => {
+    if (typeof facility === "string") {
+      return facility;
+    }
+
+    return (
+      facility.name ||
+      facility.facilityName ||
+      String(facility)
+    );
+  });
+}
 
 // =====================================================
 // AVAILABILITY GRID
 // =====================================================
 
 export default function AvailabilityGrid({
-  rooms,
+  rooms = [],
   date,
   isToday,
   nowMinutes,
@@ -135,76 +184,119 @@ export default function AvailabilityGrid({
 }) {
 
   // ===================================================
-  // CREATE CARDS USING BACKEND timeSlots
+  // CREATE CARDS
   // ===================================================
 
-  const cards =
-    rooms
-      .flatMap((room) => {
+  const cards = rooms
+    .flatMap((room) => {
 
-        const timeSlots =
-          room.timeSlots || [];
+      const timeSlots =
+        room.timeSlots ||
+        room.slots ||
+        [];
 
-        return timeSlots
+      return timeSlots
 
-          // Remove past slots for today
+        // ---------------------------------------------
+        // REMOVE PAST SLOTS FOR TODAY
+        // ---------------------------------------------
 
-          .filter((slot) => {
-            if (!isToday) {
-              return true;
-            }
+        .filter((slot) => {
+          if (!isToday) {
+            return true;
+          }
 
-            const startTime =
-              slot.start ||
-              slot.startTime;
+          const startTime =
+            slot.start ||
+            slot.startTime ||
+            slot.fromTime;
 
-            return (
-              toMinutes(startTime) >
-              nowMinutes
+          return (
+            toMinutes(startTime) >
+            nowMinutes
+          );
+        })
+
+        // ---------------------------------------------
+        // CREATE CARD
+        // ---------------------------------------------
+
+        .map((slot) => {
+          const start =
+            slot.start ||
+            slot.startTime ||
+            slot.fromTime ||
+            "";
+
+          const end =
+            slot.end ||
+            slot.endTime ||
+            slot.toTime ||
+            "";
+
+          const status =
+            getSlotStatus(
+              room,
+              slot
             );
-          })
 
-          .map((slot) => {
-
-            const start =
-              slot.start ||
-              slot.startTime;
-
-            const end =
-              slot.end ||
-              slot.endTime;
-
-            const normalizedSlot = {
+          return {
+            room,
+            slot: {
               ...slot,
               start,
               end,
-            };
+            },
+            status,
+            booking:
+              slot.booking ||
+              room.currentBooking ||
+              room.booking ||
+              null,
+          };
+        });
+    })
 
-            return {
-              room,
-              slot: normalizedSlot,
-              ...getSlotStatus(
-                normalizedSlot,
-                room
-              ),
-            };
-          });
-      })
+    // =================================================
+    // SORT BY TIME AND ROOM NAME
+    // =================================================
 
-      // Sort by time and room name
+    .sort((a, b) => {
+      const timeDifference =
+        toMinutes(a.slot.start) -
+        toMinutes(b.slot.start);
 
-      .sort(
-        (a, b) =>
-          toMinutes(a.slot.start) -
-            toMinutes(b.slot.start) ||
-          a.room.name.localeCompare(
-            b.room.name
-          )
+      if (timeDifference !== 0) {
+        return timeDifference;
+      }
+
+      return (
+        a.room.name ||
+        a.room.roomName ||
+        ""
+      ).localeCompare(
+        b.room.name ||
+        b.room.roomName ||
+        ""
       );
-
+    });
 
   // ===================================================
-  // NO ROOMS
+  // DEBUG
+  // ===================================================
+
+  console.log(
+    "AvailabilityGrid Rooms:",
+    rooms
+  );
+
+  console.log(
+    "AvailabilityGrid Cards:",
+    cards
+  );
+
+  // ===================================================
+  // NO RESULTS
   // ===================================================
 
   if (!cards.length) {
@@ -223,13 +315,11 @@ export default function AvailabilityGrid({
     );
   }
 
-
   // ===================================================
-  // UI
+  // GRID
   // ===================================================
 
   return (
-
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 
       {cards.map(
@@ -238,167 +328,166 @@ export default function AvailabilityGrid({
           slot,
           status,
           booking,
-        }) => (
+        }) => {
 
-          <article
-            key={`${room.id}-${slot.start}`}
-            className="group flex min-h-[350px] flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg"
-          >
+          const facilities =
+            getFacilities(room);
 
-            {/* HEADER */}
+          return (
+            <article
+              key={`${room.id}-${slot.start}`}
+              className="group flex min-h-[350px] flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg"
+            >
 
-            <div className="flex items-start justify-between gap-3">
+              {/* HEADER */}
 
-              <div>
+              <div className="flex items-start justify-between gap-3">
 
-                <h2 className="font-display text-base font-700 text-ink">
-                  {room.name}
-                </h2>
+                <div>
 
-                <p className="mt-1 text-sm text-slate">
-                  {room.type}
+                  <h2 className="font-display text-base font-700 text-ink">
+                    {room.name ||
+                      room.roomName}
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate">
+                    {room.type ||
+                      room.roomType}
+                  </p>
+
+                </div>
+
+                <StatusTag
+                  status={status}
+                />
+
+              </div>
+
+              {/* ROOM DETAILS */}
+
+              <div className="mt-5 space-y-3 border-y border-slate-100 py-4 text-sm text-slate">
+
+                <p className="flex items-center gap-2">
+
+                  <CalendarDays
+                    size={16}
+                    className="text-brand-blue"
+                  />
+
+                  {formatDate(date)}
+
+                </p>
+
+                <p className="flex items-center gap-2">
+
+                  <Clock3
+                    size={16}
+                    className="text-brand-blue"
+                  />
+
+                  {formatTime(slot.start)}
+
+                  {" - "}
+
+                  {formatTime(slot.end)}
+
+                </p>
+
+                <p className="flex items-center gap-2">
+
+                  <Users
+                    size={16}
+                    className="text-brand-blue"
+                  />
+
+                  Capacity:{" "}
+                  {room.capacity}
+
+                </p>
+
+                <p className="flex items-center gap-2">
+
+                  <MapPin
+                    size={16}
+                    className="text-brand-blue"
+                  />
+
+                  {getFloor(room)}
+
                 </p>
 
               </div>
 
-              <StatusTag
-                status={status}
-              />
+              {/* FACILITIES */}
 
-            </div>
+              <div className="mt-4 flex-1">
 
-
-            {/* ROOM DETAILS */}
-
-            <div className="mt-5 space-y-3 border-y border-slate-100 py-4 text-sm text-slate">
-
-              <p className="flex items-center gap-2">
-
-                <CalendarDays
-                  size={16}
-                  className="text-brand-blue"
-                />
-
-                {formatDate(date)}
-
-              </p>
-
-
-              <p className="flex items-center gap-2">
-
-                <Clock3
-                  size={16}
-                  className="text-brand-blue"
-                />
-
-                {formatTime(slot.start)}
-                {" - "}
-                {formatTime(slot.end)}
-
-              </p>
-
-
-              <p className="flex items-center gap-2">
-
-                <Users
-                  size={16}
-                  className="text-brand-blue"
-                />
-
-                Capacity:
-                {" "}
-                {room.capacity}
-
-              </p>
-
-
-              <p className="flex items-center gap-2">
-
-                <MapPin
-                  size={16}
-                  className="text-brand-blue"
-                />
-
-                {room.module || floor(room)}
-
-              </p>
-
-            </div>
-
-
-            {/* FACILITIES */}
-
-            <div className="mt-4 flex-1">
-
-              <p className="font-mono text-[11px] uppercase tracking-wider text-slate">
-                Facilities
-              </p>
-
-
-              {room.facilities?.length > 0 ? (
-
-                <ul className="mt-2 space-y-1 text-sm text-ink">
-
-                  {room.facilities.map(
-                    (facility) => (
-
-                      <li key={facility}>
-                        • {facility}
-                      </li>
-
-                    )
-                  )}
-
-                </ul>
-
-              ) : (
-
-                <p className="mt-2 text-sm text-slate">
-                  No facilities listed
+                <p className="font-mono text-[11px] uppercase tracking-wider text-slate">
+                  Facilities
                 </p>
 
-              )}
+                {facilities.length > 0 ? (
 
-            </div>
+                  <ul className="mt-2 space-y-1 text-sm text-ink">
 
+                    {facilities.map(
+                      (facility, index) => (
 
-            {/* BUTTON */}
+                        <li
+                          key={`${facility}-${index}`}
+                        >
+                          • {facility}
+                        </li>
 
-            <Button
-              className="mt-5 w-full"
+                      )
+                    )}
 
-              variant={
-                status === "Available"
-                  ? "primary"
-                  : "secondary"
-              }
+                  </ul>
 
-              onClick={() =>
-                onSelectSlot({
-                  room,
-                  slot,
-                  status,
-                  booking,
-                })
-              }
-            >
+                ) : (
 
-              {status === "Available"
-                ? "Book Now"
-                : status === "Pending"
-                ? "Pending Approval"
-                : status === "Completed"
-                ? "View History"
-                : "View Details"}
+                  <p className="mt-2 text-sm text-slate">
+                    No facilities listed
+                  </p>
 
-            </Button>
+                )}
 
-          </article>
+              </div>
 
-        )
+              {/* BUTTON */}
+
+              <Button
+                className="mt-5 w-full"
+                variant={
+                  status === "Available"
+                    ? "primary"
+                    : "secondary"
+                }
+                onClick={() =>
+                  onSelectSlot({
+                    room,
+                    slot,
+                    status,
+                    booking,
+                  })
+                }
+              >
+
+                {status === "Available"
+                  ? "Book Now"
+                  : status === "Pending"
+                  ? "Pending Approval"
+                  : status === "Completed"
+                  ? "View History"
+                  : "View Details"}
+
+              </Button>
+
+            </article>
+          );
+        }
       )}
 
     </div>
-
   );
 }

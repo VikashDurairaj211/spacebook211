@@ -32,12 +32,6 @@ const INITIAL_FILTERS = {
 
 // =====================================================
 // SCROLLABLE TIME PICKER
-// OFFICE HOURS: 09:00 AM TO 06:00 PM
-// PAST TIMES DISABLED WHEN DATE IS TODAY
-// =====================================================
-
-// =====================================================
-// SCROLLABLE TIME PICKER
 // =====================================================
 
 function ScrollableTimePicker({
@@ -54,10 +48,7 @@ function ScrollableTimePicker({
       ? value.split(":")
       : ["09", "00"];
 
-  // =====================================================
-  // OFFICE HOURS: 09:00 TO 18:00
-  // =====================================================
-
+  // Office hours: 09:00 to 18:00
   const hoursList = Array.from(
     { length: 10 },
     (_, i) => String(i + 9).padStart(2, "0")
@@ -69,23 +60,16 @@ function ScrollableTimePicker({
   );
 
   // =====================================================
-  // GET TODAY IN LOCAL FORMAT YYYY-MM-DD
+  // CURRENT DATE AND TIME
   // =====================================================
 
   const now = new Date();
 
-  const currentYear = now.getFullYear();
-
-  const currentMonth = String(
-    now.getMonth() + 1
-  ).padStart(2, "0");
-
-  const currentDay = String(
-    now.getDate()
-  ).padStart(2, "0");
-
-  const todayStr =
-    `${currentYear}-${currentMonth}-${currentDay}`;
+  const todayStr = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
 
   const isToday =
     selectedDate === todayStr;
@@ -97,7 +81,7 @@ function ScrollableTimePicker({
     now.getMinutes();
 
   // =====================================================
-  // CHECK IF COMPLETE HOUR IS IN THE PAST
+  // DISABLE PAST HOURS
   // =====================================================
 
   const isHourDisabled = (hour) => {
@@ -105,15 +89,11 @@ function ScrollableTimePicker({
       return false;
     }
 
-    const selectedHour =
-      Number(hour);
-
-    // All hours before current hour are disabled
-    return selectedHour < currentHour;
+    return Number(hour) < currentHour;
   };
 
   // =====================================================
-  // CHECK IF MINUTE IS IN THE PAST
+  // DISABLE PAST MINUTES
   // =====================================================
 
   const isMinuteDisabled = (
@@ -130,21 +110,20 @@ function ScrollableTimePicker({
     const selectedMinute =
       Number(minute);
 
-    // Previous hours
     if (
-      selectedHour < currentHour
+      selectedHour <
+      currentHour
     ) {
       return true;
     }
 
-    // Future hours
     if (
-      selectedHour > currentHour
+      selectedHour >
+      currentHour
     ) {
       return false;
     }
 
-    // Same hour: disable passed/current minutes
     return (
       selectedMinute <=
       currentMinute
@@ -159,7 +138,6 @@ function ScrollableTimePicker({
     newHours,
     newMinutes
   ) => {
-    // Prevent past time selection
     if (
       isMinuteDisabled(
         newHours,
@@ -202,10 +180,6 @@ function ScrollableTimePicker({
       );
     };
   }, []);
-
-  // =====================================================
-  // UI
-  // =====================================================
 
   return (
     <div
@@ -250,9 +224,7 @@ function ScrollableTimePicker({
       {isOpen && (
         <div className="absolute z-50 mt-1 flex w-full rounded-lg border border-slate-200 bg-white shadow-lg">
 
-          {/* =============================================
-              HOURS
-          ============================================== */}
+          {/* HOURS */}
 
           <div className="max-h-52 flex-1 overflow-y-auto border-r border-slate-100 p-1 text-center">
 
@@ -289,9 +261,7 @@ function ScrollableTimePicker({
             })}
           </div>
 
-          {/* =============================================
-              MINUTES
-          ============================================== */}
+          {/* MINUTES */}
 
           <div className="max-h-52 flex-1 overflow-y-auto p-1 text-center">
 
@@ -336,8 +306,12 @@ function ScrollableTimePicker({
     </div>
   );
 }
-export default function SearchRooms() {
 
+// =====================================================
+// SEARCH ROOMS PAGE
+// =====================================================
+
+export default function SearchRooms() {
   const [filters, setFilters] =
     useState(INITIAL_FILTERS);
 
@@ -374,25 +348,22 @@ export default function SearchRooms() {
   }, []);
 
   async function loadBookings() {
-
     try {
-
       const data =
         await getMyBookings();
 
-      setBookings(data);
-
+      setBookings(
+        Array.isArray(data)
+          ? data
+          : []
+      );
     } catch {
-
       setBookings([]);
-
     }
-
   }
 
   // =====================================================
-  // SEARCH VALIDATION
-  // ANY ONE FIELD IS ENOUGH
+  // SEARCH CRITERIA
   // =====================================================
 
   const hasAnySearchCriteria =
@@ -406,10 +377,6 @@ export default function SearchRooms() {
   const canSearch =
     hasAnySearchCriteria;
 
-  // =====================================================
-  // FILTER DEPENDENCIES
-  // =====================================================
-
   const canChooseType =
     Boolean(filters.module);
 
@@ -421,36 +388,29 @@ export default function SearchRooms() {
     key,
     value
   ) {
-
     setFilters((current) => {
-
       const next = {
         ...current,
         [key]: value,
       };
 
-      // Changing module clears room type
       if (key === "module") {
         next.roomTypeId = "";
       }
 
-      // Changing date clears times
       if (key === "date") {
         next.startTime = "";
         next.endTime = "";
       }
 
-      // Changing start time clears end time
       if (key === "startTime") {
         next.endTime = "";
       }
 
       return next;
-
     });
 
     setError("");
-
   }
 
   // =====================================================
@@ -458,21 +418,17 @@ export default function SearchRooms() {
   // =====================================================
 
   async function handleSearch(e) {
-
     e.preventDefault();
 
     if (!canSearch) {
-
       setError(
         "Please select or enter at least one search criteria."
       );
-
       return;
-
     }
 
     // =================================================
-    // START TIME / END TIME VALIDATION
+    // START / END TIME VALIDATION
     // =================================================
 
     if (
@@ -480,13 +436,10 @@ export default function SearchRooms() {
       filters.endTime &&
       filters.startTime >= filters.endTime
     ) {
-
       setError(
         "End time must be after start time."
       );
-
       return;
-
     }
 
     // =================================================
@@ -501,30 +454,22 @@ export default function SearchRooms() {
 
     if (
       filters.startTime &&
-      filters.startTime <
-        OFFICE_START_TIME
+      filters.startTime < OFFICE_START_TIME
     ) {
-
       setError(
         "Bookings are allowed only during office hours: 09:00 AM to 06:00 PM."
       );
-
       return;
-
     }
 
     if (
       filters.endTime &&
-      filters.endTime >
-        OFFICE_END_TIME
+      filters.endTime > OFFICE_END_TIME
     ) {
-
       setError(
         "Bookings are allowed only during office hours: 09:00 AM to 06:00 PM."
       );
-
       return;
-
     }
 
     // =================================================
@@ -532,7 +477,6 @@ export default function SearchRooms() {
     // =================================================
 
     if (filters.date) {
-
       const selectedDate =
         new Date(
           `${filters.date}T00:00:00`
@@ -565,73 +509,25 @@ export default function SearchRooms() {
       if (
         selectedDate < today
       ) {
-
         setError(
           "Cannot search rooms for past dates."
         );
-
         return;
-
       }
 
       if (
         selectedDate >
         maxAllowedDate
       ) {
-
         setError(
           "Rooms can only be searched up to 1 week in advance."
         );
-
         return;
-
       }
+
       // =================================================
-// PREVENT SEARCHING FOR PAST TIME TODAY
-// =================================================
-
-const now = new Date();
-
-const todayStr = [
-  now.getFullYear(),
-  String(now.getMonth() + 1).padStart(2, "0"),
-  String(now.getDate()).padStart(2, "0"),
-].join("-");
-
-if (filters.date === todayStr) {
-
-  const currentTime =
-    `${String(now.getHours()).padStart(2, "0")}:${String(
-      now.getMinutes()
-    ).padStart(2, "0")}`;
-
-  // Start time has already passed
-  if (
-    filters.startTime &&
-    filters.startTime <= currentTime
-  ) {
-    setError(
-      "The selected start time has already passed. Please select a future time."
-    );
-
-    return;
-  }
-
-  // End time has already passed
-  if (
-    filters.endTime &&
-    filters.endTime <= currentTime
-  ) {
-    setError(
-      "The selected end time has already passed. Please select a future time."
-    );
-
-    return;
-  }
-}
-      // ===============================================
       // CURRENT TIME VALIDATION FOR TODAY
-      // ===============================================
+      // =================================================
 
       const now =
         new Date();
@@ -647,10 +543,8 @@ if (filters.date === todayStr) {
       ].join("-");
 
       if (
-        filters.date === todayStr &&
-        filters.startTime
+        filters.date === todayStr
       ) {
-
         const currentTime =
           `${String(
             now.getHours()
@@ -659,20 +553,25 @@ if (filters.date === todayStr) {
           ).padStart(2, "0")}`;
 
         if (
-          filters.startTime <=
-          currentTime
+          filters.startTime &&
+          filters.startTime <= currentTime
         ) {
-
           setError(
-            "Start time cannot be earlier than or equal to the current time."
+            "The selected start time has already passed. Please select a future time."
           );
-
           return;
-
         }
 
+        if (
+          filters.endTime &&
+          filters.endTime <= currentTime
+        ) {
+          setError(
+            "The selected end time has already passed. Please select a future time."
+          );
+          return;
+        }
       }
-
     }
 
     // =================================================
@@ -680,13 +579,10 @@ if (filters.date === todayStr) {
     // =================================================
 
     setLoading(true);
-
     setError("");
 
     try {
-
       const searchPayload = {
-
         module:
           filters.module ||
           undefined,
@@ -720,7 +616,6 @@ if (filters.date === todayStr) {
           filters.endTime
             ? `${filters.endTime}:00`
             : undefined,
-
       };
 
       const data =
@@ -735,11 +630,9 @@ if (filters.date === todayStr) {
       );
 
       setResultsOpen(true);
-
       setSearched(true);
 
     } catch (err) {
-
       console.error(err);
 
       setError(
@@ -748,11 +641,8 @@ if (filters.date === todayStr) {
       );
 
     } finally {
-
       setLoading(false);
-
     }
-
   }
 
   // =====================================================
@@ -760,11 +650,8 @@ if (filters.date === todayStr) {
   // =====================================================
 
   function handleOpenDetails(room) {
-
     setSelectedRoom(room);
-
     setDetailsOpen(true);
-
   }
 
   // =====================================================
@@ -772,7 +659,6 @@ if (filters.date === todayStr) {
   // =====================================================
 
   function bookRoomLink(roomId) {
-
     const params =
       new URLSearchParams();
 
@@ -782,43 +668,34 @@ if (filters.date === todayStr) {
     );
 
     if (filters.date) {
-
       params.set(
         "date",
         filters.date
       );
-
     }
 
     if (filters.startTime) {
-
       params.set(
         "startTime",
         filters.startTime
       );
-
     }
 
     if (filters.endTime) {
-
       params.set(
         "endTime",
         filters.endTime
       );
-
     }
 
     if (filters.capacity) {
-
       params.set(
         "attendees",
         filters.capacity
       );
-
     }
 
     return `/book-room?${params.toString()}`;
-
   }
 
   // =====================================================
@@ -827,7 +704,6 @@ if (filters.date === todayStr) {
 
   const getStatusBadgeClass =
     (status) => {
-
       const s =
         status?.toLowerCase() ||
         "";
@@ -837,35 +713,29 @@ if (filters.date === todayStr) {
         s === "confirmed" ||
         s === "available"
       ) {
-
         return "bg-[#658362] text-white";
-
       }
 
       if (s === "pending") {
-
         return "bg-[#E09F3E] text-white";
-
       }
 
       if (
         s === "rejected" ||
         s === "cancelled"
       ) {
-
         return "bg-[#B85450] text-white";
-
       }
 
       return "bg-slate-500 text-white";
-
     };
 
   // =====================================================
   // DATE LIMITS
   // =====================================================
 
-  const today = new Date();
+  const today =
+    new Date();
 
   const todayStr = [
     today.getFullYear(),
@@ -893,16 +763,15 @@ if (filters.date === todayStr) {
       maxDateObj.getDate()
     ).padStart(2, "0"),
   ].join("-");
-    return (
 
+  // =====================================================
+  // UI
+  // =====================================================
+
+  return (
     <div className="space-y-6">
 
-      {/* ===============================================
-          HEADER
-      ================================================ */}
-
       <div>
-
         <h1 className="font-display text-3xl font-bold">
           Search Rooms
         </h1>
@@ -910,26 +779,18 @@ if (filters.date === todayStr) {
         <p className="mt-2 text-slate-600">
           Enter any search criteria to find available rooms.
         </p>
-
       </div>
 
-      {/* ===============================================
-          SEARCH FORM
-      ================================================ */}
+      {/* SEARCH FORM */}
 
       <Card>
-
         <form
           onSubmit={handleSearch}
           className="space-y-5"
         >
-
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 
-            {/* MODULE */}
-
             <Field label="1. Select Module">
-
               <Select
                 value={filters.module}
                 onChange={(e) =>
@@ -939,39 +800,27 @@ if (filters.date === todayStr) {
                   )
                 }
               >
-
                 <option value="">
                   Select Module
                 </option>
 
                 {MODULES.map(
                   (module) => (
-
                     <option
                       key={module}
                       value={module}
                     >
                       {module}
                     </option>
-
                   )
                 )}
-
               </Select>
-
             </Field>
 
-            {/* ROOM TYPE */}
-
             <Field label="2. Select Room Type">
-
               <Select
-                disabled={
-                  !canChooseType
-                }
-                value={
-                  filters.roomTypeId
-                }
+                disabled={!canChooseType}
+                value={filters.roomTypeId}
                 onChange={(e) =>
                   updateFilter(
                     "roomTypeId",
@@ -979,7 +828,6 @@ if (filters.date === todayStr) {
                   )
                 }
               >
-
                 <option value="">
                   {canChooseType
                     ? "Select Room Type"
@@ -988,31 +836,22 @@ if (filters.date === todayStr) {
 
                 {ROOM_TYPES.map(
                   (type) => (
-
                     <option
                       key={type.id}
                       value={type.id}
                     >
                       {type.name}
                     </option>
-
                   )
                 )}
-
               </Select>
-
             </Field>
 
-            {/* PARTICIPANTS */}
-
             <Field label="3. Number of Participants">
-
               <Input
                 type="number"
                 min="1"
-                value={
-                  filters.capacity
-                }
+                value={filters.capacity}
                 placeholder="Enter count"
                 onChange={(e) =>
                   updateFilter(
@@ -1021,13 +860,9 @@ if (filters.date === todayStr) {
                   )
                 }
               />
-
             </Field>
 
-            {/* DATE */}
-
             <Field label="4. Booking Date">
-
               <Input
                 type="date"
                 min={todayStr}
@@ -1040,19 +875,12 @@ if (filters.date === todayStr) {
                   )
                 }
               />
-
             </Field>
-
-            {/* START TIME */}
 
             <ScrollableTimePicker
               label="5. Start Time"
-              value={
-                filters.startTime
-              }
-              selectedDate={
-                filters.date
-              }
+              value={filters.startTime}
+              selectedDate={filters.date}
               onChange={(val) =>
                 updateFilter(
                   "startTime",
@@ -1061,16 +889,10 @@ if (filters.date === todayStr) {
               }
             />
 
-            {/* END TIME */}
-
             <ScrollableTimePicker
               label="6. End Time"
-              value={
-                filters.endTime
-              }
-              selectedDate={
-                filters.date
-              }
+              value={filters.endTime}
+              selectedDate={filters.date}
               onChange={(val) =>
                 updateFilter(
                   "endTime",
@@ -1081,17 +903,11 @@ if (filters.date === todayStr) {
 
           </div>
 
-          {/* ERROR */}
-
           {error && (
-
             <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
               {error}
             </div>
-
           )}
-
-          {/* SEARCH BUTTON */}
 
           <Button
             type="submit"
@@ -1100,27 +916,21 @@ if (filters.date === todayStr) {
               loading
             }
           >
-
             {loading
               ? "Searching..."
               : "Search Available Rooms"}
-
           </Button>
 
         </form>
-
       </Card>
 
-      {/* ===============================================
-          MY BOOKINGS
-      ================================================ */}
+      {/* MY BOOKINGS */}
 
       <Card className="overflow-hidden p-0">
 
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
 
           <div>
-
             <h2 className="text-lg font-semibold">
               My Bookings
             </h2>
@@ -1128,7 +938,6 @@ if (filters.date === todayStr) {
             <p className="text-sm text-slate-500">
               Your recent workspace reservations.
             </p>
-
           </div>
 
           <Link
@@ -1141,13 +950,10 @@ if (filters.date === todayStr) {
         </div>
 
         {bookings.length === 0 ? (
-
           <div className="p-5 text-sm text-slate-500">
             No bookings found.
           </div>
-
         ) : (
-
           <div className="divide-y">
 
             {bookings
@@ -1155,14 +961,10 @@ if (filters.date === todayStr) {
               .map((booking) => (
 
                 <div
-                  key={
-                    booking.bookingId
-                  }
+                  key={booking.bookingId}
                   className="flex items-center justify-between p-4"
                 >
-
                   <div>
-
                     <p className="font-semibold">
                       {booking.roomName}
                     </p>
@@ -1190,7 +992,6 @@ if (filters.date === todayStr) {
                         : ""}
 
                     </p>
-
                   </div>
 
                   <span
@@ -1200,32 +1001,24 @@ if (filters.date === todayStr) {
                   >
                     {booking.status}
                   </span>
-
                 </div>
 
               ))}
 
           </div>
-
         )}
 
       </Card>
 
-      {/* ===============================================
-          LOADER
-      ================================================ */}
+      {/* LOADER */}
 
       {loading && (
-
         <Loader
           label="Searching available rooms..."
         />
-
       )}
 
-      {/* ===============================================
-          RESULTS MODAL
-      ================================================ */}
+      {/* RESULTS MODAL */}
 
       <Modal
         open={
@@ -1246,36 +1039,28 @@ if (filters.date === todayStr) {
       >
 
         <p className="mb-4 text-sm text-slate-600">
-
           {results.length} room
           {results.length !== 1
             ? "s"
             : ""}{" "}
           found.
-
         </p>
 
         {results.length === 0 ? (
-
           <p className="text-sm text-slate-500">
             No rooms are available for the selected criteria.
           </p>
-
         ) : (
-
           <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-1">
 
             {results.map(
               (room) => (
 
-                <Card
-                  key={room.roomId}
-                >
+                <Card key={room.roomId}>
 
                   <div className="flex items-start justify-between">
 
                     <div>
-
                       <h3 className="text-lg font-semibold">
                         {room.roomName}
                       </h3>
@@ -1283,7 +1068,6 @@ if (filters.date === todayStr) {
                       <p className="text-sm text-slate-500">
                         {room.module}
                       </p>
-
                     </div>
 
                     <span
@@ -1317,9 +1101,7 @@ if (filters.date === todayStr) {
                         Facilities:
                       </span>{" "}
                       {room.facilities?.length
-                        ? room.facilities.join(
-                            ", "
-                          )
+                        ? room.facilities.join(", ")
                         : "None"}
                     </p>
 
@@ -1331,9 +1113,7 @@ if (filters.date === todayStr) {
                       variant="secondary"
                       className="flex-1"
                       onClick={() =>
-                        handleOpenDetails(
-                          room
-                        )
+                        handleOpenDetails(room)
                       }
                     >
                       View Details
@@ -1348,11 +1128,9 @@ if (filters.date === todayStr) {
                         setResultsOpen(false)
                       }
                     >
-
                       <Button className="w-full">
                         Book Now
                       </Button>
-
                     </Link>
 
                   </div>
@@ -1363,14 +1141,11 @@ if (filters.date === todayStr) {
             )}
 
           </div>
-
         )}
 
       </Modal>
 
-      {/* ===============================================
-          ROOM DETAILS MODAL
-      ================================================ */}
+      {/* ROOM DETAILS MODAL */}
 
       <Modal
         open={detailsOpen}
@@ -1398,7 +1173,6 @@ if (filters.date === todayStr) {
             <div className="flex items-center justify-between">
 
               <div>
-
                 <p className="text-base font-bold text-slate-900">
                   {selectedRoom.roomName}
                 </p>
@@ -1406,7 +1180,6 @@ if (filters.date === todayStr) {
                 <p className="text-slate-500">
                   {selectedRoom.module}
                 </p>
-
               </div>
 
               <span
@@ -1436,38 +1209,27 @@ if (filters.date === todayStr) {
               </p>
 
               <p>
-
                 <span className="font-medium text-slate-700">
                   Facilities:
                 </span>{" "}
 
                 {selectedRoom.facilities?.length
-                  ? selectedRoom.facilities.join(
-                      ", "
-                    )
+                  ? selectedRoom.facilities.join(", ")
                   : "None"}
-
               </p>
 
               {filters.date && (
-
                 <p>
-
                   <span className="font-medium text-slate-700">
                     Selected Date:
                   </span>{" "}
-
                   {filters.date}
-
                 </p>
-
               )}
 
               {(filters.startTime ||
                 filters.endTime) && (
-
                 <p>
-
                   <span className="font-medium text-slate-700">
                     Time Slot:
                   </span>{" "}
@@ -1479,9 +1241,7 @@ if (filters.date === todayStr) {
 
                   {filters.endTime ||
                     "--:--"}
-
                 </p>
-
               )}
 
             </div>
@@ -1493,31 +1253,23 @@ if (filters.date === todayStr) {
                   selectedRoom.roomId
                 )}
                 onClick={() => {
-
                   setDetailsOpen(false);
-
                   setResultsOpen(false);
-
                 }}
               >
-
                 <Button className="w-full">
                   Proceed to Book
                 </Button>
-
               </Link>
 
             </div>
 
           </div>
-
         )}
 
       </Modal>
 
-      {/* ===============================================
-          RESULTS GRID
-      ================================================ */}
+      {/* RESULTS GRID */}
 
       {searched &&
         !loading &&
@@ -1529,14 +1281,11 @@ if (filters.date === todayStr) {
             {results.map(
               (room) => (
 
-                <Card
-                  key={room.roomId}
-                >
+                <Card key={room.roomId}>
 
                   <div className="mb-3 flex items-start justify-between">
 
                     <div>
-
                       <h3 className="font-semibold">
                         {room.roomName}
                       </h3>
@@ -1544,7 +1293,6 @@ if (filters.date === todayStr) {
                       <p className="text-sm text-slate-500">
                         {room.module}
                       </p>
-
                     </div>
 
                     <span
@@ -1558,37 +1306,27 @@ if (filters.date === todayStr) {
                   </div>
 
                   <p className="text-sm">
-
                     <strong>
                       Room Type:
                     </strong>{" "}
-
                     {room.roomType}
-
                   </p>
 
                   <p className="text-sm">
-
                     <strong>
                       Capacity:
                     </strong>{" "}
-
                     {room.capacity}
-
                   </p>
 
                   <p className="mb-4 text-sm">
-
                     <strong>
                       Facilities:
                     </strong>{" "}
 
                     {room.facilities?.length
-                      ? room.facilities.join(
-                          ", "
-                        )
+                      ? room.facilities.join(", ")
                       : "None"}
-
                   </p>
 
                   <div className="flex gap-2">
@@ -1597,9 +1335,7 @@ if (filters.date === todayStr) {
                       variant="secondary"
                       className="flex-1 py-2 text-xs"
                       onClick={() =>
-                        handleOpenDetails(
-                          room
-                        )
+                        handleOpenDetails(room)
                       }
                     >
                       Details
@@ -1611,11 +1347,9 @@ if (filters.date === todayStr) {
                       )}
                       className="flex-1"
                     >
-
                       <Button className="w-full py-2 text-xs">
                         Book Room
                       </Button>
-
                     </Link>
 
                   </div>
@@ -1626,11 +1360,8 @@ if (filters.date === todayStr) {
             )}
 
           </div>
-
         )}
 
     </div>
-
   );
-
 }

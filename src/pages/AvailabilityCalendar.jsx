@@ -29,43 +29,32 @@ function localDate(value = new Date()) {
 
 // =====================================================
 // GET CURRENT TIME IN MINUTES
-// Example: 16:30 => 990
 // =====================================================
 
 function getNowMinutes() {
   const now = new Date();
 
-  return (
-    now.getHours() * 60 +
-    now.getMinutes()
-  );
+  return now.getHours() * 60 + now.getMinutes();
 }
 
 // =====================================================
 // CONVERT TIME TO MINUTES
-// Supports:
-// "15:30"
-// "15:30:00"
 // =====================================================
 
 function timeToMinutes(time) {
   if (!time) return 0;
 
-  const [hours, minutes] =
-    time.split(":").map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
 
   return hours * 60 + minutes;
 }
 
 // =====================================================
 // CHECK WEEKEND
-// Sunday = 0
-// Saturday = 6
 // =====================================================
 
 function isWeekend(dateString) {
-  const date =
-    new Date(`${dateString}T12:00:00`);
+  const date = new Date(`${dateString}T12:00:00`);
 
   const day = date.getDay();
 
@@ -74,26 +63,47 @@ function isWeekend(dateString) {
 
 // =====================================================
 // GET NEXT / PREVIOUS WORKING DAY
-// Skips Saturday and Sunday
 // =====================================================
 
-function getWorkingDay(
-  dateString,
-  delta
-) {
-  const next =
-    new Date(`${dateString}T12:00:00`);
+function getWorkingDay(dateString, delta) {
+  const next = new Date(`${dateString}T12:00:00`);
 
   do {
-    next.setDate(
-      next.getDate() + delta
-    );
-  } while (
-    next.getDay() === 0 ||
-    next.getDay() === 6
-  );
+    next.setDate(next.getDate() + delta);
+  } while (next.getDay() === 0 || next.getDay() === 6);
 
   return localDate(next);
+}
+
+// =====================================================
+// NORMALIZE ROOM TYPE
+//
+// Training Room -> Training
+// training -> Training
+// CONFERENCE ROOM -> Conference
+// =====================================================
+
+function normalizeRoomType(type) {
+  if (!type) return "";
+
+  const value = String(type)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
+  if (value.includes("conference")) {
+    return "Conference";
+  }
+
+  if (value.includes("discussion")) {
+    return "Discussion";
+  }
+
+  if (value.includes("training")) {
+    return "Training";
+  }
+
+  return String(type).trim();
 }
 
 // =====================================================
@@ -101,74 +111,39 @@ function getWorkingDay(
 // =====================================================
 
 export default function AvailabilityCalendar() {
-
-  // ===================================================
-  // STATE
-  // ===================================================
-
   const today = localDate();
 
-  const [
-    selectedDate,
-    setSelectedDate,
-  ] = useState(today);
+  const [selectedDate, setSelectedDate] = useState(today);
 
-  const [
-    rooms,
-    setRooms,
-  ] = useState([]);
+  const [rooms, setRooms] = useState([]);
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [
-    error,
-    setError,
-  ] = useState(null);
+  const [error, setError] = useState(null);
 
-  const [
-    filters,
-    setFilters,
-  ] = useState({
+  const [filters, setFilters] = useState({
     type: "All Rooms",
     capacity: "",
     startTime: "",
     endTime: "",
   });
 
-  const [
-    selectedSlot,
-    setSelectedSlot,
-  ] = useState(null);
+  const [selectedSlot, setSelectedSlot] = useState(null);
 
-  const [
-    nowMinutes,
-    setNowMinutes,
-  ] = useState(
-    getNowMinutes()
-  );
+  const [nowMinutes, setNowMinutes] = useState(getNowMinutes());
 
   // =====================================================
   // UPDATE CURRENT TIME EVERY MINUTE
   // =====================================================
 
   useEffect(() => {
-
-    const timer =
-      setInterval(() => {
-
-        setNowMinutes(
-          getNowMinutes()
-        );
-
-      }, 60000);
+    const timer = setInterval(() => {
+      setNowMinutes(getNowMinutes());
+    }, 60000);
 
     return () => {
       clearInterval(timer);
     };
-
   }, []);
 
   // =====================================================
@@ -176,173 +151,190 @@ export default function AvailabilityCalendar() {
   // =====================================================
 
   useEffect(() => {
-
     let isMounted = true;
 
     // -----------------------------------------------
-    // DO NOT FETCH WEEKENDS
+    // FRONTEND WEEKEND BLOCK
+    //
+    // Keep this for better UI.
+    // Backend should also validate weekends.
     // -----------------------------------------------
 
     if (isWeekend(selectedDate)) {
-
       setRooms([]);
-
       setLoading(false);
 
       return;
     }
 
     setLoading(true);
-
     setError(null);
 
-    // -----------------------------------------------
-    // CALL BACKEND API
-    // -----------------------------------------------
-
     getRoomAvailability(selectedDate)
-
       .then((data) => {
+        if (!isMounted) return;
 
-        if (!isMounted) {
-          return;
-        }
+        // =============================================
+        // DEBUG
+        // Open browser console and check this
+        // =============================================
 
-        // ---------------------------------------------
-        // API MAY RETURN:
-        //
-        // [
-        //   {...}
-        // ]
-        //
-        // OR:
-        //
-        // {
-        //   date: "...",
-        //   rooms: [...]
-        // }
-        // ---------------------------------------------
+        console.log(
+          "Room Availability API Response:",
+          data
+        );
+
+        // =============================================
+        // HANDLE DIFFERENT API RESPONSE SHAPES
+        // =============================================
 
         const availabilityRooms =
           Array.isArray(data)
             ? data
-            : data?.rooms || [];
+            : data?.rooms ||
+              data?.data ||
+              data?.result ||
+              [];
 
-        // ---------------------------------------------
+        console.log(
+          "Availability Rooms:",
+          availabilityRooms
+        );
+
+        // =============================================
         // MAP BACKEND DATA
-        // ---------------------------------------------
+        // =============================================
 
-        const mappedRooms =
-          availabilityRooms.map(
-            (room) => ({
+        const mappedRooms = availabilityRooms.map((room) => {
+          const rawRoomType =
+            room.roomType ||
+            room.type ||
+            room.roomTypeName ||
+            room.typeName ||
+            "";
 
-              ...room,
+          const rawTimeSlots =
+            room.timeSlots ||
+            room.slots ||
+            room.availabilitySlots ||
+            [];
 
-              // Backend:
-              // roomId
-              //
-              // Frontend:
-              // id
+          return {
+            ...room,
 
-              id: room.roomId,
+            // -----------------------------------------
+            // ROOM ID
+            // -----------------------------------------
 
-              // Backend:
-              // roomName
-              //
-              // Frontend:
-              // name
+            id:
+              room.roomId ||
+              room.id ||
+              room.roomID,
 
-              name: room.roomName,
+            // -----------------------------------------
+            // ROOM NAME
+            // -----------------------------------------
 
-              // Backend:
-              // roomType
-              //
-              // Frontend:
-              // type
+            name:
+              room.roomName ||
+              room.name ||
+              room.roomNumber ||
+              "Unnamed Room",
 
-              type: room.roomType,
+            // -----------------------------------------
+            // ROOM TYPE
+            //
+            // Normalize so:
+            // "Training Room" = "Training"
+            // -----------------------------------------
 
-              facilities:
-                room.facilities || [],
+            type: normalizeRoomType(rawRoomType),
 
-              // ---------------------------------------
-              // NORMALIZE BACKEND TIME SLOTS
-              //
-              // Backend:
-              //
-              // {
-              //   startTime: "09:00:00",
-              //   endTime: "10:00:00",
-              //   isBooked: false
-              // }
-              //
-              // Add:
-              //
-              // start
-              // end
-              // ---------------------------------------
+            rawRoomType,
 
-              timeSlots:
-                (
-                  room.timeSlots || []
-                ).map(
-                  (slot) => ({
+            // -----------------------------------------
+            // CAPACITY
+            // -----------------------------------------
 
-                    ...slot,
+            capacity:
+              room.capacity ||
+              room.roomCapacity ||
+              room.maxCapacity ||
+              0,
 
-                    start:
-                      slot.start ||
-                      slot.startTime,
+            // -----------------------------------------
+            // FACILITIES
+            // -----------------------------------------
 
-                    end:
-                      slot.end ||
-                      slot.endTime,
+            facilities:
+              room.facilities ||
+              room.roomFacilities ||
+              [],
 
-                  })
-                ),
+            // -----------------------------------------
+            // CURRENT BOOKING
+            // -----------------------------------------
 
-            })
-          );
+            currentBooking:
+              room.currentBooking ||
+              room.booking ||
+              null,
 
-        setRooms(
+            // -----------------------------------------
+            // TIME SLOTS
+            // -----------------------------------------
+
+            timeSlots: rawTimeSlots.map((slot) => ({
+              ...slot,
+
+              start:
+                slot.start ||
+                slot.startTime ||
+                slot.fromTime ||
+                "",
+
+              end:
+                slot.end ||
+                slot.endTime ||
+                slot.toTime ||
+                "",
+
+              isBooked:
+                slot.isBooked ??
+                slot.booked ??
+                false,
+            })),
+          };
+        });
+
+        console.log(
+          "Mapped Rooms:",
           mappedRooms
         );
 
+        setRooms(mappedRooms);
       })
-
       .catch((err) => {
-
         if (isMounted) {
-
           setError(
             "Failed to load room availability."
           );
-
         }
 
         console.error(
           "Availability fetch error:",
           err
         );
-
       })
-
       .finally(() => {
-
         if (isMounted) {
-
           setLoading(false);
-
         }
-
       });
 
     return () => {
-
       isMounted = false;
-
     };
-
   }, [selectedDate]);
 
   // =====================================================
@@ -356,174 +348,133 @@ export default function AvailabilityCalendar() {
   // FILTER ROOMS
   // =====================================================
 
-  const filteredRooms =
-    useMemo(() => {
+  const filteredRooms = useMemo(() => {
+    const result = rooms.filter((room) => {
+      // ---------------------------------------------
+      // ROOM TYPE FILTER
+      // ---------------------------------------------
 
-      return rooms.filter(
-        (room) => {
+      if (filters.type !== "All Rooms") {
+        const selectedType =
+          normalizeRoomType(filters.type);
 
-          // ---------------------------------------------
-          // ROOM TYPE FILTER
-          // ---------------------------------------------
+        const roomType =
+          normalizeRoomType(room.type);
 
-          if (
-            filters.type !==
-              "All Rooms" &&
-            room.type !==
-              filters.type
-          ) {
-            return false;
-          }
-
-          // ---------------------------------------------
-          // CAPACITY FILTER
-          // ---------------------------------------------
-
-          if (
-            filters.capacity &&
-            room.capacity <
-              Number(
-                filters.capacity
-              )
-          ) {
-            return false;
-          }
-
-          return true;
-
+        if (roomType !== selectedType) {
+          return false;
         }
-      );
+      }
 
-    }, [
-      filters,
-      rooms,
-    ]);
+      // ---------------------------------------------
+      // CAPACITY FILTER
+      // ---------------------------------------------
+
+      if (
+        filters.capacity &&
+        Number(room.capacity) <
+          Number(filters.capacity)
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+    console.log(
+      "Selected Room Type:",
+      filters.type
+    );
+
+    console.log(
+      "Filtered Rooms:",
+      result
+    );
+
+    return result;
+  }, [filters, rooms]);
 
   // =====================================================
   // REMOVE PAST TIME SLOTS FOR TODAY
   // =====================================================
 
-  const roomsWithFutureSlots =
-    useMemo(() => {
+  const roomsWithFutureSlots = useMemo(() => {
+    // -----------------------------------------------
+    // FUTURE DATE
+    // -----------------------------------------------
 
-      // -----------------------------------------------
-      // FUTURE DATE
-      // SHOW ALL BACKEND TIME SLOTS
-      // -----------------------------------------------
+    if (!selectedDateIsToday) {
+      return filteredRooms;
+    }
 
-      if (!selectedDateIsToday) {
+    // -----------------------------------------------
+    // TODAY
+    // -----------------------------------------------
 
-        return filteredRooms;
+    return filteredRooms
+      .map((room) => {
+        const timeSlots =
+          room.timeSlots || [];
 
-      }
+        const futureSlots =
+          timeSlots.filter((slot) => {
+            const slotStart =
+              slot.start ||
+              slot.startTime;
 
-      // -----------------------------------------------
-      // TODAY
-      // REMOVE PAST SLOTS
-      // -----------------------------------------------
+            const slotStartMinutes =
+              timeToMinutes(slotStart);
 
-      return filteredRooms
-
-        .map((room) => {
-
-          const timeSlots =
-            room.timeSlots || [];
-
-          const futureSlots =
-            timeSlots.filter(
-              (slot) => {
-
-                const slotStart =
-                  slot.start ||
-                  slot.startTime;
-
-                const slotStartMinutes =
-                  timeToMinutes(
-                    slotStart
-                  );
-
-                return (
-                  slotStartMinutes >
-                  nowMinutes
-                );
-
-              }
+            return (
+              slotStartMinutes >
+              nowMinutes
             );
+          });
 
-          return {
-
-            ...room,
-
-            timeSlots:
-              futureSlots,
-
-          };
-
-        })
-
-        // ---------------------------------------------
-        // REMOVE ROOMS WITH NO FUTURE SLOTS
-        // ---------------------------------------------
-
-        .filter(
-          (room) =>
-            room.timeSlots.length > 0
-        );
-
-    }, [
-      filteredRooms,
-      selectedDateIsToday,
-      nowMinutes,
-    ]);
+        return {
+          ...room,
+          timeSlots: futureSlots,
+        };
+      })
+      .filter(
+        (room) =>
+          room.timeSlots.length > 0
+      );
+  }, [
+    filteredRooms,
+    selectedDateIsToday,
+    nowMinutes,
+  ]);
 
   // =====================================================
   // UPDATE FILTER
   // =====================================================
 
-  function updateFilter(
-    key,
-    value
-  ) {
-
-    setFilters(
-      (current) => ({
-
-        ...current,
-
-        [key]: value,
-
-      })
-    );
-
+  function updateFilter(key, value) {
+    setFilters((current) => ({
+      ...current,
+      [key]: value,
+    }));
   }
 
   // =====================================================
   // CHANGE DAY
-  // SKIP WEEKENDS
   // =====================================================
 
   function changeDays(delta) {
-
     const nextDate =
       getWorkingDay(
         selectedDate,
         delta
       );
 
-    // Do not allow past dates
-
     if (nextDate < today) {
       return;
     }
 
-    setSelectedDate(
-      nextDate
-    );
-
-    // Close selected slot
+    setSelectedDate(nextDate);
 
     setSelectedSlot(null);
-
   }
 
   // =====================================================
@@ -531,33 +482,21 @@ export default function AvailabilityCalendar() {
   // =====================================================
 
   function handleDateChange(value) {
-
-    // -----------------------------------------------
-    // DO NOT ALLOW PAST DATE
-    // -----------------------------------------------
-
     if (value < today) {
       return;
     }
 
-    // -----------------------------------------------
-    // BLOCK WEEKENDS
-    // -----------------------------------------------
-
     if (isWeekend(value)) {
-
       alert(
         "Room booking is not available on Saturdays and Sundays."
       );
 
       return;
-
     }
 
     setSelectedDate(value);
 
     setSelectedSlot(null);
-
   }
 
   // =====================================================
@@ -565,57 +504,38 @@ export default function AvailabilityCalendar() {
   // =====================================================
 
   function handleSelectSlot(slot) {
-
-    // -----------------------------------------------
-    // BLOCK WEEKENDS
-    // -----------------------------------------------
-
     if (isWeekend(selectedDate)) {
-
       alert(
         "Room booking is not available on Saturdays and Sundays."
       );
 
       return;
-
     }
-
-    // -----------------------------------------------
-    // BLOCK PAST TIME FOR TODAY
-    // -----------------------------------------------
 
     if (
       selectedDateIsToday &&
-      slot?.status ===
-        "Available"
+      slot?.status === "Available"
     ) {
-
       const slotStart =
         slot.slot.start ||
         slot.slot.startTime;
 
       const slotStartMinutes =
-        timeToMinutes(
-          slotStart
-        );
+        timeToMinutes(slotStart);
 
       if (
         slotStartMinutes <=
         nowMinutes
       ) {
-
         alert(
           "Cannot select or book a time slot in the past for today."
         );
 
         return;
-
       }
-
     }
 
     setSelectedSlot(slot);
-
   }
 
   // =====================================================
@@ -623,7 +543,6 @@ export default function AvailabilityCalendar() {
   // =====================================================
 
   function bookingLink(slot) {
-
     const startTime =
       slot.slot.start ||
       slot.slot.startTime;
@@ -634,93 +553,61 @@ export default function AvailabilityCalendar() {
 
     const params =
       new URLSearchParams({
-
-        roomId:
-          String(slot.room.id),
-
-        date:
-          selectedDate,
-
+        roomId: String(slot.room.id),
+        date: selectedDate,
         startTime,
-
         endTime,
-
-        attendees:
-          String(
-            filters.capacity || 1
-          ),
-
+        attendees: String(
+          filters.capacity || 1
+        ),
       });
 
     return `/book-room?${params.toString()}`;
-
   }
 
   // =====================================================
   // STATUS BADGE
   // =====================================================
 
-  const getStatusBadgeClass =
-    (status) => {
+  const getStatusBadgeClass = (
+    status
+  ) => {
+    const s =
+      status?.toLowerCase() || "";
 
-      const s =
-        status?.toLowerCase() ||
-        "";
+    if (
+      s === "approved" ||
+      s === "confirmed" ||
+      s === "available"
+    ) {
+      return "bg-[#658362] text-white";
+    }
 
-      if (
-        s === "approved" ||
-        s === "confirmed" ||
-        s === "available"
-      ) {
+    if (s === "pending") {
+      return "bg-[#E09F3E] text-white";
+    }
 
-        return (
-          "bg-[#658362] text-white"
-        );
+    if (
+      s === "rejected" ||
+      s === "cancelled"
+    ) {
+      return "bg-[#B85450] text-white";
+    }
 
-      }
-
-      if (s === "pending") {
-
-        return (
-          "bg-[#E09F3E] text-white"
-        );
-
-      }
-
-      if (
-        s === "rejected" ||
-        s === "cancelled"
-      ) {
-
-        return (
-          "bg-[#B85450] text-white"
-        );
-
-      }
-
-      return (
-        "bg-slate-500 text-white"
-      );
-
-    };
+    return "bg-slate-500 text-white";
+  };
 
   // =====================================================
   // MODAL TITLE
   // =====================================================
 
   const modalTitle =
-    selectedSlot?.status ===
-      "Available"
+    selectedSlot?.status === "Available"
       ? "Book this room"
-
-      : selectedSlot?.status ===
-          "Pending"
+      : selectedSlot?.status === "Pending"
       ? "Pending approval"
-
-      : selectedSlot?.status ===
-          "Completed"
+      : selectedSlot?.status === "Completed"
       ? "Booking history"
-
       : "Booking details";
 
   // =====================================================
@@ -728,17 +615,13 @@ export default function AvailabilityCalendar() {
   // =====================================================
 
   return (
-
     <div className="space-y-6">
 
-      {/* ================================================ */}
       {/* HEADER */}
-      {/* ================================================ */}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
         <div>
-
           <h1 className="font-display text-2xl font-700 text-ink">
             Room Availability
           </h1>
@@ -746,9 +629,7 @@ export default function AvailabilityCalendar() {
           <p className="mt-1 text-sm text-slate">
             Find the right workspace and book an available time slot.
           </p>
-
         </div>
-
 
         <div className="flex flex-nowrap items-center gap-3">
 
@@ -756,276 +637,164 @@ export default function AvailabilityCalendar() {
 
           <Button
             variant="secondary"
-
             onClick={() =>
               changeDays(-1)
             }
-
             disabled={
               selectedDate <= today
             }
-
             aria-label="Previous day"
           >
-
             <ChevronLeft size={16} />
-
           </Button>
-
 
           {/* DATE */}
 
           <input
             type="date"
-
             min={today}
-
             value={selectedDate}
-
             onChange={(event) =>
               handleDateChange(
                 event.target.value
               )
             }
-
             className="min-w-[170px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
           />
-
 
           {/* NEXT DAY */}
 
           <Button
             variant="secondary"
-
             onClick={() =>
               changeDays(1)
             }
-
             aria-label="Next day"
           >
-
             <ChevronRight size={16} />
-
           </Button>
-
 
           {/* ROOM TYPE */}
 
           <Select
             value={filters.type}
-
             onChange={(event) =>
               updateFilter(
                 "type",
                 event.target.value
               )
             }
-
             className="w-auto min-w-[170px] max-w-[220px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
           >
-
             {ROOM_TYPE_OPTIONS.map(
               (type) => (
-
                 <option
                   key={type}
                   value={type}
                 >
-
                   {type}
-
                 </option>
-
               )
             )}
-
           </Select>
 
         </div>
 
       </div>
 
-
-      {/* ================================================ */}
       {/* LOADING */}
-      {/* ================================================ */}
 
       {loading && (
-
         <div className="p-8 text-center text-sm text-slate">
-
           Loading calendar schedule...
-
         </div>
-
       )}
 
-
-      {/* ================================================ */}
       {/* ERROR */}
-      {/* ================================================ */}
 
       {error && (
-
         <div className="p-8 text-center text-sm text-red-500">
-
           {error}
-
         </div>
-
       )}
 
-
-      {/* ================================================ */}
       {/* AVAILABILITY GRID */}
-      {/* ================================================ */}
 
-      {!loading &&
-        !error && (
+      {!loading && !error && (
+        <AvailabilityGrid
+          rooms={roomsWithFutureSlots}
+          date={selectedDate}
+          isToday={selectedDateIsToday}
+          nowMinutes={nowMinutes}
+          onSelectSlot={handleSelectSlot}
+        />
+      )}
 
-          <AvailabilityGrid
-
-            rooms={
-              roomsWithFutureSlots
-            }
-
-            date={
-              selectedDate
-            }
-
-            isToday={
-              selectedDateIsToday
-            }
-
-            nowMinutes={
-              nowMinutes
-            }
-
-            onSelectSlot={
-              handleSelectSlot
-            }
-
-          />
-
-        )}
-
-
-      {/* ================================================ */}
       {/* SLOT MODAL */}
-      {/* ================================================ */}
 
       <Modal
-
-        open={
-          Boolean(selectedSlot)
-        }
-
-        title={
-          modalTitle
-        }
-
+        open={Boolean(selectedSlot)}
+        title={modalTitle}
         footer={
           <>
-
             <Button
               variant="secondary"
-
               onClick={() =>
                 setSelectedSlot(null)
               }
             >
-
               Close
-
             </Button>
-
 
             {selectedSlot?.status ===
               "Available" && (
-
               <Link
                 to={bookingLink(
                   selectedSlot
                 )}
               >
-
                 <Button
                   onClick={() =>
                     setSelectedSlot(null)
                   }
                 >
-
                   Continue to booking
-
                 </Button>
-
               </Link>
-
             )}
-
           </>
         }
       >
-
         {selectedSlot && (
-
           <div className="space-y-3">
 
             <p className="font-display text-base font-700 text-ink">
-
               {selectedSlot.room.name}
-
             </p>
 
-
             <p>
-
               {selectedSlot.room.type}
-
               {" · "}
-
               Capacity{" "}
-
-              {
-                selectedSlot.room.capacity
-              }
-
+              {selectedSlot.room.capacity}
             </p>
 
-
             <p>
-
               {selectedDate}
-
               {", "}
-
-              {
-                selectedSlot.slot.start ||
-                selectedSlot.slot.startTime
-              }
-
+              {selectedSlot.slot.start ||
+                selectedSlot.slot.startTime}
               {" - "}
-
-              {
-                selectedSlot.slot.end ||
-                selectedSlot.slot.endTime
-              }
-
+              {selectedSlot.slot.end ||
+                selectedSlot.slot.endTime}
             </p>
-
 
             <p>
-
               Facilities:{" "}
-
-              {
-                selectedSlot.room.facilities?.join(
-                  ", "
-                ) || "None"
-              }
-
+              {selectedSlot.room.facilities?.join(
+                ", "
+              ) || "None"}
             </p>
-
 
             <div className="flex items-center gap-2">
 
@@ -1033,42 +802,28 @@ export default function AvailabilityCalendar() {
                 Status:
               </span>
 
-
               <span
                 className={`inline-block w-28 rounded-full py-1 text-center text-xs font-bold tracking-wider uppercase ${getStatusBadgeClass(
                   selectedSlot.status
                 )}`}
               >
-
                 {selectedSlot.status}
-
               </span>
 
             </div>
 
-
             {selectedSlot.booking && (
-
               <p>
-
                 Booking:{" "}
-
-                {
-                  selectedSlot.booking.title ||
-                  "Reserved workspace"
-                }
-
+                {selectedSlot.booking.title ||
+                  "Reserved workspace"}
               </p>
-
             )}
 
           </div>
-
         )}
-
       </Modal>
 
     </div>
-
   );
 }
