@@ -35,46 +35,59 @@ function localDate(value = new Date()) {
 function getNowMinutes() {
   const now = new Date();
 
-  return now.getHours() * 60 + now.getMinutes();
+  return (
+    now.getHours() * 60 +
+    now.getMinutes()
+  );
 }
 
 // =====================================================
 // CONVERT TIME TO MINUTES
-// Example: "15:30" => 930
-// Example: "15:30:00" => 930
+// Supports:
+// "15:30"
+// "15:30:00"
 // =====================================================
 
 function timeToMinutes(time) {
   if (!time) return 0;
 
-  const [hours, minutes] = time.split(":").map(Number);
+  const [hours, minutes] =
+    time.split(":").map(Number);
 
   return hours * 60 + minutes;
 }
 
 // =====================================================
-// CHECK WHETHER DATE IS SATURDAY OR SUNDAY
+// CHECK WEEKEND
 // Sunday = 0
 // Saturday = 6
 // =====================================================
 
 function isWeekend(dateString) {
-  const date = new Date(`${dateString}T12:00:00`);
+  const date =
+    new Date(`${dateString}T12:00:00`);
+
   const day = date.getDay();
 
   return day === 0 || day === 6;
 }
 
 // =====================================================
-// GET NEXT/PREVIOUS WORKING DAY
+// GET NEXT / PREVIOUS WORKING DAY
 // Skips Saturday and Sunday
 // =====================================================
 
-function getWorkingDay(dateString, delta) {
-  const next = new Date(`${dateString}T12:00:00`);
+function getWorkingDay(
+  dateString,
+  delta
+) {
+  const next =
+    new Date(`${dateString}T12:00:00`);
 
   do {
-    next.setDate(next.getDate() + delta);
+    next.setDate(
+      next.getDate() + delta
+    );
   } while (
     next.getDay() === 0 ||
     next.getDay() === 6
@@ -88,44 +101,74 @@ function getWorkingDay(dateString, delta) {
 // =====================================================
 
 export default function AvailabilityCalendar() {
+
+  // ===================================================
+  // STATE
+  // ===================================================
+
   const today = localDate();
 
-  const [selectedDate, setSelectedDate] =
-    useState(today);
+  const [
+    selectedDate,
+    setSelectedDate,
+  ] = useState(today);
 
-  const [rooms, setRooms] =
-    useState([]);
+  const [
+    rooms,
+    setRooms,
+  ] = useState([]);
 
-  const [loading, setLoading] =
-    useState(false);
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
-  const [error, setError] =
-    useState(null);
+  const [
+    error,
+    setError,
+  ] = useState(null);
 
-  const [filters, setFilters] =
-    useState({
-      type: "All Rooms",
-      capacity: "",
-      startTime: "",
-      endTime: "",
-    });
+  const [
+    filters,
+    setFilters,
+  ] = useState({
+    type: "All Rooms",
+    capacity: "",
+    startTime: "",
+    endTime: "",
+  });
 
-  const [selectedSlot, setSelectedSlot] =
-    useState(null);
+  const [
+    selectedSlot,
+    setSelectedSlot,
+  ] = useState(null);
 
-  const [nowMinutes, setNowMinutes] =
-    useState(getNowMinutes());
+  const [
+    nowMinutes,
+    setNowMinutes,
+  ] = useState(
+    getNowMinutes()
+  );
 
   // =====================================================
   // UPDATE CURRENT TIME EVERY MINUTE
   // =====================================================
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setNowMinutes(getNowMinutes());
-    }, 60000);
 
-    return () => clearInterval(timer);
+    const timer =
+      setInterval(() => {
+
+        setNowMinutes(
+          getNowMinutes()
+        );
+
+      }, 60000);
+
+    return () => {
+      clearInterval(timer);
+    };
+
   }, []);
 
   // =====================================================
@@ -133,70 +176,173 @@ export default function AvailabilityCalendar() {
   // =====================================================
 
   useEffect(() => {
+
     let isMounted = true;
 
-    // Extra safety: never fetch weekend availability
+    // -----------------------------------------------
+    // DO NOT FETCH WEEKENDS
+    // -----------------------------------------------
+
     if (isWeekend(selectedDate)) {
+
       setRooms([]);
+
       setLoading(false);
+
       return;
     }
 
     setLoading(true);
+
     setError(null);
 
-    getRoomAvailability(selectedDate)
-      .then((data) => {
-        if (!isMounted) return;
+    // -----------------------------------------------
+    // CALL BACKEND API
+    // -----------------------------------------------
 
-        // Supports either:
-        // API returns array directly
-        // OR API returns { date, rooms }
+    getRoomAvailability(selectedDate)
+
+      .then((data) => {
+
+        if (!isMounted) {
+          return;
+        }
+
+        // ---------------------------------------------
+        // API MAY RETURN:
+        //
+        // [
+        //   {...}
+        // ]
+        //
+        // OR:
+        //
+        // {
+        //   date: "...",
+        //   rooms: [...]
+        // }
+        // ---------------------------------------------
 
         const availabilityRooms =
           Array.isArray(data)
             ? data
             : data?.rooms || [];
 
+        // ---------------------------------------------
+        // MAP BACKEND DATA
+        // ---------------------------------------------
+
         const mappedRooms =
-          availabilityRooms.map((room) => ({
-            ...room,
+          availabilityRooms.map(
+            (room) => ({
 
-            id: room.roomId,
+              ...room,
 
-            name: room.roomName,
+              // Backend:
+              // roomId
+              //
+              // Frontend:
+              // id
 
-            type: room.roomType,
+              id: room.roomId,
 
-            facilities:
-              room.facilities || [],
-          }));
+              // Backend:
+              // roomName
+              //
+              // Frontend:
+              // name
 
-        setRooms(mappedRooms);
+              name: room.roomName,
+
+              // Backend:
+              // roomType
+              //
+              // Frontend:
+              // type
+
+              type: room.roomType,
+
+              facilities:
+                room.facilities || [],
+
+              // ---------------------------------------
+              // NORMALIZE BACKEND TIME SLOTS
+              //
+              // Backend:
+              //
+              // {
+              //   startTime: "09:00:00",
+              //   endTime: "10:00:00",
+              //   isBooked: false
+              // }
+              //
+              // Add:
+              //
+              // start
+              // end
+              // ---------------------------------------
+
+              timeSlots:
+                (
+                  room.timeSlots || []
+                ).map(
+                  (slot) => ({
+
+                    ...slot,
+
+                    start:
+                      slot.start ||
+                      slot.startTime,
+
+                    end:
+                      slot.end ||
+                      slot.endTime,
+
+                  })
+                ),
+
+            })
+          );
+
+        setRooms(
+          mappedRooms
+        );
+
       })
 
       .catch((err) => {
+
         if (isMounted) {
+
           setError(
             "Failed to load room availability."
           );
+
         }
 
         console.error(
           "Availability fetch error:",
           err
         );
+
       })
 
       .finally(() => {
+
         if (isMounted) {
+
           setLoading(false);
+
         }
+
       });
 
     return () => {
+
       isMounted = false;
+
     };
+
   }, [selectedDate]);
 
   // =====================================================
@@ -210,91 +356,120 @@ export default function AvailabilityCalendar() {
   // FILTER ROOMS
   // =====================================================
 
-  const filteredRooms = useMemo(() => {
-    return rooms.filter((room) => {
-      // ROOM TYPE FILTER
+  const filteredRooms =
+    useMemo(() => {
 
-      if (
-        filters.type !== "All Rooms" &&
-        room.type !== filters.type
-      ) {
-        return false;
-      }
+      return rooms.filter(
+        (room) => {
 
-      // CAPACITY FILTER
+          // ---------------------------------------------
+          // ROOM TYPE FILTER
+          // ---------------------------------------------
 
-      if (
-        filters.capacity &&
-        room.capacity <
-          Number(filters.capacity)
-      ) {
-        return false;
-      }
+          if (
+            filters.type !==
+              "All Rooms" &&
+            room.type !==
+              filters.type
+          ) {
+            return false;
+          }
 
-      return true;
-    });
-  }, [filters, rooms]);
+          // ---------------------------------------------
+          // CAPACITY FILTER
+          // ---------------------------------------------
+
+          if (
+            filters.capacity &&
+            room.capacity <
+              Number(
+                filters.capacity
+              )
+          ) {
+            return false;
+          }
+
+          return true;
+
+        }
+      );
+
+    }, [
+      filters,
+      rooms,
+    ]);
 
   // =====================================================
   // REMOVE PAST TIME SLOTS FOR TODAY
   // =====================================================
-  //
-  // Backend uses:
-  // timeSlots
-  //
-  // Example:
-  // {
-  //   startTime: "15:00:00",
-  //   endTime: "16:00:00",
-  //   isBooked: false
-  // }
-  // =====================================================
 
   const roomsWithFutureSlots =
     useMemo(() => {
-      // Future dates show all slots
+
+      // -----------------------------------------------
+      // FUTURE DATE
+      // SHOW ALL BACKEND TIME SLOTS
+      // -----------------------------------------------
 
       if (!selectedDateIsToday) {
+
         return filteredRooms;
+
       }
 
+      // -----------------------------------------------
+      // TODAY
+      // REMOVE PAST SLOTS
+      // -----------------------------------------------
+
       return filteredRooms
+
         .map((room) => {
+
           const timeSlots =
             room.timeSlots || [];
 
-          // Only keep slots that have not yet started
-
           const futureSlots =
-            timeSlots.filter((slot) => {
-              const slotStart =
-                slot.startTime ||
-                slot.start;
+            timeSlots.filter(
+              (slot) => {
 
-              const slotStartMinutes =
-                timeToMinutes(slotStart);
+                const slotStart =
+                  slot.start ||
+                  slot.startTime;
 
-              return (
-                slotStartMinutes >
-                nowMinutes
-              );
-            });
+                const slotStartMinutes =
+                  timeToMinutes(
+                    slotStart
+                  );
+
+                return (
+                  slotStartMinutes >
+                  nowMinutes
+                );
+
+              }
+            );
 
           return {
+
             ...room,
 
             timeSlots:
               futureSlots,
+
           };
+
         })
 
-        // Remove rooms with no future slots
+        // ---------------------------------------------
+        // REMOVE ROOMS WITH NO FUTURE SLOTS
+        // ---------------------------------------------
 
-        .filter((room) => {
-          return (
+        .filter(
+          (room) =>
             room.timeSlots.length > 0
-          );
-        });
+        );
+
     }, [
       filteredRooms,
       selectedDateIsToday,
@@ -305,114 +480,150 @@ export default function AvailabilityCalendar() {
   // UPDATE FILTER
   // =====================================================
 
-  function updateFilter(key, value) {
-    setFilters((current) => ({
-      ...current,
-      [key]: value,
-    }));
+  function updateFilter(
+    key,
+    value
+  ) {
+
+    setFilters(
+      (current) => ({
+
+        ...current,
+
+        [key]: value,
+
+      })
+    );
+
   }
 
   // =====================================================
   // CHANGE DAY
-  // SKIP SATURDAY AND SUNDAY
+  // SKIP WEEKENDS
   // =====================================================
 
   function changeDays(delta) {
+
     const nextDate =
       getWorkingDay(
         selectedDate,
         delta
       );
 
-    // Do not allow going before today
+    // Do not allow past dates
 
     if (nextDate < today) {
       return;
     }
 
-    setSelectedDate(nextDate);
+    setSelectedDate(
+      nextDate
+    );
 
     // Close selected slot
 
     setSelectedSlot(null);
+
   }
 
   // =====================================================
   // DATE CHANGE
-  // BLOCK SATURDAY AND SUNDAY
   // =====================================================
 
   function handleDateChange(value) {
-    // Do not allow past dates
+
+    // -----------------------------------------------
+    // DO NOT ALLOW PAST DATE
+    // -----------------------------------------------
 
     if (value < today) {
       return;
     }
 
-    // Block Saturday and Sunday
+    // -----------------------------------------------
+    // BLOCK WEEKENDS
+    // -----------------------------------------------
 
     if (isWeekend(value)) {
+
       alert(
         "Room booking is not available on Saturdays and Sundays."
       );
 
       return;
+
     }
 
     setSelectedDate(value);
 
     setSelectedSlot(null);
+
   }
 
   // =====================================================
   // SELECT SLOT
-  // EXTRA SAFETY CHECK
   // =====================================================
 
   function handleSelectSlot(slot) {
-    // Block weekend selection
+
+    // -----------------------------------------------
+    // BLOCK WEEKENDS
+    // -----------------------------------------------
 
     if (isWeekend(selectedDate)) {
+
       alert(
         "Room booking is not available on Saturdays and Sundays."
       );
 
       return;
+
     }
 
-    // Block past slots for today
+    // -----------------------------------------------
+    // BLOCK PAST TIME FOR TODAY
+    // -----------------------------------------------
 
     if (
       selectedDateIsToday &&
-      slot?.status === "Available"
+      slot?.status ===
+        "Available"
     ) {
+
       const slotStart =
         slot.slot.start ||
         slot.slot.startTime;
 
       const slotStartMinutes =
-        timeToMinutes(slotStart);
+        timeToMinutes(
+          slotStart
+        );
 
       if (
         slotStartMinutes <=
         nowMinutes
       ) {
+
         alert(
           "Cannot select or book a time slot in the past for today."
         );
 
         return;
+
       }
+
     }
 
     setSelectedSlot(slot);
+
   }
 
   // =====================================================
-  // BOOKING LINK
+  // CREATE BOOKING LINK
   // =====================================================
 
   function bookingLink(slot) {
+
     const startTime =
       slot.slot.start ||
       slot.slot.startTime;
@@ -423,20 +634,26 @@ export default function AvailabilityCalendar() {
 
     const params =
       new URLSearchParams({
-        roomId: slot.room.id,
 
-        date: selectedDate,
+        roomId:
+          String(slot.room.id),
+
+        date:
+          selectedDate,
 
         startTime,
 
         endTime,
 
-        attendees: String(
-          filters.capacity || 1
-        ),
+        attendees:
+          String(
+            filters.capacity || 1
+          ),
+
       });
 
     return `/book-room?${params.toString()}`;
+
   }
 
   // =====================================================
@@ -445,29 +662,46 @@ export default function AvailabilityCalendar() {
 
   const getStatusBadgeClass =
     (status) => {
+
       const s =
-        status?.toLowerCase() || "";
+        status?.toLowerCase() ||
+        "";
 
       if (
         s === "approved" ||
         s === "confirmed" ||
         s === "available"
       ) {
-        return "bg-[#658362] text-white";
+
+        return (
+          "bg-[#658362] text-white"
+        );
+
       }
 
       if (s === "pending") {
-        return "bg-[#E09F3E] text-white";
+
+        return (
+          "bg-[#E09F3E] text-white"
+        );
+
       }
 
       if (
         s === "rejected" ||
         s === "cancelled"
       ) {
-        return "bg-[#B85450] text-white";
+
+        return (
+          "bg-[#B85450] text-white"
+        );
+
       }
 
-      return "bg-slate-500 text-white";
+      return (
+        "bg-slate-500 text-white"
+      );
+
     };
 
   // =====================================================
@@ -476,14 +710,17 @@ export default function AvailabilityCalendar() {
 
   const modalTitle =
     selectedSlot?.status ===
-    "Available"
+      "Available"
       ? "Book this room"
+
       : selectedSlot?.status ===
-        "Pending"
+          "Pending"
       ? "Pending approval"
+
       : selectedSlot?.status ===
-        "Completed"
+          "Completed"
       ? "Booking history"
+
       : "Booking details";
 
   // =====================================================
@@ -491,13 +728,17 @@ export default function AvailabilityCalendar() {
   // =====================================================
 
   return (
+
     <div className="space-y-6">
 
+      {/* ================================================ */}
       {/* HEADER */}
+      {/* ================================================ */}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
         <div>
+
           <h1 className="font-display text-2xl font-700 text-ink">
             Room Availability
           </h1>
@@ -505,178 +746,286 @@ export default function AvailabilityCalendar() {
           <p className="mt-1 text-sm text-slate">
             Find the right workspace and book an available time slot.
           </p>
+
         </div>
+
 
         <div className="flex flex-nowrap items-center gap-3">
 
-          {/* PREVIOUS WORKING DAY */}
+          {/* PREVIOUS DAY */}
 
           <Button
             variant="secondary"
+
             onClick={() =>
               changeDays(-1)
             }
+
             disabled={
               selectedDate <= today
             }
+
             aria-label="Previous day"
           >
+
             <ChevronLeft size={16} />
+
           </Button>
+
 
           {/* DATE */}
 
           <input
             type="date"
+
             min={today}
+
             value={selectedDate}
+
             onChange={(event) =>
               handleDateChange(
                 event.target.value
               )
             }
+
             className="min-w-[170px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
           />
 
-          {/* NEXT WORKING DAY */}
+
+          {/* NEXT DAY */}
 
           <Button
             variant="secondary"
+
             onClick={() =>
               changeDays(1)
             }
+
             aria-label="Next day"
           >
+
             <ChevronRight size={16} />
+
           </Button>
+
 
           {/* ROOM TYPE */}
 
           <Select
             value={filters.type}
+
             onChange={(event) =>
               updateFilter(
                 "type",
                 event.target.value
               )
             }
+
             className="w-auto min-w-[170px] max-w-[220px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
           >
+
             {ROOM_TYPE_OPTIONS.map(
               (type) => (
+
                 <option
                   key={type}
                   value={type}
                 >
+
                   {type}
+
                 </option>
+
               )
             )}
+
           </Select>
 
         </div>
+
       </div>
 
+
+      {/* ================================================ */}
       {/* LOADING */}
+      {/* ================================================ */}
 
       {loading && (
+
         <div className="p-8 text-center text-sm text-slate">
+
           Loading calendar schedule...
+
         </div>
+
       )}
 
+
+      {/* ================================================ */}
       {/* ERROR */}
+      {/* ================================================ */}
 
       {error && (
+
         <div className="p-8 text-center text-sm text-red-500">
+
           {error}
+
         </div>
+
       )}
 
+
+      {/* ================================================ */}
       {/* AVAILABILITY GRID */}
+      {/* ================================================ */}
 
-      {!loading && !error && (
-        <AvailabilityGrid
-          rooms={roomsWithFutureSlots}
-          bookings={[]}
-          date={selectedDate}
-          isToday={selectedDateIsToday}
-          nowMinutes={nowMinutes}
-          onSelectSlot={
-            handleSelectSlot
-          }
-        />
-      )}
+      {!loading &&
+        !error && (
 
+          <AvailabilityGrid
+
+            rooms={
+              roomsWithFutureSlots
+            }
+
+            date={
+              selectedDate
+            }
+
+            isToday={
+              selectedDateIsToday
+            }
+
+            nowMinutes={
+              nowMinutes
+            }
+
+            onSelectSlot={
+              handleSelectSlot
+            }
+
+          />
+
+        )}
+
+
+      {/* ================================================ */}
       {/* SLOT MODAL */}
+      {/* ================================================ */}
 
       <Modal
-        open={Boolean(selectedSlot)}
-        title={modalTitle}
+
+        open={
+          Boolean(selectedSlot)
+        }
+
+        title={
+          modalTitle
+        }
+
         footer={
           <>
+
             <Button
               variant="secondary"
+
               onClick={() =>
                 setSelectedSlot(null)
               }
             >
+
               Close
+
             </Button>
+
 
             {selectedSlot?.status ===
               "Available" && (
+
               <Link
                 to={bookingLink(
                   selectedSlot
                 )}
               >
+
                 <Button
                   onClick={() =>
                     setSelectedSlot(null)
                   }
                 >
+
                   Continue to booking
+
                 </Button>
+
               </Link>
+
             )}
+
           </>
         }
       >
+
         {selectedSlot && (
+
           <div className="space-y-3">
 
             <p className="font-display text-base font-700 text-ink">
+
               {selectedSlot.room.name}
+
             </p>
 
+
             <p>
+
               {selectedSlot.room.type}
+
               {" · "}
+
               Capacity{" "}
-              {selectedSlot.room.capacity}
+
+              {
+                selectedSlot.room.capacity
+              }
+
             </p>
 
+
             <p>
+
               {selectedDate}
+
               {", "}
 
-              {selectedSlot.slot.start ||
-                selectedSlot.slot.startTime}
+              {
+                selectedSlot.slot.start ||
+                selectedSlot.slot.startTime
+              }
 
               {" - "}
 
-              {selectedSlot.slot.end ||
-                selectedSlot.slot.endTime}
+              {
+                selectedSlot.slot.end ||
+                selectedSlot.slot.endTime
+              }
+
             </p>
+
 
             <p>
+
               Facilities:{" "}
 
-              {selectedSlot.room.facilities?.join(
-                ", "
-              ) || "None"}
+              {
+                selectedSlot.room.facilities?.join(
+                  ", "
+                ) || "None"
+              }
+
             </p>
+
 
             <div className="flex items-center gap-2">
 
@@ -684,29 +1033,42 @@ export default function AvailabilityCalendar() {
                 Status:
               </span>
 
+
               <span
                 className={`inline-block w-28 rounded-full py-1 text-center text-xs font-bold tracking-wider uppercase ${getStatusBadgeClass(
                   selectedSlot.status
                 )}`}
               >
+
                 {selectedSlot.status}
+
               </span>
 
             </div>
 
+
             {selectedSlot.booking && (
+
               <p>
+
                 Booking:{" "}
 
-                {selectedSlot.booking.title ||
-                  "Reserved workspace"}
+                {
+                  selectedSlot.booking.title ||
+                  "Reserved workspace"
+                }
+
               </p>
+
             )}
 
           </div>
+
         )}
+
       </Modal>
 
     </div>
+
   );
 }
