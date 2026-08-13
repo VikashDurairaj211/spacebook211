@@ -7,17 +7,14 @@ import { useToast } from '../components/common/ToastProvider'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
 import Modal from '../components/common/Modal'
-
 export default function BookRoom() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const roomIdParam = searchParams.get('roomId')
-
   const prefillDate = searchParams.get('date') || new Date().toISOString().slice(0, 10)
   const prefillStart = searchParams.get('startTime') || ''
   const prefillEnd = searchParams.get('endTime') || ''
   const prefillAttendees = searchParams.get('attendees') || '1'
-
   const [availableRooms, setAvailableRooms] = useState([])
   const [loadingRooms, setLoadingRooms] = useState(false)
   const [form, setForm] = useState({
@@ -32,7 +29,6 @@ export default function BookRoom() {
   const [submitting, setSubmitting] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const toast = useToast()
-
   // Load real rooms from backend API
   useEffect(() => {
     let active = true
@@ -41,7 +37,6 @@ export default function BookRoom() {
       .then((rooms) => {
         if (!active) return
         setAvailableRooms(rooms || [])
-
         if (roomIdParam) {
           const matchedRoom = (rooms || []).find(
             (r) => String(r.roomId) === String(roomIdParam)
@@ -59,39 +54,31 @@ export default function BookRoom() {
       .finally(() => {
         if (active) setLoadingRooms(false)
       })
-
     return () => {
       active = false
     }
   }, [form.date, roomIdParam])
-
   // Extract unique modules dynamically from actual DB rooms
   const modules = useMemo(() => {
     const list = availableRooms.map((r) => r.module).filter(Boolean)
     return [...new Set(list)]
   }, [availableRooms])
-
   // Get rooms belonging to the selected module
   const roomsInModule = useMemo(() => {
     if (!form.module) return []
     return availableRooms.filter((r) => r.module === form.module)
   }, [availableRooms, form.module])
-
   const selectedRoomDetails = useMemo(() => {
     return availableRooms.find((r) => String(r.roomId) === String(form.roomId))
   }, [availableRooms, form.roomId])
-
   function update(key, value) {
     setForm((f) => ({ ...f, [key]: value }))
   }
-
   function handleModuleChange(module) {
     setForm((f) => ({ ...f, module, roomId: '' }))
   }
-
   async function handleSubmit(e) {
     e.preventDefault()
-
     if (!form.module) {
       toast.addToast({ type: 'error', title: 'Please select a module.' })
       return
@@ -108,26 +95,42 @@ export default function BookRoom() {
       toast.addToast({ type: 'error', title: 'Complete all date, time, and attendee details.' })
       return
     }
-
     if (
-    selectedRoomDetails &&
-    Number(form.attendees) > Number(selectedRoomDetails.capacity)
-  ) {
-    toast.addToast({
-      type: 'error',
-      title: `This room can accommodate only ${selectedRoomDetails.capacity} participants.`,
-      message: `You entered ${form.attendees} participants. Please select another room or reduce the number of attendees.`
-    })
-    return
-  }
-
+      selectedRoomDetails &&
+      Number(form.attendees) > Number(selectedRoomDetails.capacity)
+    ) {
+      toast.addToast({
+        type: 'error',
+        title: `This room can accommodate only ${selectedRoomDetails.capacity} participants.`,
+        message: `You entered ${form.attendees} participants. Please select another room or reduce the number of attendees.`
+      })
+      return
+    }
     if (form.startTime >= form.endTime) {
       toast.addToast({ type: 'error', title: 'End time must be after start time.' })
       return
     }
+ 
+    // --- NEW VALIDATION: Prevent booking past times on the current date ---
+    const todayStr = new Date().toISOString().slice(0, 10)
+    if (form.date === todayStr) {
+      const now = new Date()
+      const currentHours = String(now.getHours()).padStart(2, '0')
+      const currentMinutes = String(now.getMinutes()).padStart(2, '0')
+      const currentTimeStr = `${currentHours}:${currentMinutes}`
+ 
+      if (form.startTime < currentTimeStr) {
+        toast.addToast({
+          type: 'error',
+          title: 'Cannot book a start time in the past for today.',
+        })
+        return
+      }
+    }
+    // ---------------------------------------------------------------------
+ 
     const OFFICE_START_TIME = '09:00'
     const OFFICE_END_TIME = '18:00'
-
     if (form.startTime < OFFICE_START_TIME) {
       toast.addToast({
         type: 'error',
@@ -135,7 +138,6 @@ export default function BookRoom() {
       })
       return
     }
-
     if (form.endTime > OFFICE_END_TIME) {
       toast.addToast({
         type: 'error',
@@ -143,10 +145,8 @@ export default function BookRoom() {
       })
       return
     }
-
     setConfirming(true)
   }
-
   async function confirmBooking() {
     setConfirming(false)
     setSubmitting(true)
@@ -160,7 +160,6 @@ export default function BookRoom() {
         participantCount: Number(form.attendees),
         facilityIds: [],
       }
-
       await createBooking(payload)
       toast.addToast({
         type: 'success',
@@ -171,101 +170,93 @@ export default function BookRoom() {
     } catch (err) {
       let errorMessage = 'Could not create booking. Please try again.'
       const responseData = err.response?.data
-
       if (responseData?.errors) {
         errorMessage = Object.values(responseData.errors).flat().join(' ')
       } else if (responseData?.message || responseData?.title) {
         errorMessage = responseData.message || responseData.title
       }
-
       toast.addToast({ type: 'error', title: errorMessage })
     } finally {
       setSubmitting(false)
     }
   }
-
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="font-display text-xl font-700">Booking</h1>
-
-      <Card>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Field label="Meeting Title">
-            <Input
+<div className="mx-auto max-w-2xl space-y-6">
+<h1 className="font-display text-xl font-700">Booking</h1>
+<Card>
+<form onSubmit={handleSubmit} className="space-y-4">
+<Field label="Meeting Title">
+<Input
               required
               value={form.title}
               onChange={(e) => update('title', e.target.value)}
               placeholder="e.g. sprint"
             />
-          </Field>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Module">
-              <Select
+</Field>
+<div className="grid grid-cols-2 gap-4">
+<Field label="Module">
+<Select
                 required
                 value={form.module}
                 onChange={(e) => handleModuleChange(e.target.value)}
                 disabled={loadingRooms}
-              >
-                <option value="">
+>
+<option value="">
                   {loadingRooms ? 'Loading modules...' : 'Select module'}
-                </option>
+</option>
                 {modules.map((m) => (
-                  <option key={m} value={m}>
+<option key={m} value={m}>
                     {m}
-                  </option>
+</option>
                 ))}
-              </Select>
-            </Field>
-
-            <Field label="Room">
-              <Select
+</Select>
+</Field>
+<Field label="Room">
+<Select
                 required
                 value={form.roomId}
                 onChange={(e) => update('roomId', e.target.value)}
                 disabled={!form.module || loadingRooms}
-              >
-                <option value="">
+>
+<option value="">
                   {form.module ? 'Select room' : 'Choose a module first'}
-                </option>
+</option>
                 {roomsInModule.map((r, index) => (
-                  <option key={r.roomId} value={r.roomId}>
+<option key={r.roomId} value={r.roomId}>
                     {r.roomName || `Room ${index + 1}`} (Cap: {r.capacity})
-                  </option>
+</option>
                 ))}
-              </Select>
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <Field label="Date">
-              <Input
+</Select>
+</Field>
+</div>
+<div className="grid grid-cols-3 gap-4">
+<Field label="Date">
+<Input
                 type="date"
                 required
                 value={form.date}
                 onChange={(e) => update('date', e.target.value)}
               />
-            </Field>
-            <Field label="Start Time">
-              <Input
+</Field>
+<Field label="Start Time">
+<Input
                 type="time"
                 required
                 value={form.startTime}
                 onChange={(e) => update('startTime', e.target.value)}
               />
-            </Field>
-            <Field label="End Time">
-              <Input
+</Field>
+<Field label="End Time">
+<Input
                 type="time"
                 required
                 value={form.endTime}
                 onChange={(e) => update('endTime', e.target.value)}
               />
-            </Field>
-          </div>
-
-          <Field label="Number of Attendees">
-            <Input
+</Field>
+</div>
+<Field label="Number of Attendees">
+<Input
               type="number"
               min="1"
               max={selectedRoomDetails?.capacity}
@@ -274,64 +265,61 @@ export default function BookRoom() {
               onChange={(e) => update('attendees', e.target.value)}
             />
             {selectedRoomDetails && (
-              <p className="mt-1 text-sm text-slate-500">
+<p className="mt-1 text-sm text-slate-500">
                 Maximum capacity for this room:{" "}
-                <span className="font-semibold">
+<span className="font-semibold">
                   {selectedRoomDetails.capacity}
-                </span>{" "}
+</span>{" "}
                 participants
-              </p>
+</p>
             )}
-
             {selectedRoomDetails &&
               Number(form.attendees) > Number(selectedRoomDetails.capacity) && (
-                <p className="mt-1 text-sm font-medium text-red-600">
+<p className="mt-1 text-sm font-medium text-red-600">
                   ⚠ Number of participants cannot exceed the room capacity of{" "}
                   {selectedRoomDetails.capacity}.
-                </p>
+</p>
               )}
-          </Field>
-
-          <Button type="submit" className="w-full" disabled={submitting ||
+</Field>
+<Button type="submit" className="w-full" disabled={submitting ||
             (selectedRoomDetails && Number(form.attendees) > Number(selectedRoomDetails.capacity))
           }
-          >
+>
             {submitting ? 'Confirming...' : 'Confirm Booking'}
-          </Button>
-        </form>
-      </Card>
-
+</Button>
+</form>
+</Card>
       {/* Confirmation Modal */}
-      <Modal
+<Modal
         open={confirming}
         title="Confirm booking"
         footer={
-          <>
-            <Button variant="secondary" onClick={() => setConfirming(false)}>
+<>
+<Button variant="secondary" onClick={() => setConfirming(false)}>
               Back
-            </Button>
-            <Button onClick={confirmBooking}>Confirm Booking</Button>
-          </>
+</Button>
+<Button onClick={confirmBooking}>Confirm Booking</Button>
+</>
         }
-      >
-        <div className="space-y-1">
-          <p>
-            <strong>Meeting Title:</strong> {form.title}
-          </p>
-          <p>
-            <strong>Room:</strong> {selectedRoomDetails?.roomName || 'Selected room'}
-          </p>
-          <p>
-            <strong>Module:</strong> {form.module}
-          </p>
-          <p>
-            <strong>Date & time:</strong> {form.date} · {form.startTime}–{form.endTime}
-          </p>
-          <p>
-            <strong>Attendees:</strong> {form.attendees}
-          </p>
-        </div>
-      </Modal>
-    </div>
+>
+<div className="space-y-1">
+<p>
+<strong>Meeting Title:</strong> {form.title}
+</p>
+<p>
+<strong>Room:</strong> {selectedRoomDetails?.roomName || 'Selected room'}
+</p>
+<p>
+<strong>Module:</strong> {form.module}
+</p>
+<p>
+<strong>Date & time:</strong> {form.date} · {form.startTime}–{form.endTime}
+</p>
+<p>
+<strong>Attendees:</strong> {form.attendees}
+</p>
+</div>
+</Modal>
+</div>
   )
 }
