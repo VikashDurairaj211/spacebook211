@@ -13,7 +13,7 @@ export default function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <div
-        className={`relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl ${
+        className={`relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl ${
           className
         }`}
       >
@@ -33,10 +33,8 @@ export default function Modal({
           )}
         </div>
 
-        {/* Content Body */}
-        <div className="py-4">
-          {children}
-        </div>
+        {/* Content */}
+        <div className="py-4">{children}</div>
 
         {/* Footer */}
         {footer && (
