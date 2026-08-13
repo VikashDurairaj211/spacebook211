@@ -31,103 +31,315 @@ const INITIAL_FILTERS = {
 };
 
 // =====================================================
-// SCROLLABLE TIME PICKER COMPONENT (HOURS & MINUTES)
+// SCROLLABLE TIME PICKER
+// OFFICE HOURS: 09:00 AM TO 06:00 PM
+// PAST TIMES DISABLED WHEN DATE IS TODAY
 // =====================================================
-function ScrollableTimePicker({ label, value, onChange }) {
+
+function ScrollableTimePicker({
+  label,
+  value,
+  onChange,
+  selectedDate,
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
 
-  const [hours = "09", minutes = "00"] = value ? value.split(":") : ["09", "00"];
+  const [hours = "09", minutes = "00"] =
+    value
+      ? value.split(":")
+      : ["09", "00"];
 
-  const hoursList = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
-  const minutesList = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0")); // Full 00 to 59 minutes scroll
+  // Office hours only: 09 to 18
+  const hoursList = Array.from(
+    { length: 10 },
+    (_, i) => String(i + 9).padStart(2, "0")
+  );
 
-  const handleTimeChange = (newHours, newMinutes) => {
-    onChange(`${newHours}:${newMinutes}`);
+  const minutesList = Array.from(
+    { length: 60 },
+    (_, i) => String(i).padStart(2, "0")
+  );
+
+  // Get today's date in local timezone
+  const now = new Date();
+
+  const todayStr = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+
+  const isToday =
+    selectedDate === todayStr;
+
+  const currentHour =
+    now.getHours();
+
+  const currentMinute =
+    now.getMinutes();
+
+  // =====================================================
+  // CHECK WHETHER A TIME IS ALREADY IN THE PAST
+  // =====================================================
+
+  const isPastTime = (
+    hour,
+    minute = 0
+  ) => {
+    // If future date, allow all times
+    if (!isToday) {
+      return false;
+    }
+
+    const selectedHour =
+      Number(hour);
+
+    const selectedMinute =
+      Number(minute);
+
+    // Previous hour
+    if (
+      selectedHour < currentHour
+    ) {
+      return true;
+    }
+
+    // Current hour but previous/current minute
+    if (
+      selectedHour === currentHour &&
+      selectedMinute <= currentMinute
+    ) {
+      return true;
+    }
+
+    return false;
   };
 
+  // =====================================================
+  // HANDLE TIME CHANGE
+  // =====================================================
+
+  const handleTimeChange = (
+    newHours,
+    newMinutes
+  ) => {
+    onChange(
+      `${newHours}:${newMinutes}`
+    );
+  };
+
+  // =====================================================
+  // CLOSE PICKER WHEN CLICKING OUTSIDE
+  // =====================================================
+
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+    function handleClickOutside(
+      event
+    ) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(
+          event.target
+        )
+      ) {
         setIsOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+
+    document.addEventListener(
+      "mousedown",
+      handleClickOutside
+    );
+
+    return () =>
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside
+      );
   }, []);
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div
+      className="relative"
+      ref={containerRef}
+    >
       <Field label={label}>
+
         <div
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() =>
+            setIsOpen(!isOpen)
+          }
           className="flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm hover:border-slate-400"
         >
-          <span className={value ? "text-slate-900" : "text-slate-400"}>
-            {value ? `${hours}:${minutes}` : "Select time"}
+
+          <span
+            className={
+              value
+                ? "text-slate-900"
+                : "text-slate-400"
+            }
+          >
+            {value
+              ? `${hours}:${minutes}`
+              : "Select time"}
           </span>
-          <svg className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+
+          <svg
+            className="h-4 w-4 text-slate-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
           </svg>
+
         </div>
+
       </Field>
 
       {isOpen && (
+
         <div className="absolute z-50 mt-1 flex w-full rounded-lg border border-slate-200 bg-white shadow-lg">
-          {/* Hours Column with Scroll */}
-          <div className="max-h-52 flex-1 overflow-y-auto border-r border-slate-100 p-1 text-center scrollbar-thin">
-            <div className="sticky top-0 bg-slate-50 py-1 text-xs font-semibold text-slate-500">Hour</div>
-            {hoursList.map((h) => (
-              <div
-                key={h}
-                onClick={() => handleTimeChange(h, minutes)}
-                className={`cursor-pointer rounded px-2 py-1.5 text-sm hover:bg-blue-50 ${
-                  hours === h ? "bg-blue-600 font-bold text-white" : "text-slate-700"
-                }`}
-              >
-                {h}
-              </div>
-            ))}
+
+          {/* =========================================
+              HOURS
+          ========================================= */}
+
+          <div className="max-h-52 flex-1 overflow-y-auto border-r border-slate-100 p-1 text-center">
+
+            <div className="sticky top-0 bg-slate-50 py-1 text-xs font-semibold text-slate-500">
+              Hour
+            </div>
+
+            {hoursList.map((h) => {
+
+              // Check whether the entire hour is over
+              const disabled =
+                isToday &&
+                Number(h) < currentHour;
+
+              return (
+
+                <div
+                  key={h}
+                  onClick={() => {
+
+                    if (!disabled) {
+                      handleTimeChange(
+                        h,
+                        minutes
+                      );
+                    }
+
+                  }}
+                  className={`rounded px-2 py-1.5 text-sm ${
+                    disabled
+                      ? "cursor-not-allowed text-slate-300"
+                      : hours === h
+                      ? "cursor-pointer bg-blue-600 font-bold text-white"
+                      : "cursor-pointer text-slate-700 hover:bg-blue-50"
+                  }`}
+                >
+                  {h}
+                </div>
+
+              );
+            })}
+
           </div>
 
-          {/* Minutes Column with Scroll */}
-          <div className="max-h-52 flex-1 overflow-y-auto p-1 text-center scrollbar-thin">
-            <div className="sticky top-0 bg-slate-50 py-1 text-xs font-semibold text-slate-500">Min</div>
-            {minutesList.map((m) => (
-              <div
-                key={m}
-                onClick={() => handleTimeChange(hours, m)}
-                className={`cursor-pointer rounded px-2 py-1.5 text-sm hover:bg-blue-50 ${
-                  minutes === m ? "bg-blue-600 font-bold text-white" : "text-slate-700"
-                }`}
-              >
-                {m}
-              </div>
-            ))}
+          {/* =========================================
+              MINUTES
+          ========================================= */}
+
+          <div className="max-h-52 flex-1 overflow-y-auto p-1 text-center">
+
+            <div className="sticky top-0 bg-slate-50 py-1 text-xs font-semibold text-slate-500">
+              Min
+            </div>
+
+            {minutesList.map((m) => {
+
+              const disabled =
+                isPastTime(
+                  hours,
+                  m
+                );
+
+              return (
+
+                <div
+                  key={m}
+                  onClick={() => {
+
+                    if (!disabled) {
+                      handleTimeChange(
+                        hours,
+                        m
+                      );
+                    }
+
+                  }}
+                  className={`rounded px-2 py-1.5 text-sm ${
+                    disabled
+                      ? "cursor-not-allowed text-slate-300"
+                      : minutes === m
+                      ? "cursor-pointer bg-blue-600 font-bold text-white"
+                      : "cursor-pointer text-slate-700 hover:bg-blue-50"
+                  }`}
+                >
+                  {m}
+                </div>
+
+              );
+            })}
+
           </div>
+
         </div>
+
       )}
+
     </div>
   );
 }
-
 export default function SearchRooms() {
-  const [filters, setFilters] = useState(INITIAL_FILTERS);
 
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
-  const [error, setError] = useState("");
+  const [filters, setFilters] =
+    useState(INITIAL_FILTERS);
 
-  const [bookings, setBookings] = useState([]);
+  const [results, setResults] =
+    useState([]);
 
-  const [resultsOpen, setResultsOpen] = useState(false);
+  const [loading, setLoading] =
+    useState(false);
 
-  const [selectedRoom, setSelectedRoom] = useState(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [searched, setSearched] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const [bookings, setBookings] =
+    useState([]);
+
+  const [resultsOpen, setResultsOpen] =
+    useState(false);
+
+  const [selectedRoom, setSelectedRoom] =
+    useState(null);
+
+  const [detailsOpen, setDetailsOpen] =
+    useState(false);
 
   // =====================================================
-  // Load bookings
+  // LOAD BOOKINGS
   // =====================================================
 
   useEffect(() => {
@@ -135,16 +347,24 @@ export default function SearchRooms() {
   }, []);
 
   async function loadBookings() {
+
     try {
-      const data = await getMyBookings();
+
+      const data =
+        await getMyBookings();
+
       setBookings(data);
+
     } catch {
+
       setBookings([]);
+
     }
+
   }
 
   // =====================================================
-  // Search Validation
+  // SEARCH VALIDATION
   // ANY ONE FIELD IS ENOUGH
   // =====================================================
 
@@ -156,20 +376,27 @@ export default function SearchRooms() {
     Boolean(filters.startTime) ||
     Boolean(filters.endTime);
 
-  const canSearch = hasAnySearchCriteria;
+  const canSearch =
+    hasAnySearchCriteria;
 
   // =====================================================
-  // Filter Dependencies
+  // FILTER DEPENDENCIES
   // =====================================================
 
-  const canChooseType = Boolean(filters.module);
+  const canChooseType =
+    Boolean(filters.module);
 
   // =====================================================
-  // Update Filter
+  // UPDATE FILTER
   // =====================================================
 
-  function updateFilter(key, value) {
+  function updateFilter(
+    key,
+    value
+  ) {
+
     setFilters((current) => {
+
       const next = {
         ...current,
         [key]: value,
@@ -192,216 +419,421 @@ export default function SearchRooms() {
       }
 
       return next;
+
     });
 
     setError("");
+
   }
 
   // =====================================================
-  // Search Rooms
+  // SEARCH ROOMS
   // =====================================================
 
   async function handleSearch(e) {
+
     e.preventDefault();
 
     if (!canSearch) {
-      setError("Please select or enter at least one search criteria.");
+
+      setError(
+        "Please select or enter at least one search criteria."
+      );
+
       return;
+
     }
+
+    // =================================================
+    // START TIME / END TIME VALIDATION
+    // =================================================
 
     if (
       filters.startTime &&
       filters.endTime &&
       filters.startTime >= filters.endTime
     ) {
-      setError("End time must be after start time.");
+
+      setError(
+        "End time must be after start time."
+      );
+
       return;
+
     }
 
-    // =====================================================
+    // =================================================
     // OFFICE HOURS VALIDATION
-    // Office hours: 09:00 AM to 06:00 PM
-    // =====================================================
+    // =================================================
 
-    const OFFICE_START_TIME = "09:00";
-    const OFFICE_END_TIME = "18:00";
+    const OFFICE_START_TIME =
+      "09:00";
+
+    const OFFICE_END_TIME =
+      "18:00";
 
     if (
       filters.startTime &&
-      filters.startTime < OFFICE_START_TIME
+      filters.startTime <
+        OFFICE_START_TIME
     ) {
+
       setError(
         "Bookings are allowed only during office hours: 09:00 AM to 06:00 PM."
       );
+
       return;
+
     }
 
     if (
       filters.endTime &&
-      filters.endTime > OFFICE_END_TIME
+      filters.endTime >
+        OFFICE_END_TIME
     ) {
+
       setError(
         "Bookings are allowed only during office hours: 09:00 AM to 06:00 PM."
       );
+
       return;
+
     }
+
+    // =================================================
+    // DATE VALIDATION
+    // =================================================
 
     if (filters.date) {
-      const selectedDate = new Date(`${filters.date}T00:00:00`);
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const selectedDate =
+        new Date(
+          `${filters.date}T00:00:00`
+        );
 
-      const maxAllowedDate = new Date();
-      maxAllowedDate.setDate(maxAllowedDate.getDate() + 7);
-      maxAllowedDate.setHours(0, 0, 0, 0);
+      const today =
+        new Date();
 
-      if (selectedDate < today) {
-        setError("Cannot search rooms for past dates.");
+      today.setHours(
+        0,
+        0,
+        0,
+        0
+      );
+
+      const maxAllowedDate =
+        new Date();
+
+      maxAllowedDate.setDate(
+        maxAllowedDate.getDate() + 7
+      );
+
+      maxAllowedDate.setHours(
+        0,
+        0,
+        0,
+        0
+      );
+
+      if (
+        selectedDate < today
+      ) {
+
+        setError(
+          "Cannot search rooms for past dates."
+        );
+
         return;
+
       }
 
-      if (selectedDate > maxAllowedDate) {
-        setError("Rooms can only be searched up to 1 week in advance.");
+      if (
+        selectedDate >
+        maxAllowedDate
+      ) {
+
+        setError(
+          "Rooms can only be searched up to 1 week in advance."
+        );
+
         return;
+
       }
+
+      // ===============================================
+      // CURRENT TIME VALIDATION FOR TODAY
+      // ===============================================
+
+      const now =
+        new Date();
+
+      const todayStr = [
+        now.getFullYear(),
+        String(
+          now.getMonth() + 1
+        ).padStart(2, "0"),
+        String(
+          now.getDate()
+        ).padStart(2, "0"),
+      ].join("-");
+
+      if (
+        filters.date === todayStr &&
+        filters.startTime
+      ) {
+
+        const currentTime =
+          `${String(
+            now.getHours()
+          ).padStart(2, "0")}:${String(
+            now.getMinutes()
+          ).padStart(2, "0")}`;
+
+        if (
+          filters.startTime <=
+          currentTime
+        ) {
+
+          setError(
+            "Start time cannot be earlier than or equal to the current time."
+          );
+
+          return;
+
+        }
+
+      }
+
     }
 
+    // =================================================
+    // CALL API
+    // =================================================
+
     setLoading(true);
+
     setError("");
 
     try {
+
       const searchPayload = {
-        module: filters.module || undefined,
-        roomTypeId: filters.roomTypeId
-          ? Number(filters.roomTypeId)
-          : undefined,
-        participantCount: filters.capacity
-          ? Number(filters.capacity)
-          : undefined,
+
+        module:
+          filters.module ||
+          undefined,
+
+        roomTypeId:
+          filters.roomTypeId
+            ? Number(
+                filters.roomTypeId
+              )
+            : undefined,
+
+        participantCount:
+          filters.capacity
+            ? Number(
+                filters.capacity
+              )
+            : undefined,
+
         facilityIds: [],
-        bookingDate: filters.date || undefined,
-        startTime: filters.startTime
-          ? `${filters.startTime}:00`
-          : undefined,
-        endTime: filters.endTime
-          ? `${filters.endTime}:00`
-          : undefined,
+
+        bookingDate:
+          filters.date ||
+          undefined,
+
+        startTime:
+          filters.startTime
+            ? `${filters.startTime}:00`
+            : undefined,
+
+        endTime:
+          filters.endTime
+            ? `${filters.endTime}:00`
+            : undefined,
+
       };
 
-      const data = await searchRooms(searchPayload);
+      const data =
+        await searchRooms(
+          searchPayload
+        );
 
-      setResults(Array.isArray(data) ? data : []);
+      setResults(
+        Array.isArray(data)
+          ? data
+          : []
+      );
+
       setResultsOpen(true);
+
       setSearched(true);
+
     } catch (err) {
+
       console.error(err);
 
       setError(
         err?.response?.data?.message ||
-          "Unable to search rooms."
+        "Unable to search rooms."
       );
+
     } finally {
+
       setLoading(false);
+
     }
+
   }
 
   // =====================================================
-  // Room Details
+  // ROOM DETAILS
   // =====================================================
 
   function handleOpenDetails(room) {
+
     setSelectedRoom(room);
+
     setDetailsOpen(true);
+
   }
 
   // =====================================================
-  // Booking Link
+  // BOOKING LINK
   // =====================================================
 
   function bookRoomLink(roomId) {
-    const params = new URLSearchParams();
 
-    params.set("roomId", roomId);
+    const params =
+      new URLSearchParams();
+
+    params.set(
+      "roomId",
+      roomId
+    );
 
     if (filters.date) {
-      params.set("date", filters.date);
+
+      params.set(
+        "date",
+        filters.date
+      );
+
     }
 
     if (filters.startTime) {
-      params.set("startTime", filters.startTime);
+
+      params.set(
+        "startTime",
+        filters.startTime
+      );
+
     }
 
     if (filters.endTime) {
-      params.set("endTime", filters.endTime);
+
+      params.set(
+        "endTime",
+        filters.endTime
+      );
+
     }
 
     if (filters.capacity) {
-      params.set("attendees", filters.capacity);
+
+      params.set(
+        "attendees",
+        filters.capacity
+      );
+
     }
 
     return `/book-room?${params.toString()}`;
+
   }
 
   // =====================================================
-  // Status Badge
+  // STATUS BADGE
   // =====================================================
 
-  const getStatusBadgeClass = (status) => {
-    const s = status?.toLowerCase() || "";
+  const getStatusBadgeClass =
+    (status) => {
 
-    if (
-      s === "approved" ||
-      s === "confirmed" ||
-      s === "available"
-    ) {
-      return "bg-[#658362] text-white";
-    }
+      const s =
+        status?.toLowerCase() ||
+        "";
 
-    if (s === "pending") {
-      return "bg-[#E09F3E] text-white";
-    }
+      if (
+        s === "approved" ||
+        s === "confirmed" ||
+        s === "available"
+      ) {
 
-    if (
-      s === "rejected" ||
-      s === "cancelled"
-    ) {
-      return "bg-[#B85450] text-white";
-    }
+        return "bg-[#658362] text-white";
 
-    return "bg-slate-500 text-white";
-  };
+      }
+
+      if (s === "pending") {
+
+        return "bg-[#E09F3E] text-white";
+
+      }
+
+      if (
+        s === "rejected" ||
+        s === "cancelled"
+      ) {
+
+        return "bg-[#B85450] text-white";
+
+      }
+
+      return "bg-slate-500 text-white";
+
+    };
 
   // =====================================================
-  // Date Limits
+  // DATE LIMITS
   // =====================================================
 
-  const todayStr = new Date()
-    .toISOString()
-    .slice(0, 10);
+  const today = new Date();
 
-  const maxDateObj = new Date();
+  const todayStr = [
+    today.getFullYear(),
+    String(
+      today.getMonth() + 1
+    ).padStart(2, "0"),
+    String(
+      today.getDate()
+    ).padStart(2, "0"),
+  ].join("-");
+
+  const maxDateObj =
+    new Date();
 
   maxDateObj.setDate(
     maxDateObj.getDate() + 7
   );
 
-  const maxDateStr = maxDateObj
-    .toISOString()
-    .slice(0, 10);
+  const maxDateStr = [
+    maxDateObj.getFullYear(),
+    String(
+      maxDateObj.getMonth() + 1
+    ).padStart(2, "0"),
+    String(
+      maxDateObj.getDate()
+    ).padStart(2, "0"),
+  ].join("-");
+    return (
 
-  // =====================================================
-  // UI
-  // =====================================================
-
-  return (
     <div className="space-y-6">
 
-      {/* =================================================
+      {/* ===============================================
           HEADER
-      ================================================= */}
+      ================================================ */}
 
       <div>
+
         <h1 className="font-display text-3xl font-bold">
           Search Rooms
         </h1>
@@ -409,13 +841,15 @@ export default function SearchRooms() {
         <p className="mt-2 text-slate-600">
           Enter any search criteria to find available rooms.
         </p>
+
       </div>
 
-      {/* =================================================
+      {/* ===============================================
           SEARCH FORM
-      ================================================= */}
+      ================================================ */}
 
       <Card>
+
         <form
           onSubmit={handleSearch}
           className="space-y-5"
@@ -423,7 +857,7 @@ export default function SearchRooms() {
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 
-            {/* 1. MODULE */}
+            {/* MODULE */}
 
             <Field label="1. Select Module">
 
@@ -436,29 +870,39 @@ export default function SearchRooms() {
                   )
                 }
               >
+
                 <option value="">
                   Select Module
                 </option>
 
-                {MODULES.map((module) => (
-                  <option
-                    key={module}
-                    value={module}
-                  >
-                    {module}
-                  </option>
-                ))}
+                {MODULES.map(
+                  (module) => (
+
+                    <option
+                      key={module}
+                      value={module}
+                    >
+                      {module}
+                    </option>
+
+                  )
+                )}
+
               </Select>
 
             </Field>
 
-            {/* 2. ROOM TYPE */}
+            {/* ROOM TYPE */}
 
             <Field label="2. Select Room Type">
 
               <Select
-                disabled={!canChooseType}
-                value={filters.roomTypeId}
+                disabled={
+                  !canChooseType
+                }
+                value={
+                  filters.roomTypeId
+                }
                 onChange={(e) =>
                   updateFilter(
                     "roomTypeId",
@@ -473,27 +917,33 @@ export default function SearchRooms() {
                     : "Choose Module First"}
                 </option>
 
-                {ROOM_TYPES.map((type) => (
-                  <option
-                    key={type.id}
-                    value={type.id}
-                  >
-                    {type.name}
-                  </option>
-                ))}
+                {ROOM_TYPES.map(
+                  (type) => (
+
+                    <option
+                      key={type.id}
+                      value={type.id}
+                    >
+                      {type.name}
+                    </option>
+
+                  )
+                )}
 
               </Select>
 
             </Field>
 
-            {/* 3. PARTICIPANTS */}
+            {/* PARTICIPANTS */}
 
             <Field label="3. Number of Participants">
 
               <Input
                 type="number"
                 min="1"
-                value={filters.capacity}
+                value={
+                  filters.capacity
+                }
                 placeholder="Enter count"
                 onChange={(e) =>
                   updateFilter(
@@ -505,7 +955,7 @@ export default function SearchRooms() {
 
             </Field>
 
-            {/* 4. DATE */}
+            {/* DATE */}
 
             <Field label="4. Booking Date">
 
@@ -524,20 +974,40 @@ export default function SearchRooms() {
 
             </Field>
 
-            {/* 5. START TIME */}
+            {/* START TIME */}
 
             <ScrollableTimePicker
               label="5. Start Time"
-              value={filters.startTime}
-              onChange={(val) => updateFilter("startTime", val)}
+              value={
+                filters.startTime
+              }
+              selectedDate={
+                filters.date
+              }
+              onChange={(val) =>
+                updateFilter(
+                  "startTime",
+                  val
+                )
+              }
             />
 
-            {/* 6. END TIME */}
+            {/* END TIME */}
 
             <ScrollableTimePicker
               label="6. End Time"
-              value={filters.endTime}
-              onChange={(val) => updateFilter("endTime", val)}
+              value={
+                filters.endTime
+              }
+              selectedDate={
+                filters.date
+              }
+              onChange={(val) =>
+                updateFilter(
+                  "endTime",
+                  val
+                )
+              }
             />
 
           </div>
@@ -545,28 +1015,36 @@ export default function SearchRooms() {
           {/* ERROR */}
 
           {error && (
+
             <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
               {error}
             </div>
+
           )}
 
           {/* SEARCH BUTTON */}
 
           <Button
             type="submit"
-            disabled={!canSearch || loading}
+            disabled={
+              !canSearch ||
+              loading
+            }
           >
+
             {loading
               ? "Searching..."
               : "Search Available Rooms"}
+
           </Button>
 
         </form>
+
       </Card>
 
-      {/* =================================================
+      {/* ===============================================
           MY BOOKINGS
-      ================================================= */}
+      ================================================ */}
 
       <Card className="overflow-hidden p-0">
 
@@ -608,7 +1086,9 @@ export default function SearchRooms() {
               .map((booking) => (
 
                 <div
-                  key={booking.bookingId}
+                  key={
+                    booking.bookingId
+                  }
                   className="flex items-center justify-between p-4"
                 >
 
@@ -662,20 +1142,27 @@ export default function SearchRooms() {
 
       </Card>
 
-      {/* =================================================
+      {/* ===============================================
           LOADER
-      ================================================= */}
+      ================================================ */}
 
       {loading && (
-        <Loader label="Searching available rooms..." />
+
+        <Loader
+          label="Searching available rooms..."
+        />
+
       )}
 
-      {/* =================================================
+      {/* ===============================================
           RESULTS MODAL
-      ================================================= */}
+      ================================================ */}
 
       <Modal
-        open={resultsOpen && !loading}
+        open={
+          resultsOpen &&
+          !loading
+        }
         title="Available Rooms"
         footer={
           <Button
@@ -692,8 +1179,10 @@ export default function SearchRooms() {
         <p className="mb-4 text-sm text-slate-600">
 
           {results.length} room
-          {results.length !== 1 ? "s" : ""}
-          {" "}found.
+          {results.length !== 1
+            ? "s"
+            : ""}{" "}
+          found.
 
         </p>
 
@@ -707,92 +1196,102 @@ export default function SearchRooms() {
 
           <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-1">
 
-            {results.map((room) => (
+            {results.map(
+              (room) => (
 
-              <Card key={room.roomId}>
+                <Card
+                  key={room.roomId}
+                >
 
-                <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between">
 
-                  <div>
+                    <div>
 
-                    <h3 className="text-lg font-semibold">
-                      {room.roomName}
-                    </h3>
+                      <h3 className="text-lg font-semibold">
+                        {room.roomName}
+                      </h3>
 
-                    <p className="text-sm text-slate-500">
-                      {room.module}
+                      <p className="text-sm text-slate-500">
+                        {room.module}
+                      </p>
+
+                    </div>
+
+                    <span
+                      className={`inline-block w-28 rounded-full py-1 text-center text-xs font-bold tracking-wider uppercase ${getStatusBadgeClass(
+                        "Available"
+                      )}`}
+                    >
+                      Available
+                    </span>
+
+                  </div>
+
+                  <div className="mt-4 space-y-2 text-sm">
+
+                    <p>
+                      <span className="font-medium">
+                        Room Type:
+                      </span>{" "}
+                      {room.roomType}
+                    </p>
+
+                    <p>
+                      <span className="font-medium">
+                        Capacity:
+                      </span>{" "}
+                      {room.capacity}
+                    </p>
+
+                    <p>
+                      <span className="font-medium">
+                        Facilities:
+                      </span>{" "}
+                      {room.facilities?.length
+                        ? room.facilities.join(
+                            ", "
+                          )
+                        : "None"}
                     </p>
 
                   </div>
 
-                  <span
-                    className={`inline-block w-28 rounded-full py-1 text-center text-xs font-bold tracking-wider uppercase ${getStatusBadgeClass(
-                      "Available"
-                    )}`}
-                  >
-                    Available
-                  </span>
+                  <div className="mt-5 flex gap-3">
 
-                </div>
-
-                <div className="mt-4 space-y-2 text-sm">
-
-                  <p>
-                    <span className="font-medium">
-                      Room Type:
-                    </span>{" "}
-                    {room.roomType}
-                  </p>
-
-                  <p>
-                    <span className="font-medium">
-                      Capacity:
-                    </span>{" "}
-                    {room.capacity}
-                  </p>
-
-                  <p>
-                    <span className="font-medium">
-                      Facilities:
-                    </span>{" "}
-                    {room.facilities?.length
-                      ? room.facilities.join(", ")
-                      : "None"}
-                  </p>
-
-                </div>
-
-                <div className="mt-5 flex gap-3">
-
-                  <Button
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() =>
-                      handleOpenDetails(room)
-                    }
-                  >
-                    View Details
-                  </Button>
-
-                  <Link
-                    to={bookRoomLink(
-                      room.roomId
-                    )}
-                    className="flex-1"
-                    onClick={() =>
-                      setResultsOpen(false)
-                    }
-                  >
-                    <Button className="w-full">
-                      Book Now
+                    <Button
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={() =>
+                        handleOpenDetails(
+                          room
+                        )
+                      }
+                    >
+                      View Details
                     </Button>
-                  </Link>
 
-                </div>
+                    <Link
+                      to={bookRoomLink(
+                        room.roomId
+                      )}
+                      className="flex-1"
+                      onClick={() =>
+                        setResultsOpen(false)
+                      }
+                    >
 
-              </Card>
+                      <Button className="w-full">
+                        Book Now
+                      </Button>
 
-            ))}
+                    </Link>
+
+                  </div>
+
+                </Card>
+
+              )
+            )}
 
           </div>
 
@@ -800,9 +1299,9 @@ export default function SearchRooms() {
 
       </Modal>
 
-      {/* =================================================
+      {/* ===============================================
           ROOM DETAILS MODAL
-      ================================================= */}
+      ================================================ */}
 
       <Modal
         open={detailsOpen}
@@ -874,18 +1373,25 @@ export default function SearchRooms() {
                 </span>{" "}
 
                 {selectedRoom.facilities?.length
-                  ? selectedRoom.facilities.join(", ")
+                  ? selectedRoom.facilities.join(
+                      ", "
+                    )
                   : "None"}
 
               </p>
 
               {filters.date && (
+
                 <p>
+
                   <span className="font-medium text-slate-700">
                     Selected Date:
                   </span>{" "}
+
                   {filters.date}
+
                 </p>
+
               )}
 
               {(filters.startTime ||
@@ -897,9 +1403,13 @@ export default function SearchRooms() {
                     Time Slot:
                   </span>{" "}
 
-                  {filters.startTime || "--:--"}
+                  {filters.startTime ||
+                    "--:--"}
+
                   {" - "}
-                  {filters.endTime || "--:--"}
+
+                  {filters.endTime ||
+                    "--:--"}
 
                 </p>
 
@@ -914,8 +1424,11 @@ export default function SearchRooms() {
                   selectedRoom.roomId
                 )}
                 onClick={() => {
+
                   setDetailsOpen(false);
+
                   setResultsOpen(false);
+
                 }}
               >
 
@@ -933,9 +1446,9 @@ export default function SearchRooms() {
 
       </Modal>
 
-      {/* =================================================
+      {/* ===============================================
           RESULTS GRID
-      ================================================= */}
+      ================================================ */}
 
       {searched &&
         !loading &&
@@ -944,86 +1457,111 @@ export default function SearchRooms() {
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
-            {results.map((room) => (
+            {results.map(
+              (room) => (
 
-              <Card key={room.roomId}>
+                <Card
+                  key={room.roomId}
+                >
 
-                <div className="mb-3 flex items-start justify-between">
+                  <div className="mb-3 flex items-start justify-between">
 
-                  <div>
+                    <div>
 
-                    <h3 className="font-semibold">
-                      {room.roomName}
-                    </h3>
+                      <h3 className="font-semibold">
+                        {room.roomName}
+                      </h3>
 
-                    <p className="text-sm text-slate-500">
-                      {room.module}
-                    </p>
+                      <p className="text-sm text-slate-500">
+                        {room.module}
+                      </p>
+
+                    </div>
+
+                    <span
+                      className={`inline-block w-28 rounded-full py-1 text-center text-xs font-bold tracking-wider uppercase ${getStatusBadgeClass(
+                        "Available"
+                      )}`}
+                    >
+                      Available
+                    </span>
 
                   </div>
 
-                  <span
-                    className={`inline-block w-28 rounded-full py-1 text-center text-xs font-bold tracking-wider uppercase ${getStatusBadgeClass(
-                      "Available"
-                    )}`}
-                  >
-                    Available
-                  </span>
+                  <p className="text-sm">
 
-                </div>
+                    <strong>
+                      Room Type:
+                    </strong>{" "}
 
-                <p className="text-sm">
-                  <strong>Room Type:</strong>{" "}
-                  {room.roomType}
-                </p>
+                    {room.roomType}
 
-                <p className="text-sm">
-                  <strong>Capacity:</strong>{" "}
-                  {room.capacity}
-                </p>
+                  </p>
 
-                <p className="mb-4 text-sm">
-                  <strong>Facilities:</strong>{" "}
-                  {room.facilities?.length
-                    ? room.facilities.join(", ")
-                    : "None"}
-                </p>
+                  <p className="text-sm">
 
-                <div className="flex gap-2">
+                    <strong>
+                      Capacity:
+                    </strong>{" "}
 
-                  <Button
-                    variant="secondary"
-                    className="flex-1 py-2 text-xs"
-                    onClick={() =>
-                      handleOpenDetails(room)
-                    }
-                  >
-                    Details
-                  </Button>
+                    {room.capacity}
 
-                  <Link
-                    to={bookRoomLink(
-                      room.roomId
-                    )}
-                    className="flex-1"
-                  >
+                  </p>
 
-                    <Button className="w-full py-2 text-xs">
-                      Book Room
+                  <p className="mb-4 text-sm">
+
+                    <strong>
+                      Facilities:
+                    </strong>{" "}
+
+                    {room.facilities?.length
+                      ? room.facilities.join(
+                          ", "
+                        )
+                      : "None"}
+
+                  </p>
+
+                  <div className="flex gap-2">
+
+                    <Button
+                      variant="secondary"
+                      className="flex-1 py-2 text-xs"
+                      onClick={() =>
+                        handleOpenDetails(
+                          room
+                        )
+                      }
+                    >
+                      Details
                     </Button>
 
-                  </Link>
+                    <Link
+                      to={bookRoomLink(
+                        room.roomId
+                      )}
+                      className="flex-1"
+                    >
 
-                </div>
+                      <Button className="w-full py-2 text-xs">
+                        Book Room
+                      </Button>
 
-              </Card>
+                    </Link>
 
-            ))}
+                  </div>
+
+                </Card>
+
+              )
+            )}
 
           </div>
 
         )}
 
     </div>
+
   );
+
 }
