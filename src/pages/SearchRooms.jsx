@@ -218,6 +218,34 @@ export default function SearchRooms() {
       return;
     }
 
+    // =====================================================
+    // OFFICE HOURS VALIDATION
+    // Office hours: 09:00 AM to 06:00 PM
+    // =====================================================
+
+    const OFFICE_START_TIME = "09:00";
+    const OFFICE_END_TIME = "18:00";
+
+    if (
+      filters.startTime &&
+      filters.startTime < OFFICE_START_TIME
+    ) {
+      setError(
+        "Bookings are allowed only during office hours: 09:00 AM to 06:00 PM."
+      );
+      return;
+    }
+
+    if (
+      filters.endTime &&
+      filters.endTime > OFFICE_END_TIME
+    ) {
+      setError(
+        "Bookings are allowed only during office hours: 09:00 AM to 06:00 PM."
+      );
+      return;
+    }
+
     if (filters.date) {
       const selectedDate = new Date(`${filters.date}T00:00:00`);
 

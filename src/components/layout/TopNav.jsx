@@ -15,7 +15,6 @@ import client from '../../api/client'
 
 import { rooms as ROOMS, bookings as BOOKINGS } from '../../services/mockData'
 import NotificationDropdown from '../common/NotificationDropdown'
-import Logo from '../../../Logo.png'
 
 export default function TopNav({
   onToggleSidebar,
@@ -267,7 +266,7 @@ export default function TopNav({
           onClick={() => navigate('/dashboard')}
         >
           <img
-            src={Logo}
+            src="/Logo.png"
             alt="SpaceBook"
             className="h-7 w-7 object-contain"
           />

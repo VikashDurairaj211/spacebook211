@@ -4,7 +4,6 @@ import { Eye, EyeOff, Home } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Field, Input } from "../components/common/Input";
 import Button from "../components/common/Button";
-import Logo from "../../Logo.png";
 
 // Bright, modern, sunlit architectural office background that matches the light blue theme
 const BACKGROUND_IMAGE_URL =
@@ -49,7 +48,7 @@ export default function Login() {
       <header className="w-full bg-sky-100 px-6 py-3 shadow-sm flex items-center justify-between border-b border-sky-200 shrink-0">
         <div className="flex items-center gap-3">
           <img
-            src={Logo}
+            src="/Logo.png"
             alt="SpaceBook"
             className="h-7 w-auto object-contain"
           />
@@ -101,7 +100,7 @@ export default function Login() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@company.com"
+                    placeholder="Enter E-mail"
                     className="w-full rounded-md border border-slate-200 px-4 py-2 text-sm"
                   />
                 </Field>

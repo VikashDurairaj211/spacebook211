@@ -108,8 +108,39 @@ export default function BookRoom() {
       toast.addToast({ type: 'error', title: 'Complete all date, time, and attendee details.' })
       return
     }
+
+    if (
+    selectedRoomDetails &&
+    Number(form.attendees) > Number(selectedRoomDetails.capacity)
+  ) {
+    toast.addToast({
+      type: 'error',
+      title: `This room can accommodate only ${selectedRoomDetails.capacity} participants.`,
+      message: `You entered ${form.attendees} participants. Please select another room or reduce the number of attendees.`
+    })
+    return
+  }
+
     if (form.startTime >= form.endTime) {
       toast.addToast({ type: 'error', title: 'End time must be after start time.' })
+      return
+    }
+    const OFFICE_START_TIME = '09:00'
+    const OFFICE_END_TIME = '18:00'
+
+    if (form.startTime < OFFICE_START_TIME) {
+      toast.addToast({
+        type: 'error',
+        title: 'Bookings are allowed only between 09:00 AM and 06:00 PM.'
+      })
+      return
+    }
+
+    if (form.endTime > OFFICE_END_TIME) {
+      toast.addToast({
+        type: 'error',
+        title: 'Bookings are allowed only between 09:00 AM and 06:00 PM.'
+      })
       return
     }
 
@@ -237,13 +268,34 @@ export default function BookRoom() {
             <Input
               type="number"
               min="1"
+              max={selectedRoomDetails?.capacity}
               className="w-32"
               value={form.attendees}
               onChange={(e) => update('attendees', e.target.value)}
             />
+            {selectedRoomDetails && (
+              <p className="mt-1 text-sm text-slate-500">
+                Maximum capacity for this room:{" "}
+                <span className="font-semibold">
+                  {selectedRoomDetails.capacity}
+                </span>{" "}
+                participants
+              </p>
+            )}
+
+            {selectedRoomDetails &&
+              Number(form.attendees) > Number(selectedRoomDetails.capacity) && (
+                <p className="mt-1 text-sm font-medium text-red-600">
+                  ⚠ Number of participants cannot exceed the room capacity of{" "}
+                  {selectedRoomDetails.capacity}.
+                </p>
+              )}
           </Field>
 
-          <Button type="submit" className="w-full" disabled={submitting}>
+          <Button type="submit" className="w-full" disabled={submitting ||
+            (selectedRoomDetails && Number(form.attendees) > Number(selectedRoomDetails.capacity))
+          }
+          >
             {submitting ? 'Confirming...' : 'Confirm Booking'}
           </Button>
         </form>
