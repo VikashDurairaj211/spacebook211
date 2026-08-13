@@ -11,9 +11,9 @@ export default function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-center bg-black/50 p-4 pt-24 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <div
-        className={`relative w-full h-fit max-w-2xl rounded-2xl bg-white p-6 shadow-xl ${className}`}
+        className={`relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl ${className}`}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-line pb-4">
@@ -23,6 +23,7 @@ export default function Modal({
 
           {onClose && (
             <button
+              type="button"
               onClick={onClose}
               className="rounded-lg p-1 text-slate hover:bg-portal-bg hover:text-ink"
             >
