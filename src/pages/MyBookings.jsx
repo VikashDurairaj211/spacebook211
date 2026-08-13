@@ -21,6 +21,26 @@ export default function MyBookings() {
   const toast = useToast();
 
   // =====================================================
+  // GET ROOM ID
+  // =====================================================
+
+  const getRoomId = (booking) => {
+    if (!booking) return null;
+
+    return (
+      booking.roomId ??
+      booking.RoomId ??
+      booking.roomID ??
+      booking.RoomID ??
+      booking.room?.roomId ??
+      booking.room?.RoomId ??
+      booking.room?.id ??
+      booking.room?.Id ??
+      null
+    );
+  };
+
+  // =====================================================
   // LOAD BOOKINGS
   // =====================================================
 
@@ -32,8 +52,30 @@ export default function MyBookings() {
 
       console.log("My Bookings API Response:", data);
 
-      const sorted = (data || []).sort(
-        (a, b) => b.bookingId - a.bookingId
+      // Handle both:
+      // [ ...bookings ]
+      // OR
+      // { bookings: [ ...bookings ] }
+
+      const bookingList = Array.isArray(data)
+        ? data
+        : data?.bookings || [];
+
+      // Normalize roomId so it is always available
+      const normalizedBookings = bookingList.map((booking) => ({
+        ...booking,
+        roomId: getRoomId(booking),
+      }));
+
+      console.log(
+        "Normalized Bookings:",
+        normalizedBookings
+      );
+
+      const sorted = [...normalizedBookings].sort(
+        (a, b) =>
+          Number(b.bookingId || 0) -
+          Number(a.bookingId || 0)
       );
 
       setBookings(sorted);
@@ -59,35 +101,19 @@ export default function MyBookings() {
   }, []);
 
   // =====================================================
-  // CHECK WHETHER BOOKING CAN BE EDITED/CANCELLED
+  // CHECK WHETHER BOOKING CAN BE EDITED / CANCELLED
   //
-  // Past bookings are allowed.
-  // Only Cancelled and Rejected bookings are disabled.
+  // Past bookings are also allowed.
+  // Only Cancelled and Rejected bookings cannot be modified.
   // =====================================================
 
   const canModifyBooking = (booking) => {
     const status =
-      booking.status?.toLowerCase() || "";
+      booking?.status?.toLowerCase() || "";
 
     return (
       status !== "cancelled" &&
       status !== "rejected"
-    );
-  };
-
-  // =====================================================
-  // GET ROOM ID
-  //
-  // Handles different backend response structures.
-  // =====================================================
-
-  const getRoomId = (booking) => {
-    return (
-      booking.roomId ||
-      booking.roomID ||
-      booking.room?.roomId ||
-      booking.room?.id ||
-      null
     );
   };
 
@@ -98,15 +124,21 @@ export default function MyBookings() {
   const getDuration = (start, end) => {
     if (!start || !end) return "-";
 
-    const startDate =
-      new Date(`2000-01-01T${start}`);
+    const startDate = new Date(
+      `2000-01-01T${start}`
+    );
 
-    const endDate =
-      new Date(`2000-01-01T${end}`);
+    const endDate = new Date(
+      `2000-01-01T${end}`
+    );
+
+    const milliseconds =
+      endDate - startDate;
+
+    if (milliseconds < 0) return "-";
 
     const hours =
-      (endDate - startDate) /
-      3600000;
+      milliseconds / 3600000;
 
     return Number.isInteger(hours)
       ? `${hours}h`
@@ -144,6 +176,19 @@ export default function MyBookings() {
   };
 
   // =====================================================
+  // OPEN VIEW MODAL
+  // =====================================================
+
+  const handleView = (booking) => {
+    setSelected({
+      ...booking,
+      roomId: getRoomId(booking),
+    });
+
+    setMode("view");
+  };
+
+  // =====================================================
   // OPEN EDIT MODAL
   // =====================================================
 
@@ -162,8 +207,6 @@ export default function MyBookings() {
 
     setSelected({
       ...booking,
-
-      // Ensure roomId is explicitly stored
       roomId,
     });
 
@@ -171,13 +214,27 @@ export default function MyBookings() {
   };
 
   // =====================================================
+  // CLOSE MODAL
+  // =====================================================
+
+  const closeModal = () => {
+    setMode(null);
+    setSelected(null);
+  };
+
+  // =====================================================
   // CANCEL BOOKING
   // =====================================================
 
   async function cancel() {
-    if (!selected) return;
+    if (!selected?.bookingId) return;
 
     try {
+      console.log(
+        "Cancelling booking:",
+        selected.bookingId
+      );
+
       await cancelBooking(
         selected.bookingId
       );
@@ -188,10 +245,9 @@ export default function MyBookings() {
           "Booking cancelled successfully.",
       });
 
-      setMode(null);
-      setSelected(null);
+      closeModal();
 
-      load();
+      await load();
     } catch (err) {
       console.error(
         "Cancel booking error:",
@@ -209,6 +265,21 @@ export default function MyBookings() {
   }
 
   // =====================================================
+  // FORMAT TIME
+  // =====================================================
+
+  const formatTime = (time) => {
+    if (!time) return "";
+
+    // 16:00 -> 16:00:00
+    if (time.length === 5) {
+      return `${time}:00`;
+    }
+
+    return time;
+  };
+
+  // =====================================================
   // SAVE BOOKING
   // =====================================================
 
@@ -217,30 +288,76 @@ export default function MyBookings() {
 
     if (!selected) return;
 
-    // -----------------------------------------------
-    // VALIDATE ROOM ID
-    // -----------------------------------------------
+    // -------------------------------------------------
+    // GET ROOM ID
+    // -------------------------------------------------
 
     const roomId = getRoomId(selected);
 
-    if (!roomId) {
+    console.log(
+      "Selected booking before update:",
+      selected
+    );
+
+    console.log(
+      "Room ID detected:",
+      roomId
+    );
+
+    // -------------------------------------------------
+    // VALIDATE BOOKING ID
+    // -------------------------------------------------
+
+    if (!selected.bookingId) {
+      toast.addToast({
+        type: "error",
+        title:
+          "Booking ID is missing.",
+      });
+
+      return;
+    }
+
+    // -------------------------------------------------
+    // VALIDATE ROOM ID
+    // -------------------------------------------------
+
+    if (
+      roomId === null ||
+      roomId === undefined ||
+      roomId === ""
+    ) {
       console.error(
-        "Room ID missing from booking:",
+        "Room ID missing from API response:",
         selected
       );
 
       toast.addToast({
         type: "error",
         title:
-          "Room ID is required. Please reload your bookings and try again.",
+          "Room ID is missing from this booking. Please check the My Bookings backend API response.",
       });
 
       return;
     }
 
-    // -----------------------------------------------
+    // -------------------------------------------------
+    // VALIDATE DATE
+    // -------------------------------------------------
+
+    if (!selected.bookingDate) {
+      toast.addToast({
+        type: "error",
+        title:
+          "Booking date is required.",
+      });
+
+      return;
+    }
+
+    // -------------------------------------------------
     // VALIDATE TIME
-    // -----------------------------------------------
+    // -------------------------------------------------
 
     if (
       !selected.startTime ||
@@ -255,10 +372,13 @@ export default function MyBookings() {
       return;
     }
 
-    if (
-      selected.startTime >=
-      selected.endTime
-    ) {
+    const startTime =
+      formatTime(selected.startTime);
+
+    const endTime =
+      formatTime(selected.endTime);
+
+    if (startTime >= endTime) {
       toast.addToast({
         type: "error",
         title:
@@ -268,53 +388,39 @@ export default function MyBookings() {
       return;
     }
 
-    // -----------------------------------------------
-    // FORMAT TIME
-    // 16:00 -> 16:00:00
-    // -----------------------------------------------
-
-    const formatTime = (time) => {
-      if (!time) return "";
-
-      return time.length === 5
-        ? `${time}:00`
-        : time;
-    };
-
-    // -----------------------------------------------
+    // -------------------------------------------------
     // CREATE UPDATE PAYLOAD
-    // -----------------------------------------------
+    // -------------------------------------------------
 
     const payload = {
       roomId: Number(roomId),
-
-      bookingDate:
-        selected.bookingDate,
-
-      startTime:
-        formatTime(selected.startTime),
-
-      endTime:
-        formatTime(selected.endTime),
-
+      bookingDate: selected.bookingDate,
+      startTime,
+      endTime,
       purpose:
         selected.purpose?.trim() ||
         "Meeting",
-
-      participantCount:
-        Number(
-          selected.participantCount || 1
-        ),
+      participantCount: Number(
+        selected.participantCount || 1
+      ),
     };
 
     console.log(
-      "Update Booking ID:",
+      "================================="
+    );
+
+    console.log(
+      "Updating Booking ID:",
       selected.bookingId
     );
 
     console.log(
-      "Update Booking Payload:",
+      "Update Payload:",
       payload
+    );
+
+    console.log(
+      "================================="
     );
 
     try {
@@ -329,20 +435,25 @@ export default function MyBookings() {
           "Booking updated successfully.",
       });
 
-      setMode(null);
-      setSelected(null);
+      closeModal();
 
-      load();
+      await load();
     } catch (err) {
       console.error(
         "Update booking error:",
         err
       );
 
+      console.error(
+        "Backend response:",
+        err.response?.data
+      );
+
       toast.addToast({
         type: "error",
         title:
           err.response?.data?.message ||
+          err.response?.data?.title ||
           err.message ||
           "Unable to update booking.",
       });
@@ -421,14 +532,12 @@ export default function MyBookings() {
             {loading ? (
 
               <tr>
-
                 <td
                   colSpan={8}
                   className="py-8 text-center text-slate-500"
                 >
                   Loading bookings...
                 </td>
-
               </tr>
 
             ) : bookings.length === 0 ? (
@@ -436,14 +545,12 @@ export default function MyBookings() {
               /* NO BOOKINGS */
 
               <tr>
-
                 <td
                   colSpan={8}
                   className="py-8 text-center text-slate-500"
                 >
                   No bookings found.
                 </td>
-
               </tr>
 
             ) : (
@@ -457,14 +564,20 @@ export default function MyBookings() {
                   className="border-b border-line last:border-0"
                 >
 
+                  {/* BOOKING ID */}
+
                   <td className="px-3 py-4 font-mono whitespace-nowrap">
                     {b.bookingId}
                   </td>
+
+                  {/* ROOM */}
 
                   <td className="px-3 py-4 whitespace-nowrap font-semibold">
                     {b.roomName ||
                       `Room ${getRoomId(b) || ""}`}
                   </td>
+
+                  {/* PURPOSE */}
 
                   <td className="max-w-[140px] truncate px-3 py-4">
                     {b.purpose &&
@@ -473,29 +586,29 @@ export default function MyBookings() {
                       : "Reserved Workspace"}
                   </td>
 
+                  {/* DATE */}
+
                   <td className="px-3 py-4 whitespace-nowrap">
                     {b.bookingDate}
                   </td>
 
+                  {/* TIME */}
+
                   <td className="px-3 py-4 whitespace-nowrap text-slate-600">
 
                     {b.startTime
-                      ? b.startTime.substring(
-                          0,
-                          5
-                        )
+                      ? b.startTime.substring(0, 5)
                       : ""}
 
                     {" - "}
 
                     {b.endTime
-                      ? b.endTime.substring(
-                          0,
-                          5
-                        )
+                      ? b.endTime.substring(0, 5)
                       : ""}
 
                   </td>
+
+                  {/* DURATION */}
 
                   <td className="px-3 py-4 whitespace-nowrap">
                     {getDuration(
@@ -503,6 +616,8 @@ export default function MyBookings() {
                       b.endTime
                     )}
                   </td>
+
+                  {/* STATUS */}
 
                   <td className="px-3 py-4 text-center whitespace-nowrap">
 
@@ -516,16 +631,17 @@ export default function MyBookings() {
 
                   </td>
 
+                  {/* ACTIONS */}
+
                   <td className="px-3 py-4 text-center whitespace-nowrap">
 
                     {/* VIEW */}
 
                     <button
                       className="mr-2.5 text-sm font-bold text-sky-600 hover:text-sky-800 hover:underline"
-                      onClick={() => {
-                        setSelected(b);
-                        setMode("view");
-                      }}
+                      onClick={() =>
+                        handleView(b)
+                      }
                     >
                       View
                     </button>
@@ -547,7 +663,11 @@ export default function MyBookings() {
                         <button
                           className="text-sm font-bold text-red-600 hover:text-red-800 hover:underline"
                           onClick={() => {
-                            setSelected(b);
+                            setSelected({
+                              ...b,
+                              roomId: getRoomId(b),
+                            });
+
                             setMode("cancel");
                           }}
                         >
@@ -577,12 +697,7 @@ export default function MyBookings() {
         open={mode === "view"}
         title="Booking Details"
         footer={
-          <Button
-            onClick={() => {
-              setMode(null);
-              setSelected(null);
-            }}
-          >
+          <Button onClick={closeModal}>
             Back
           </Button>
         }
@@ -684,10 +799,7 @@ export default function MyBookings() {
 
             <Button
               variant="secondary"
-              onClick={() => {
-                setMode(null);
-                setSelected(null);
-              }}
+              onClick={closeModal}
             >
               No
             </Button>
@@ -826,10 +938,7 @@ export default function MyBookings() {
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => {
-                  setMode(null);
-                  setSelected(null);
-                }}
+                onClick={closeModal}
               >
                 Cancel
               </Button>
