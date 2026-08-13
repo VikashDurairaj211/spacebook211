@@ -4,7 +4,7 @@ const ToastContext = createContext(null)
 
 function ToastContainer({ toasts }) {
   return (
-    <div className="fixed right-4 top-4 z-50 flex max-w-sm flex-col gap-3">
+    <div className="fixed right-4 top-4 z-[10000] flex max-w-sm flex-col gap-3">
       {toasts.map((toast) => (
         <div key={toast.id} className={`rounded-2xl border p-4 shadow-xl transition-transform ${toast.type === 'error' ? 'border-clay bg-red-50 text-clay' : toast.type === 'success' ? 'border-moss bg-green-50 text-moss' : 'border-line bg-white text-ink'}`}>
           <p className="text-sm font-medium">{toast.title}</p>
