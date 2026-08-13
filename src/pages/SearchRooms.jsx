@@ -36,6 +36,10 @@ const INITIAL_FILTERS = {
 // PAST TIMES DISABLED WHEN DATE IS TODAY
 // =====================================================
 
+// =====================================================
+// SCROLLABLE TIME PICKER
+// =====================================================
+
 function ScrollableTimePicker({
   label,
   value,
@@ -50,7 +54,10 @@ function ScrollableTimePicker({
       ? value.split(":")
       : ["09", "00"];
 
-  // Office hours only: 09 to 18
+  // =====================================================
+  // OFFICE HOURS: 09:00 TO 18:00
+  // =====================================================
+
   const hoursList = Array.from(
     { length: 10 },
     (_, i) => String(i + 9).padStart(2, "0")
@@ -61,14 +68,24 @@ function ScrollableTimePicker({
     (_, i) => String(i).padStart(2, "0")
   );
 
-  // Get today's date in local timezone
+  // =====================================================
+  // GET TODAY IN LOCAL FORMAT YYYY-MM-DD
+  // =====================================================
+
   const now = new Date();
 
-  const todayStr = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-  ].join("-");
+  const currentYear = now.getFullYear();
+
+  const currentMonth = String(
+    now.getMonth() + 1
+  ).padStart(2, "0");
+
+  const currentDay = String(
+    now.getDate()
+  ).padStart(2, "0");
+
+  const todayStr =
+    `${currentYear}-${currentMonth}-${currentDay}`;
 
   const isToday =
     selectedDate === todayStr;
@@ -80,14 +97,29 @@ function ScrollableTimePicker({
     now.getMinutes();
 
   // =====================================================
-  // CHECK WHETHER A TIME IS ALREADY IN THE PAST
+  // CHECK IF COMPLETE HOUR IS IN THE PAST
   // =====================================================
 
-  const isPastTime = (
+  const isHourDisabled = (hour) => {
+    if (!isToday) {
+      return false;
+    }
+
+    const selectedHour =
+      Number(hour);
+
+    // All hours before current hour are disabled
+    return selectedHour < currentHour;
+  };
+
+  // =====================================================
+  // CHECK IF MINUTE IS IN THE PAST
+  // =====================================================
+
+  const isMinuteDisabled = (
     hour,
-    minute = 0
+    minute
   ) => {
-    // If future date, allow all times
     if (!isToday) {
       return false;
     }
@@ -98,22 +130,25 @@ function ScrollableTimePicker({
     const selectedMinute =
       Number(minute);
 
-    // Previous hour
+    // Previous hours
     if (
       selectedHour < currentHour
     ) {
       return true;
     }
 
-    // Current hour but previous/current minute
+    // Future hours
     if (
-      selectedHour === currentHour &&
-      selectedMinute <= currentMinute
+      selectedHour > currentHour
     ) {
-      return true;
+      return false;
     }
 
-    return false;
+    // Same hour: disable passed/current minutes
+    return (
+      selectedMinute <=
+      currentMinute
+    );
   };
 
   // =====================================================
@@ -124,19 +159,27 @@ function ScrollableTimePicker({
     newHours,
     newMinutes
   ) => {
+    // Prevent past time selection
+    if (
+      isMinuteDisabled(
+        newHours,
+        newMinutes
+      )
+    ) {
+      return;
+    }
+
     onChange(
       `${newHours}:${newMinutes}`
     );
   };
 
   // =====================================================
-  // CLOSE PICKER WHEN CLICKING OUTSIDE
+  // CLOSE ON OUTSIDE CLICK
   // =====================================================
 
   useEffect(() => {
-    function handleClickOutside(
-      event
-    ) {
+    function handleClickOutside(event) {
       if (
         containerRef.current &&
         !containerRef.current.contains(
@@ -152,12 +195,17 @@ function ScrollableTimePicker({
       handleClickOutside
     );
 
-    return () =>
+    return () => {
       document.removeEventListener(
         "mousedown",
         handleClickOutside
       );
+    };
   }, []);
+
+  // =====================================================
+  // UI
+  // =====================================================
 
   return (
     <div
@@ -165,14 +213,12 @@ function ScrollableTimePicker({
       ref={containerRef}
     >
       <Field label={label}>
-
         <div
           onClick={() =>
             setIsOpen(!isOpen)
           }
           className="flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm hover:border-slate-400"
         >
-
           <span
             className={
               value
@@ -198,18 +244,15 @@ function ScrollableTimePicker({
               d="M19 9l-7 7-7-7"
             />
           </svg>
-
         </div>
-
       </Field>
 
       {isOpen && (
-
         <div className="absolute z-50 mt-1 flex w-full rounded-lg border border-slate-200 bg-white shadow-lg">
 
-          {/* =========================================
+          {/* =============================================
               HOURS
-          ========================================= */}
+          ============================================== */}
 
           <div className="max-h-52 flex-1 overflow-y-auto border-r border-slate-100 p-1 text-center">
 
@@ -218,29 +261,23 @@ function ScrollableTimePicker({
             </div>
 
             {hoursList.map((h) => {
-
-              // Check whether the entire hour is over
               const disabled =
-                isToday &&
-                Number(h) < currentHour;
+                isHourDisabled(h);
 
               return (
-
                 <div
                   key={h}
                   onClick={() => {
-
                     if (!disabled) {
                       handleTimeChange(
                         h,
-                        minutes
+                        "00"
                       );
                     }
-
                   }}
                   className={`rounded px-2 py-1.5 text-sm ${
                     disabled
-                      ? "cursor-not-allowed text-slate-300"
+                      ? "cursor-not-allowed bg-slate-100 text-slate-300 opacity-50"
                       : hours === h
                       ? "cursor-pointer bg-blue-600 font-bold text-white"
                       : "cursor-pointer text-slate-700 hover:bg-blue-50"
@@ -248,15 +285,13 @@ function ScrollableTimePicker({
                 >
                   {h}
                 </div>
-
               );
             })}
-
           </div>
 
-          {/* =========================================
+          {/* =============================================
               MINUTES
-          ========================================= */}
+          ============================================== */}
 
           <div className="max-h-52 flex-1 overflow-y-auto p-1 text-center">
 
@@ -265,30 +300,26 @@ function ScrollableTimePicker({
             </div>
 
             {minutesList.map((m) => {
-
               const disabled =
-                isPastTime(
+                isMinuteDisabled(
                   hours,
                   m
                 );
 
               return (
-
                 <div
                   key={m}
                   onClick={() => {
-
                     if (!disabled) {
                       handleTimeChange(
                         hours,
                         m
                       );
                     }
-
                   }}
                   className={`rounded px-2 py-1.5 text-sm ${
                     disabled
-                      ? "cursor-not-allowed text-slate-300"
+                      ? "cursor-not-allowed bg-slate-100 text-slate-300 opacity-50"
                       : minutes === m
                       ? "cursor-pointer bg-blue-600 font-bold text-white"
                       : "cursor-pointer text-slate-700 hover:bg-blue-50"
@@ -296,16 +327,12 @@ function ScrollableTimePicker({
                 >
                   {m}
                 </div>
-
               );
             })}
-
           </div>
 
         </div>
-
       )}
-
     </div>
   );
 }
