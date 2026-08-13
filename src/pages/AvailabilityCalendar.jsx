@@ -22,42 +22,65 @@ const ROOM_TYPE_OPTIONS = [
 function localDate(value = new Date()) {
   const offset = value.getTimezoneOffset() * 60000;
 
-  return new Date(
-    value.getTime() - offset
-  )
+  return new Date(value.getTime() - offset)
     .toISOString()
     .slice(0, 10);
 }
 
 // =====================================================
 // GET CURRENT TIME IN MINUTES
+// Example: 16:30 => 990
 // =====================================================
 
 function getNowMinutes() {
   const now = new Date();
 
-  return (
-    now.getHours() * 60 +
-    now.getMinutes()
-  );
+  return now.getHours() * 60 + now.getMinutes();
 }
 
 // =====================================================
 // CONVERT TIME TO MINUTES
 // Example: "15:30" => 930
+// Example: "15:30:00" => 930
 // =====================================================
 
 function timeToMinutes(time) {
   if (!time) return 0;
 
-  const [hours, minutes] = time
-    .split(":")
-    .map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
 
-  return (
-    hours * 60 +
-    minutes
+  return hours * 60 + minutes;
+}
+
+// =====================================================
+// CHECK WHETHER DATE IS SATURDAY OR SUNDAY
+// Sunday = 0
+// Saturday = 6
+// =====================================================
+
+function isWeekend(dateString) {
+  const date = new Date(`${dateString}T12:00:00`);
+  const day = date.getDay();
+
+  return day === 0 || day === 6;
+}
+
+// =====================================================
+// GET NEXT/PREVIOUS WORKING DAY
+// Skips Saturday and Sunday
+// =====================================================
+
+function getWorkingDay(dateString, delta) {
+  const next = new Date(`${dateString}T12:00:00`);
+
+  do {
+    next.setDate(next.getDate() + delta);
+  } while (
+    next.getDay() === 0 ||
+    next.getDay() === 6
   );
+
+  return localDate(next);
 }
 
 // =====================================================
@@ -65,7 +88,6 @@ function timeToMinutes(time) {
 // =====================================================
 
 export default function AvailabilityCalendar() {
-
   const today = localDate();
 
   const [selectedDate, setSelectedDate] =
@@ -99,18 +121,11 @@ export default function AvailabilityCalendar() {
   // =====================================================
 
   useEffect(() => {
-
     const timer = setInterval(() => {
-
-      setNowMinutes(
-        getNowMinutes()
-      );
-
+      setNowMinutes(getNowMinutes());
     }, 60000);
 
-    return () =>
-      clearInterval(timer);
-
+    return () => clearInterval(timer);
   }, []);
 
   // =====================================================
@@ -118,22 +133,33 @@ export default function AvailabilityCalendar() {
   // =====================================================
 
   useEffect(() => {
-
     let isMounted = true;
 
-    setLoading(true);
+    // Extra safety: never fetch weekend availability
+    if (isWeekend(selectedDate)) {
+      setRooms([]);
+      setLoading(false);
+      return;
+    }
 
+    setLoading(true);
     setError(null);
 
     getRoomAvailability(selectedDate)
-
       .then((data) => {
-
         if (!isMounted) return;
 
-        const mappedRooms =
-          (data || []).map((room) => ({
+        // Supports either:
+        // API returns array directly
+        // OR API returns { date, rooms }
 
+        const availabilityRooms =
+          Array.isArray(data)
+            ? data
+            : data?.rooms || [];
+
+        const mappedRooms =
+          availabilityRooms.map((room) => ({
             ...room,
 
             id: room.roomId,
@@ -144,46 +170,33 @@ export default function AvailabilityCalendar() {
 
             facilities:
               room.facilities || [],
-
           }));
 
         setRooms(mappedRooms);
-
       })
 
       .catch((err) => {
-
         if (isMounted) {
-
           setError(
             "Failed to load room availability."
           );
-
         }
 
         console.error(
           "Availability fetch error:",
           err
         );
-
       })
 
       .finally(() => {
-
         if (isMounted) {
-
           setLoading(false);
-
         }
-
       });
 
     return () => {
-
       isMounted = false;
-
     };
-
   }, [selectedDate]);
 
   // =====================================================
@@ -198,155 +211,90 @@ export default function AvailabilityCalendar() {
   // =====================================================
 
   const filteredRooms = useMemo(() => {
-
     return rooms.filter((room) => {
-
-      // -----------------------------------------------
       // ROOM TYPE FILTER
-      // -----------------------------------------------
 
       if (
-        filters.type !==
-          "All Rooms" &&
-        room.type !==
-          filters.type
+        filters.type !== "All Rooms" &&
+        room.type !== filters.type
       ) {
         return false;
       }
 
-      // -----------------------------------------------
       // CAPACITY FILTER
-      // -----------------------------------------------
 
       if (
         filters.capacity &&
         room.capacity <
-          Number(
-            filters.capacity
-          )
+          Number(filters.capacity)
       ) {
         return false;
       }
 
       return true;
-
     });
-
-  }, [
-    filters,
-    rooms,
-  ]);
+  }, [filters, rooms]);
 
   // =====================================================
   // REMOVE PAST TIME SLOTS FOR TODAY
   // =====================================================
   //
-  // This assumes each room contains an availabilitySlots
-  // or slots array. We filter those slots before sending
-  // rooms to AvailabilityGrid.
+  // Backend uses:
+  // timeSlots
   //
-  // Past slots will not be visible.
+  // Example:
+  // {
+  //   startTime: "15:00:00",
+  //   endTime: "16:00:00",
+  //   isBooked: false
+  // }
   // =====================================================
 
   const roomsWithFutureSlots =
     useMemo(() => {
-
-      // Future dates:
-      // show all slots
+      // Future dates show all slots
 
       if (!selectedDateIsToday) {
-
         return filteredRooms;
-
       }
 
       return filteredRooms
         .map((room) => {
+          const timeSlots =
+            room.timeSlots || [];
 
-          // Support possible backend property names
-
-          const roomSlots =
-            room.slots ||
-            room.availabilitySlots ||
-            room.availableSlots ||
-            [];
-
-          // Filter only future slots
+          // Only keep slots that have not yet started
 
           const futureSlots =
-            roomSlots.filter((slot) => {
-
-              if (
-                !slot?.start
-              ) {
-                return true;
-              }
+            timeSlots.filter((slot) => {
+              const slotStart =
+                slot.startTime ||
+                slot.start;
 
               const slotStartMinutes =
-                timeToMinutes(
-                  slot.start
-                );
+                timeToMinutes(slotStart);
 
-              // Only future time slots
               return (
                 slotStartMinutes >
                 nowMinutes
               );
-
             });
 
           return {
-
             ...room,
 
-            // Preserve whichever property
-            // AvailabilityGrid uses
-
-            slots:
-              room.slots !== undefined
-                ? futureSlots
-                : room.slots,
-
-            availabilitySlots:
-              room.availabilitySlots !==
-              undefined
-                ? futureSlots
-                : room.availabilitySlots,
-
-            availableSlots:
-              room.availableSlots !==
-              undefined
-                ? futureSlots
-                : room.availableSlots,
-
+            timeSlots:
+              futureSlots,
           };
-
         })
 
-        // Remove rooms that have no
-        // future slots remaining
+        // Remove rooms with no future slots
 
         .filter((room) => {
-
-          const slots =
-            room.slots ||
-            room.availabilitySlots ||
-            room.availableSlots;
-
-          // If slots property doesn't exist,
-          // keep the room because AvailabilityGrid
-          // may generate slots differently
-
-          if (!slots) {
-            return true;
-          }
-
           return (
-            slots.length > 0
+            room.timeSlots.length > 0
           );
-
         });
-
     }, [
       filteredRooms,
       selectedDateIsToday,
@@ -357,70 +305,63 @@ export default function AvailabilityCalendar() {
   // UPDATE FILTER
   // =====================================================
 
-  function updateFilter(
-    key,
-    value
-  ) {
-
+  function updateFilter(key, value) {
     setFilters((current) => ({
-
       ...current,
-
       [key]: value,
-
     }));
-
   }
 
   // =====================================================
   // CHANGE DAY
+  // SKIP SATURDAY AND SUNDAY
   // =====================================================
 
   function changeDays(delta) {
-
-    const next =
-      new Date(
-        `${selectedDate}T12:00:00`
-      );
-
-    next.setDate(
-      next.getDate() + delta
-    );
-
     const nextDate =
-      localDate(next);
-
-    if (
-      nextDate >= today
-    ) {
-
-      setSelectedDate(
-        nextDate
+      getWorkingDay(
+        selectedDate,
+        delta
       );
 
-      // Close selected slot
-      setSelectedSlot(null);
+    // Do not allow going before today
 
+    if (nextDate < today) {
+      return;
     }
 
+    setSelectedDate(nextDate);
+
+    // Close selected slot
+
+    setSelectedSlot(null);
   }
 
   // =====================================================
   // DATE CHANGE
+  // BLOCK SATURDAY AND SUNDAY
   // =====================================================
 
   function handleDateChange(value) {
+    // Do not allow past dates
 
-    if (
-      value >= today
-    ) {
-
-      setSelectedDate(value);
-
-      setSelectedSlot(null);
-
+    if (value < today) {
+      return;
     }
 
+    // Block Saturday and Sunday
+
+    if (isWeekend(value)) {
+      alert(
+        "Room booking is not available on Saturdays and Sundays."
+      );
+
+      return;
+    }
+
+    setSelectedDate(value);
+
+    setSelectedSlot(null);
   }
 
   // =====================================================
@@ -429,37 +370,42 @@ export default function AvailabilityCalendar() {
   // =====================================================
 
   function handleSelectSlot(slot) {
+    // Block weekend selection
+
+    if (isWeekend(selectedDate)) {
+      alert(
+        "Room booking is not available on Saturdays and Sundays."
+      );
+
+      return;
+    }
+
+    // Block past slots for today
 
     if (
       selectedDateIsToday &&
-      slot?.status ===
-        "Available"
+      slot?.status === "Available"
     ) {
+      const slotStart =
+        slot.slot.start ||
+        slot.slot.startTime;
 
       const slotStartMinutes =
-        timeToMinutes(
-          slot.slot.start
-        );
-
-      // Prevent selecting past/current slot
+        timeToMinutes(slotStart);
 
       if (
         slotStartMinutes <=
         nowMinutes
       ) {
-
         alert(
           "Cannot select or book a time slot in the past for today."
         );
 
         return;
-
       }
-
     }
 
     setSelectedSlot(slot);
-
   }
 
   // =====================================================
@@ -467,31 +413,30 @@ export default function AvailabilityCalendar() {
   // =====================================================
 
   function bookingLink(slot) {
+    const startTime =
+      slot.slot.start ||
+      slot.slot.startTime;
+
+    const endTime =
+      slot.slot.end ||
+      slot.slot.endTime;
 
     const params =
       new URLSearchParams({
+        roomId: slot.room.id,
 
-        roomId:
-          slot.room.id,
+        date: selectedDate,
 
-        date:
-          selectedDate,
+        startTime,
 
-        startTime:
-          slot.slot.start,
+        endTime,
 
-        endTime:
-          slot.slot.end,
-
-        attendees:
-          String(
-            filters.capacity || 1
-          ),
-
+        attendees: String(
+          filters.capacity || 1
+        ),
       });
 
     return `/book-room?${params.toString()}`;
-
   }
 
   // =====================================================
@@ -500,40 +445,29 @@ export default function AvailabilityCalendar() {
 
   const getStatusBadgeClass =
     (status) => {
-
       const s =
-        status?.toLowerCase() ||
-        "";
+        status?.toLowerCase() || "";
 
       if (
         s === "approved" ||
         s === "confirmed" ||
         s === "available"
       ) {
-
         return "bg-[#658362] text-white";
-
       }
 
-      if (
-        s === "pending"
-      ) {
-
+      if (s === "pending") {
         return "bg-[#E09F3E] text-white";
-
       }
 
       if (
         s === "rejected" ||
         s === "cancelled"
       ) {
-
         return "bg-[#B85450] text-white";
-
       }
 
       return "bg-slate-500 text-white";
-
     };
 
   // =====================================================
@@ -543,19 +477,13 @@ export default function AvailabilityCalendar() {
   const modalTitle =
     selectedSlot?.status ===
     "Available"
-
       ? "Book this room"
-
       : selectedSlot?.status ===
         "Pending"
-
       ? "Pending approval"
-
       : selectedSlot?.status ===
         "Completed"
-
       ? "Booking history"
-
       : "Booking details";
 
   // =====================================================
@@ -563,17 +491,13 @@ export default function AvailabilityCalendar() {
   // =====================================================
 
   return (
-
     <div className="space-y-6">
 
-      {/* ===============================================
-          HEADER
-      ================================================ */}
+      {/* HEADER */}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
         <div>
-
           <h1 className="font-display text-2xl font-700 text-ink">
             Room Availability
           </h1>
@@ -581,12 +505,11 @@ export default function AvailabilityCalendar() {
           <p className="mt-1 text-sm text-slate">
             Find the right workspace and book an available time slot.
           </p>
-
         </div>
 
         <div className="flex flex-nowrap items-center gap-3">
 
-          {/* PREVIOUS DAY */}
+          {/* PREVIOUS WORKING DAY */}
 
           <Button
             variant="secondary"
@@ -598,9 +521,7 @@ export default function AvailabilityCalendar() {
             }
             aria-label="Previous day"
           >
-
             <ChevronLeft size={16} />
-
           </Button>
 
           {/* DATE */}
@@ -617,7 +538,7 @@ export default function AvailabilityCalendar() {
             className="min-w-[170px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
           />
 
-          {/* NEXT DAY */}
+          {/* NEXT WORKING DAY */}
 
           <Button
             variant="secondary"
@@ -626,9 +547,7 @@ export default function AvailabilityCalendar() {
             }
             aria-label="Next day"
           >
-
             <ChevronRight size={16} />
-
           </Button>
 
           {/* ROOM TYPE */}
@@ -643,98 +562,59 @@ export default function AvailabilityCalendar() {
             }
             className="w-auto min-w-[170px] max-w-[220px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
           >
-
             {ROOM_TYPE_OPTIONS.map(
               (type) => (
-
                 <option
                   key={type}
                   value={type}
                 >
                   {type}
                 </option>
-
               )
             )}
-
           </Select>
 
         </div>
-
       </div>
 
-      {/* ===============================================
-          LOADING
-      ================================================ */}
+      {/* LOADING */}
 
       {loading && (
-
         <div className="p-8 text-center text-sm text-slate">
           Loading calendar schedule...
         </div>
-
       )}
 
-      {/* ===============================================
-          ERROR
-      ================================================ */}
+      {/* ERROR */}
 
       {error && (
-
         <div className="p-8 text-center text-sm text-red-500">
           {error}
         </div>
-
       )}
 
-      {/* ===============================================
-          AVAILABILITY GRID
-      ================================================ */}
+      {/* AVAILABILITY GRID */}
 
-      {!loading &&
-        !error && (
+      {!loading && !error && (
+        <AvailabilityGrid
+          rooms={roomsWithFutureSlots}
+          bookings={[]}
+          date={selectedDate}
+          isToday={selectedDateIsToday}
+          nowMinutes={nowMinutes}
+          onSelectSlot={
+            handleSelectSlot
+          }
+        />
+      )}
 
-          <AvailabilityGrid
-
-            rooms={
-              roomsWithFutureSlots
-            }
-
-            bookings={[]}
-
-            date={
-              selectedDate
-            }
-
-            isToday={
-              selectedDateIsToday
-            }
-
-            nowMinutes={
-              nowMinutes
-            }
-
-            onSelectSlot={
-              handleSelectSlot
-            }
-
-          />
-
-        )}
-
-      {/* ===============================================
-          SLOT MODAL
-      ================================================ */}
+      {/* SLOT MODAL */}
 
       <Modal
-        open={
-          Boolean(selectedSlot)
-        }
+        open={Boolean(selectedSlot)}
         title={modalTitle}
         footer={
-
           <>
-
             <Button
               variant="secondary"
               onClick={() =>
@@ -746,13 +626,11 @@ export default function AvailabilityCalendar() {
 
             {selectedSlot?.status ===
               "Available" && (
-
               <Link
                 to={bookingLink(
                   selectedSlot
                 )}
               >
-
                 <Button
                   onClick={() =>
                     setSelectedSlot(null)
@@ -760,18 +638,12 @@ export default function AvailabilityCalendar() {
                 >
                   Continue to booking
                 </Button>
-
               </Link>
-
             )}
-
           </>
-
         }
       >
-
         {selectedSlot && (
-
           <div className="space-y-3">
 
             <p className="font-display text-base font-700 text-ink">
@@ -779,39 +651,31 @@ export default function AvailabilityCalendar() {
             </p>
 
             <p>
-
               {selectedSlot.room.type}
-
               {" · "}
-
               Capacity{" "}
-
               {selectedSlot.room.capacity}
-
             </p>
 
             <p>
-
               {selectedDate}
-
               {", "}
 
-              {selectedSlot.slot.start}
+              {selectedSlot.slot.start ||
+                selectedSlot.slot.startTime}
 
               {" - "}
 
-              {selectedSlot.slot.end}
-
+              {selectedSlot.slot.end ||
+                selectedSlot.slot.endTime}
             </p>
 
             <p>
-
               Facilities:{" "}
 
               {selectedSlot.room.facilities?.join(
                 ", "
               ) || "None"}
-
             </p>
 
             <div className="flex items-center gap-2">
@@ -825,34 +689,24 @@ export default function AvailabilityCalendar() {
                   selectedSlot.status
                 )}`}
               >
-
                 {selectedSlot.status}
-
               </span>
 
             </div>
 
             {selectedSlot.booking && (
-
               <p>
-
                 Booking:{" "}
 
                 {selectedSlot.booking.title ||
                   "Reserved workspace"}
-
               </p>
-
             )}
 
           </div>
-
         )}
-
       </Modal>
 
     </div>
-
   );
-
 }
