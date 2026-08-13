@@ -155,9 +155,6 @@ export default function AvailabilityCalendar() {
 
     // -----------------------------------------------
     // FRONTEND WEEKEND BLOCK
-    //
-    // Keep this for better UI.
-    // Backend should also validate weekends.
     // -----------------------------------------------
 
     if (isWeekend(selectedDate)) {
@@ -173,11 +170,6 @@ export default function AvailabilityCalendar() {
     getRoomAvailability(selectedDate)
       .then((data) => {
         if (!isMounted) return;
-
-        // =============================================
-        // DEBUG
-        // Open browser console and check this
-        // =============================================
 
         console.log(
           "Room Availability API Response:",
@@ -243,14 +235,24 @@ export default function AvailabilityCalendar() {
 
             // -----------------------------------------
             // ROOM TYPE
-            //
-            // Normalize so:
-            // "Training Room" = "Training"
             // -----------------------------------------
 
             type: normalizeRoomType(rawRoomType),
 
             rawRoomType,
+
+            // -----------------------------------------
+            // ROOM LOCATION
+            //
+            // Fetch from backend response
+            // -----------------------------------------
+
+            location:
+              room.location ||
+              room.roomLocation ||
+              room.locationName ||
+              room.room?.location ||
+              "",
 
             // -----------------------------------------
             // CAPACITY
@@ -314,6 +316,7 @@ export default function AvailabilityCalendar() {
 
         setRooms(mappedRooms);
       })
+
       .catch((err) => {
         if (isMounted) {
           setError(
@@ -326,6 +329,7 @@ export default function AvailabilityCalendar() {
           err
         );
       })
+
       .finally(() => {
         if (isMounted) {
           setLoading(false);
@@ -399,17 +403,9 @@ export default function AvailabilityCalendar() {
   // =====================================================
 
   const roomsWithFutureSlots = useMemo(() => {
-    // -----------------------------------------------
-    // FUTURE DATE
-    // -----------------------------------------------
-
     if (!selectedDateIsToday) {
       return filteredRooms;
     }
-
-    // -----------------------------------------------
-    // TODAY
-    // -----------------------------------------------
 
     return filteredRooms
       .map((room) => {
@@ -436,6 +432,7 @@ export default function AvailabilityCalendar() {
           timeSlots: futureSlots,
         };
       })
+
       .filter(
         (room) =>
           room.timeSlots.length > 0
@@ -569,9 +566,7 @@ export default function AvailabilityCalendar() {
   // STATUS BADGE
   // =====================================================
 
-  const getStatusBadgeClass = (
-    status
-  ) => {
+  const getStatusBadgeClass = (status) => {
     const s =
       status?.toLowerCase() || "";
 
@@ -777,6 +772,14 @@ export default function AvailabilityCalendar() {
               {" · "}
               Capacity{" "}
               {selectedSlot.room.capacity}
+            </p>
+
+            {/* ROOM LOCATION */}
+
+            <p>
+              Location:{" "}
+              {selectedSlot.room.location ||
+                "Location not specified"}
             </p>
 
             <p>
