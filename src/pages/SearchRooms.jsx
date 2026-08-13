@@ -586,7 +586,49 @@ export default function SearchRooms() {
         return;
 
       }
+      // =================================================
+// PREVENT SEARCHING FOR PAST TIME TODAY
+// =================================================
 
+const now = new Date();
+
+const todayStr = [
+  now.getFullYear(),
+  String(now.getMonth() + 1).padStart(2, "0"),
+  String(now.getDate()).padStart(2, "0"),
+].join("-");
+
+if (filters.date === todayStr) {
+
+  const currentTime =
+    `${String(now.getHours()).padStart(2, "0")}:${String(
+      now.getMinutes()
+    ).padStart(2, "0")}`;
+
+  // Start time has already passed
+  if (
+    filters.startTime &&
+    filters.startTime <= currentTime
+  ) {
+    setError(
+      "The selected start time has already passed. Please select a future time."
+    );
+
+    return;
+  }
+
+  // End time has already passed
+  if (
+    filters.endTime &&
+    filters.endTime <= currentTime
+  ) {
+    setError(
+      "The selected end time has already passed. Please select a future time."
+    );
+
+    return;
+  }
+}
       // ===============================================
       // CURRENT TIME VALIDATION FOR TODAY
       // ===============================================
