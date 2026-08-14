@@ -103,18 +103,45 @@ export default function MyBookings() {
   // =====================================================
   // CHECK WHETHER BOOKING CAN BE EDITED / CANCELLED
   //
-  // Past bookings are also allowed.
-  // Only Cancelled and Rejected bookings cannot be modified.
+  // Edit and Cancel are allowed only when:
+  // 1. Status is not Cancelled or Rejected
+  // 2. Booking start time has not passed
+  //
+  // Once the booking starts, Edit and Cancel disappear.
   // =====================================================
 
   const canModifyBooking = (booking) => {
     const status =
       booking?.status?.toLowerCase() || "";
 
-    return (
-      status !== "cancelled" &&
-      status !== "rejected"
+    // Cancelled and rejected bookings cannot be modified
+    if (
+      status === "cancelled" ||
+      status === "rejected"
+    ) {
+      return false;
+    }
+
+    // Booking date and start time are required
+    if (
+      !booking?.bookingDate ||
+      !booking?.startTime
+    ) {
+      return false;
+    }
+
+    // Create the booking start date/time
+    const bookingStart = new Date(
+      `${booking.bookingDate}T${booking.startTime}`
     );
+
+    // If booking start time has already passed,
+    // Edit and Cancel should not be available.
+    if (bookingStart <= new Date()) {
+      return false;
+    }
+
+    return true;
   };
 
   // =====================================================
