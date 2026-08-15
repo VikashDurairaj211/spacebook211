@@ -77,10 +77,6 @@ function getWorkingDay(dateString, delta) {
 
 // =====================================================
 // NORMALIZE ROOM TYPE
-//
-// Training Room -> Training
-// training -> Training
-// CONFERENCE ROOM -> Conference
 // =====================================================
 
 function normalizeRoomType(type) {
@@ -244,13 +240,16 @@ export default function AvailabilityCalendar() {
             // -----------------------------------------
             // ROOM LOCATION
             //
-            // Fetch from backend response
+            // FIX:
+            // Backend may return the configured room
+            // location using the "module" property.
             // -----------------------------------------
 
             location:
               room.location ||
               room.roomLocation ||
               room.locationName ||
+              room.module ||
               room.room?.location ||
               "",
 

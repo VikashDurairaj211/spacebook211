@@ -39,6 +39,80 @@ function getLocalTimeStr(dateObj = new Date()) {
 }
 
 // =====================================================
+// NORMALIZE ROOM DATA
+// =====================================================
+
+function normalizeRooms(data) {
+  const rooms =
+    Array.isArray(data)
+      ? data
+      : data?.rooms ||
+        data?.data ||
+        data?.result ||
+        []
+
+  return rooms.map((room) => ({
+    ...room,
+
+    roomId:
+      room.roomId ||
+      room.id ||
+      room.roomID,
+
+    roomName:
+      room.roomName ||
+      room.name ||
+      room.roomNumber ||
+      'Unnamed Room',
+
+    // ===============================================
+    // ROOM LOCATION
+    //
+    // Backend may return the configured location
+    // using "module"
+    // ===============================================
+
+    location:
+      room.location ||
+      room.roomLocation ||
+      room.locationName ||
+      room.module ||
+      room.room?.location ||
+      '',
+
+    // ===============================================
+    // MODULE
+    // ===============================================
+
+    module:
+      room.module ||
+      room.location ||
+      room.roomLocation ||
+      room.locationName ||
+      '',
+
+    // ===============================================
+    // CAPACITY
+    // ===============================================
+
+    capacity:
+      room.capacity ||
+      room.roomCapacity ||
+      room.maxCapacity ||
+      0,
+
+    // ===============================================
+    // FACILITIES
+    // ===============================================
+
+    facilities:
+      room.facilities ||
+      room.roomFacilities ||
+      [],
+  }))
+}
+
+// =====================================================
 // BOOK ROOM
 // =====================================================
 
@@ -87,8 +161,8 @@ export default function BookRoom() {
     attendees: prefillAttendees,
   })
 
-  // Field-specific validation errors
-  const [errors, setErrors] = useState({})
+  const [errors, setErrors] =
+    useState({})
 
   const [submitting, setSubmitting] =
     useState(false)
@@ -122,16 +196,25 @@ export default function BookRoom() {
     setLoadingRooms(true)
 
     getRoomAvailability(form.date)
-      .then((rooms) => {
+      .then((data) => {
         if (!active) return
 
+        // Normalize API response so BookRoom uses
+        // the same room structure consistently.
+        const mappedRooms =
+          normalizeRooms(data)
+
         setAvailableRooms(
-          rooms || []
+          mappedRooms
         )
+
+        // ===============================================
+        // PRESELECT ROOM FROM AVAILABILITY CALENDAR
+        // ===============================================
 
         if (roomIdParam) {
           const matchedRoom =
-            (rooms || []).find(
+            mappedRooms.find(
               (r) =>
                 String(r.roomId) ===
                 String(roomIdParam)
@@ -140,9 +223,11 @@ export default function BookRoom() {
           if (matchedRoom) {
             setForm((f) => ({
               ...f,
+
               module:
                 matchedRoom.module ||
                 f.module,
+
               roomId:
                 String(
                   matchedRoom.roomId
@@ -227,7 +312,6 @@ export default function BookRoom() {
       [key]: value,
     }))
 
-    // Clear the error for this field
     setErrors((prev) => ({
       ...prev,
       [key]: '',
@@ -312,10 +396,6 @@ export default function BookRoom() {
         'Number of attendees is required.'
     }
 
-    // -------------------------------------------------
-    // SHOW ALL REQUIRED FIELD ERRORS
-    // -------------------------------------------------
-
     if (
       Object.keys(newErrors).length > 0
     ) {
@@ -323,7 +403,6 @@ export default function BookRoom() {
       return
     }
 
-    // Clear previous errors
     setErrors({})
 
     // -------------------------------------------------
@@ -441,7 +520,8 @@ export default function BookRoom() {
 
     try {
       const payload = {
-        roomId: Number(form.roomId),
+        roomId:
+          Number(form.roomId),
 
         bookingDate:
           form.date,
@@ -517,8 +597,6 @@ export default function BookRoom() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
 
-      {/* PAGE TITLE */}
-
       <h1 className="font-display text-xl font-700">
         Booking
       </h1>
@@ -530,9 +608,7 @@ export default function BookRoom() {
           className="space-y-4"
         >
 
-          {/* =================================================
-              MEETING TITLE
-          ================================================= */}
+          {/* MEETING TITLE */}
 
           <Field label="Meeting Title">
 
@@ -555,13 +631,9 @@ export default function BookRoom() {
 
           </Field>
 
-          {/* =================================================
-              MODULE + ROOM
-          ================================================= */}
+          {/* MODULE + ROOM */}
 
           <div className="grid grid-cols-2 gap-4">
-
-            {/* MODULE */}
 
             <Field label="Module">
 
@@ -572,9 +644,7 @@ export default function BookRoom() {
                     e.target.value
                   )
                 }
-                disabled={
-                  loadingRooms
-                }
+                disabled={loadingRooms}
               >
 
                 <option value="">
@@ -601,8 +671,6 @@ export default function BookRoom() {
               )}
 
             </Field>
-
-            {/* ROOM */}
 
             <Field label="Room">
 
@@ -633,9 +701,7 @@ export default function BookRoom() {
                       value={r.roomId}
                     >
                       {r.roomName ||
-                        `Room ${
-                          index + 1
-                        }`}{' '}
+                        `Room ${index + 1}`}{' '}
                       (Cap: {r.capacity})
                     </option>
                   )
@@ -653,13 +719,9 @@ export default function BookRoom() {
 
           </div>
 
-          {/* =================================================
-              DATE + START TIME + END TIME
-          ================================================= */}
+          {/* DATE + TIME */}
 
           <div className="grid grid-cols-3 gap-4">
-
-            {/* DATE */}
 
             <Field label="Date">
 
@@ -683,17 +745,13 @@ export default function BookRoom() {
 
             </Field>
 
-            {/* START TIME */}
-
             <Field label="Start Time">
 
               <Input
                 type="time"
                 min={minStartTime}
                 max="18:00"
-                value={
-                  form.startTime
-                }
+                value={form.startTime}
                 onChange={(e) =>
                   update(
                     'startTime',
@@ -710,8 +768,6 @@ export default function BookRoom() {
 
             </Field>
 
-            {/* END TIME */}
-
             <Field label="End Time">
 
               <Input
@@ -721,9 +777,7 @@ export default function BookRoom() {
                   minStartTime
                 }
                 max="18:00"
-                value={
-                  form.endTime
-                }
+                value={form.endTime}
                 onChange={(e) =>
                   update(
                     'endTime',
@@ -742,9 +796,7 @@ export default function BookRoom() {
 
           </div>
 
-          {/* =================================================
-              ATTENDEES
-          ================================================= */}
+          {/* ATTENDEES */}
 
           <Field label="Number of Attendees">
 
@@ -755,9 +807,7 @@ export default function BookRoom() {
                 selectedRoomDetails?.capacity
               }
               className="w-32"
-              value={
-                form.attendees
-              }
+              value={form.attendees}
               onChange={(e) =>
                 update(
                   'attendees',
@@ -782,41 +832,15 @@ export default function BookRoom() {
               </p>
             )}
 
-            {/* FIELD-SPECIFIC ERROR */}
-
             {errors.attendees && (
               <p className="mt-1 text-sm font-medium text-red-600">
                 {errors.attendees}
               </p>
             )}
 
-            {/* CAPACITY WARNING */}
-
-            {selectedRoomDetails &&
-              Number(form.attendees) >
-                Number(
-                  selectedRoomDetails.capacity
-                ) && (
-
-                <p className="mt-1 text-sm font-medium text-red-600">
-
-                  ⚠ Number of participants
-                  cannot exceed the room
-                  capacity of{' '}
-
-                  {
-                    selectedRoomDetails.capacity
-                  }.
-
-                </p>
-
-              )}
-
           </Field>
 
-          {/* =================================================
-              CONFIRM BOOKING BUTTON
-          ================================================= */}
+          {/* CONFIRM BOOKING */}
 
           <Button
             type="submit"
@@ -890,6 +914,16 @@ export default function BookRoom() {
               Module:
             </strong>{' '}
             {form.module}
+          </p>
+
+          {/* FIXED ROOM LOCATION */}
+
+          <p>
+            <strong>
+              Location:
+            </strong>{' '}
+            {selectedRoomDetails?.location ||
+              'Location not specified'}
           </p>
 
           <p>
