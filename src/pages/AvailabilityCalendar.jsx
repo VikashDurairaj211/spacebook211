@@ -168,21 +168,30 @@ export default function AvailabilityCalendar() {
         );
 
         // =============================================
-        // HANDLE DIFFERENT API RESPONSE SHAPES
-        // =============================================
+// HANDLE DIFFERENT API RESPONSE SHAPES
+// =============================================
 
-        const availabilityRooms =
-          Array.isArray(data)
-            ? data
-            : data?.rooms ||
-              data?.data ||
-              data?.result ||
-              [];
+const availabilityRooms =
+  Array.isArray(data)
+    ? data
+    : data?.rooms ||
+      data?.data ||
+      data?.result ||
+      [];
 
-        console.log(
-          "Availability Rooms:",
-          availabilityRooms
-        );
+console.log(
+  "Availability Rooms:",
+  availabilityRooms
+);
+
+console.log(
+  "FIRST ROOM API DATA:",
+  JSON.stringify(
+    availabilityRooms[0],
+    null,
+    2
+  )
+);
 
         // =============================================
         // DEBUG: DISCUSSION ROOM 1
