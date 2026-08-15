@@ -110,11 +110,8 @@ export default function AvailabilityCalendar() {
   const today = localDate();
 
   const [selectedDate, setSelectedDate] = useState(today);
-
   const [rooms, setRooms] = useState([]);
-
   const [loading, setLoading] = useState(false);
-
   const [error, setError] = useState(null);
 
   const [filters, setFilters] = useState({
@@ -126,7 +123,9 @@ export default function AvailabilityCalendar() {
 
   const [selectedSlot, setSelectedSlot] = useState(null);
 
-  const [nowMinutes, setNowMinutes] = useState(getNowMinutes());
+  const [nowMinutes, setNowMinutes] = useState(
+    getNowMinutes()
+  );
 
   // =====================================================
   // UPDATE CURRENT TIME EVERY MINUTE
@@ -148,10 +147,6 @@ export default function AvailabilityCalendar() {
 
   useEffect(() => {
     let isMounted = true;
-
-    // -----------------------------------------------
-    // FRONTEND WEEKEND BLOCK
-    // -----------------------------------------------
 
     if (isWeekend(selectedDate)) {
       setRooms([]);
@@ -190,6 +185,19 @@ export default function AvailabilityCalendar() {
         );
 
         // =============================================
+        // DEBUG: DISCUSSION ROOM 1
+        // =============================================
+
+        console.log(
+          "Discussion Room 1:",
+          availabilityRooms.find(
+            (room) =>
+              room.roomName === "Discussion Room 1" ||
+              room.name === "Discussion Room 1"
+          )
+        );
+
+        // =============================================
         // MAP BACKEND DATA
         // =============================================
 
@@ -206,6 +214,23 @@ export default function AvailabilityCalendar() {
             room.slots ||
             room.availabilitySlots ||
             [];
+
+          // ===========================================
+          // GET ROOM LOCATION
+          // ===========================================
+
+          const roomLocation =
+            room.location ||
+            room.roomLocation ||
+            room.locationName ||
+            room.module ||
+            room.moduleName ||
+            room.office ||
+            room.officeName ||
+            room.room?.location ||
+            room.room?.module ||
+            room.room?.moduleName ||
+            "";
 
           return {
             ...room,
@@ -239,19 +264,9 @@ export default function AvailabilityCalendar() {
 
             // -----------------------------------------
             // ROOM LOCATION
-            //
-            // FIX:
-            // Backend may return the configured room
-            // location using the "module" property.
             // -----------------------------------------
 
-            location:
-              room.location ||
-              room.roomLocation ||
-              room.locationName ||
-              room.module ||
-              room.room?.location ||
-              "",
+            location: roomLocation,
 
             // -----------------------------------------
             // CAPACITY
@@ -313,9 +328,16 @@ export default function AvailabilityCalendar() {
           mappedRooms
         );
 
+        console.log(
+          "Mapped Discussion Room 1:",
+          mappedRooms.find(
+            (room) =>
+              room.name === "Discussion Room 1"
+          )
+        );
+
         setRooms(mappedRooms);
       })
-
       .catch((err) => {
         if (isMounted) {
           setError(
@@ -328,7 +350,6 @@ export default function AvailabilityCalendar() {
           err
         );
       })
-
       .finally(() => {
         if (isMounted) {
           setLoading(false);
@@ -353,10 +374,6 @@ export default function AvailabilityCalendar() {
 
   const filteredRooms = useMemo(() => {
     const result = rooms.filter((room) => {
-      // ---------------------------------------------
-      // ROOM TYPE FILTER
-      // ---------------------------------------------
-
       if (filters.type !== "All Rooms") {
         const selectedType =
           normalizeRoomType(filters.type);
@@ -368,10 +385,6 @@ export default function AvailabilityCalendar() {
           return false;
         }
       }
-
-      // ---------------------------------------------
-      // CAPACITY FILTER
-      // ---------------------------------------------
 
       if (
         filters.capacity &&
@@ -431,7 +444,6 @@ export default function AvailabilityCalendar() {
           timeSlots: futureSlots,
         };
       })
-
       .filter(
         (room) =>
           room.timeSlots.length > 0
@@ -469,7 +481,6 @@ export default function AvailabilityCalendar() {
     }
 
     setSelectedDate(nextDate);
-
     setSelectedSlot(null);
   }
 
@@ -491,7 +502,6 @@ export default function AvailabilityCalendar() {
     }
 
     setSelectedDate(value);
-
     setSelectedSlot(null);
   }
 
@@ -519,10 +529,7 @@ export default function AvailabilityCalendar() {
       const slotStartMinutes =
         timeToMinutes(slotStart);
 
-      if (
-        slotStartMinutes <=
-        nowMinutes
-      ) {
+      if (slotStartMinutes <= nowMinutes) {
         alert(
           "Cannot select or book a time slot in the past for today."
         );
@@ -627,8 +634,6 @@ export default function AvailabilityCalendar() {
 
         <div className="flex flex-nowrap items-center gap-3">
 
-          {/* PREVIOUS DAY */}
-
           <Button
             variant="secondary"
             onClick={() =>
@@ -642,8 +647,6 @@ export default function AvailabilityCalendar() {
             <ChevronLeft size={16} />
           </Button>
 
-          {/* DATE */}
-
           <input
             type="date"
             min={today}
@@ -656,8 +659,6 @@ export default function AvailabilityCalendar() {
             className="min-w-[170px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
           />
 
-          {/* NEXT DAY */}
-
           <Button
             variant="secondary"
             onClick={() =>
@@ -667,8 +668,6 @@ export default function AvailabilityCalendar() {
           >
             <ChevronRight size={16} />
           </Button>
-
-          {/* ROOM TYPE */}
 
           <Select
             value={filters.type}
@@ -743,9 +742,7 @@ export default function AvailabilityCalendar() {
             {selectedSlot?.status ===
               "Available" && (
               <Link
-                to={bookingLink(
-                  selectedSlot
-                )}
+                to={bookingLink(selectedSlot)}
               >
                 <Button
                   onClick={() =>
