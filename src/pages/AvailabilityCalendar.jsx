@@ -72,7 +72,10 @@ function getWorkingDay(dateString, delta) {
 
   do {
     next.setDate(next.getDate() + delta);
-  } while (next.getDay() === 0 || next.getDay() === 6);
+  } while (
+    next.getDay() === 0 ||
+    next.getDay() === 6
+  );
 
   return localDate(next);
 }
@@ -113,31 +116,65 @@ function getRoomLocation(room) {
     return "Location not specified";
   }
 
-  const location =
-    room.module ??
-    room.Module ??
-    room.location ??
-    room.Location ??
-    room.roomLocation ??
-    room.RoomLocation ??
-    room.locationName ??
-    room.LocationName ??
-    room.officeLocation ??
-    room.office?.location ??
-    room.room?.module ??
-    room.room?.Module ??
-    room.room?.location ??
-    room.room?.Location;
+  const possibleLocations = [
+    room.resolvedLocation,
+    room.module,
+    room.Module,
+    room.location,
+    room.Location,
+    room.roomLocation,
+    room.RoomLocation,
+    room.locationName,
+    room.LocationName,
+    room.officeLocation,
 
-  if (
-    location === null ||
-    location === undefined ||
-    String(location).trim() === ""
-  ) {
-    return "Location not specified";
+    room.office?.location,
+    room.office?.Location,
+
+    room.room?.resolvedLocation,
+    room.room?.module,
+    room.room?.Module,
+    room.room?.location,
+    room.room?.Location,
+    room.room?.roomLocation,
+    room.room?.RoomLocation,
+  ];
+
+  const validLocation =
+    possibleLocations.find(
+      (value) =>
+        value !== null &&
+        value !== undefined &&
+        String(value).trim() !== ""
+    );
+
+  return validLocation
+    ? String(validLocation).trim()
+    : "Location not specified";
+}
+
+// =====================================================
+// NORMALIZE FACILITIES
+// =====================================================
+
+function normalizeFacilities(facilities) {
+  if (!Array.isArray(facilities)) {
+    return [];
   }
 
-  return String(location).trim();
+  return facilities.map((facility) => {
+    if (typeof facility === "string") {
+      return facility;
+    }
+
+    return (
+      facility?.name ||
+      facility?.facilityName ||
+      facility?.Name ||
+      facility?.FacilityName ||
+      String(facility)
+    );
+  });
 }
 
 // =====================================================
@@ -147,26 +184,31 @@ function getRoomLocation(room) {
 export default function AvailabilityCalendar() {
   const today = localDate();
 
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedDate, setSelectedDate] =
+    useState(today);
 
-  const [rooms, setRooms] = useState([]);
+  const [rooms, setRooms] =
+    useState([]);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] =
+    useState(false);
 
-  const [error, setError] = useState(null);
+  const [error, setError] =
+    useState(null);
 
-  const [filters, setFilters] = useState({
-    type: "All Rooms",
-    capacity: "",
-    startTime: "",
-    endTime: "",
-  });
+  const [filters, setFilters] =
+    useState({
+      type: "All Rooms",
+      capacity: "",
+      startTime: "",
+      endTime: "",
+    });
 
-  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedSlot, setSelectedSlot] =
+    useState(null);
 
-  const [nowMinutes, setNowMinutes] = useState(
-    getNowMinutes()
-  );
+  const [nowMinutes, setNowMinutes] =
+    useState(getNowMinutes());
 
   // =====================================================
   // UPDATE CURRENT TIME EVERY MINUTE
@@ -192,6 +234,7 @@ export default function AvailabilityCalendar() {
     if (isWeekend(selectedDate)) {
       setRooms([]);
       setLoading(false);
+      setError(null);
 
       return;
     }
@@ -237,28 +280,20 @@ export default function AvailabilityCalendar() {
               [];
 
             // ===========================================
-            // GET LOCATION DIRECTLY FROM API RESPONSE
+            // RESOLVE LOCATION ONCE
             // ===========================================
 
             const resolvedLocation =
               getRoomLocation(room);
 
-            console.log(
-              "Room:",
-              room.roomName || room.name
-            );
+            const normalizedFacilities =
+              normalizeFacilities(
+                room.facilities ||
+                room.roomFacilities ||
+                []
+              );
 
-            console.log(
-              "Raw Module:",
-              room.module
-            );
-
-            console.log(
-              "Resolved Location:",
-              resolvedLocation
-            );
-
-            return {
+            const mappedRoom = {
               ...room,
 
               // -----------------------------------------
@@ -266,6 +301,11 @@ export default function AvailabilityCalendar() {
               // -----------------------------------------
 
               id:
+                room.roomId ||
+                room.id ||
+                room.roomID,
+
+              roomId:
                 room.roomId ||
                 room.id ||
                 room.roomID,
@@ -280,6 +320,12 @@ export default function AvailabilityCalendar() {
                 room.roomNumber ||
                 "Unnamed Room",
 
+              roomName:
+                room.roomName ||
+                room.name ||
+                room.roomNumber ||
+                "Unnamed Room",
+
               // -----------------------------------------
               // ROOM TYPE
               // -----------------------------------------
@@ -289,23 +335,30 @@ export default function AvailabilityCalendar() {
                   rawRoomType
                 ),
 
+              roomType:
+                normalizeRoomType(
+                  rawRoomType
+                ),
+
               rawRoomType,
 
               // -----------------------------------------
               // LOCATION
+              //
+              // Store the SAME resolved value in all
+              // commonly used location fields.
               // -----------------------------------------
+
+              resolvedLocation,
 
               location:
                 resolvedLocation,
 
-              // IMPORTANT:
-              // Explicitly preserve module as well.
+              roomLocation:
+                resolvedLocation,
+
               module:
-                room.module ||
-                room.Module ||
-                room.room?.module ||
-                room.room?.Module ||
-                "",
+                resolvedLocation,
 
               // -----------------------------------------
               // CAPACITY
@@ -322,9 +375,10 @@ export default function AvailabilityCalendar() {
               // -----------------------------------------
 
               facilities:
-                room.facilities ||
-                room.roomFacilities ||
-                [],
+                normalizedFacilities,
+
+              roomFacilities:
+                normalizedFacilities,
 
               // -----------------------------------------
               // CURRENT BOOKING
@@ -361,6 +415,18 @@ export default function AvailabilityCalendar() {
                     false,
                 })),
             };
+
+            console.log(
+              "Mapped Room:",
+              mappedRoom
+            );
+
+            console.log(
+              "Resolved Location:",
+              mappedRoom.resolvedLocation
+            );
+
+            return mappedRoom;
           });
 
         console.log(
@@ -408,6 +474,10 @@ export default function AvailabilityCalendar() {
 
   const filteredRooms = useMemo(() => {
     const result = rooms.filter((room) => {
+      // -----------------------------------------------
+      // ROOM TYPE FILTER
+      // -----------------------------------------------
+
       if (filters.type !== "All Rooms") {
         const selectedType =
           normalizeRoomType(
@@ -423,6 +493,10 @@ export default function AvailabilityCalendar() {
           return false;
         }
       }
+
+      // -----------------------------------------------
+      // CAPACITY FILTER
+      // -----------------------------------------------
 
       if (
         filters.capacity &&
@@ -459,23 +533,19 @@ export default function AvailabilityCalendar() {
 
     return filteredRooms
       .map((room) => {
-        const timeSlots =
-          room.timeSlots || [];
-
         const futureSlots =
-          timeSlots.filter((slot) => {
-            const slotStart =
-              slot.start ||
-              slot.startTime;
+          (room.timeSlots || []).filter(
+            (slot) => {
+              const slotStart =
+                slot.start ||
+                slot.startTime;
 
-            const slotStartMinutes =
-              timeToMinutes(slotStart);
-
-            return (
-              slotStartMinutes >
-              nowMinutes
-            );
-          });
+              return (
+                timeToMinutes(slotStart) >
+                nowMinutes
+              );
+            }
+          );
 
         return {
           ...room,
@@ -519,7 +589,6 @@ export default function AvailabilityCalendar() {
     }
 
     setSelectedDate(nextDate);
-
     setSelectedSlot(null);
   }
 
@@ -541,7 +610,6 @@ export default function AvailabilityCalendar() {
     }
 
     setSelectedDate(value);
-
     setSelectedSlot(null);
   }
 
@@ -566,11 +634,8 @@ export default function AvailabilityCalendar() {
         slot.slot.start ||
         slot.slot.startTime;
 
-      const slotStartMinutes =
-        timeToMinutes(slotStart);
-
       if (
-        slotStartMinutes <=
+        timeToMinutes(slotStart) <=
         nowMinutes
       ) {
         alert(
@@ -581,22 +646,57 @@ export default function AvailabilityCalendar() {
       }
     }
 
+    // ===============================================
+    // IMPORTANT FIX
+    //
+    // Create a new room object and explicitly preserve
+    // the resolved location before storing the selected
+    // slot in state.
+    // ===============================================
+
+    const resolvedLocation =
+      getRoomLocation(slot.room);
+
+    const selectedRoom = {
+      ...slot.room,
+
+      resolvedLocation,
+
+      location:
+        resolvedLocation,
+
+      roomLocation:
+        resolvedLocation,
+
+      module:
+        resolvedLocation,
+    };
+
+    const selectedSlotData = {
+      ...slot,
+
+      room:
+        selectedRoom,
+    };
+
     console.log(
       "Selected Slot:",
-      slot
+      selectedSlotData
     );
 
     console.log(
       "Selected Room:",
-      slot.room
+      selectedRoom
     );
 
     console.log(
-      "Selected Room Location:",
-      getRoomLocation(slot.room)
+      "FINAL MODAL LOCATION:",
+      selectedRoom.resolvedLocation
     );
 
-    setSelectedSlot(slot);
+    setSelectedSlot(
+      selectedSlotData
+    );
   }
 
   // =====================================================
@@ -617,12 +717,25 @@ export default function AvailabilityCalendar() {
         roomId: String(
           slot.room.id
         ),
-        date: selectedDate,
+
+        date:
+          selectedDate,
+
         startTime,
+
         endTime,
-        attendees: String(
-          filters.capacity || 1
-        ),
+
+        attendees:
+          String(
+            filters.capacity || 1
+          ),
+
+        // Location can also be passed to the booking page
+        // if that page needs to display it.
+        location:
+          getRoomLocation(
+            slot.room
+          ),
       });
 
     return `/book-room?${params.toString()}`;
@@ -632,7 +745,9 @@ export default function AvailabilityCalendar() {
   // STATUS BADGE
   // =====================================================
 
-  const getStatusBadgeClass = (status) => {
+  const getStatusBadgeClass = (
+    status
+  ) => {
     const s =
       status?.toLowerCase() || "";
 
@@ -849,9 +964,10 @@ export default function AvailabilityCalendar() {
 
             <p>
               Location:{" "}
-              {getRoomLocation(
-                selectedSlot.room
-              )}
+              {selectedSlot.room.resolvedLocation ||
+                getRoomLocation(
+                  selectedSlot.room
+                )}
             </p>
 
             {/* DATE AND TIME */}
@@ -870,9 +986,12 @@ export default function AvailabilityCalendar() {
 
             <p>
               Facilities:{" "}
-              {selectedSlot.room.facilities?.join(
-                ", "
-              ) || "None"}
+
+              {selectedSlot.room.facilities?.length
+                ? selectedSlot.room.facilities.join(
+                    ", "
+                  )
+                : "None"}
             </p>
 
             {/* STATUS */}
