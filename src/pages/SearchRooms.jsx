@@ -41,7 +41,6 @@ function ScrollableTimePicker({
   selectedDate,
 }) {
   const [isOpen, setIsOpen] = useState(false);
-
   const containerRef = useRef(null);
 
   const [hours = "09", minutes = "00"] =
@@ -52,12 +51,14 @@ function ScrollableTimePicker({
   // Office hours: 09:00 to 18:00
   const hoursList = Array.from(
     { length: 10 },
-    (_, i) => String(i + 9).padStart(2, "0")
+    (_, i) =>
+      String(i + 9).padStart(2, "0")
   );
 
   const minutesList = Array.from(
     { length: 60 },
-    (_, i) => String(i).padStart(2, "0")
+    (_, i) =>
+      String(i).padStart(2, "0")
   );
 
   // =====================================================
@@ -68,8 +69,14 @@ function ScrollableTimePicker({
 
   const todayStr = [
     now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
+    String(now.getMonth() + 1).padStart(
+      2,
+      "0"
+    ),
+    String(now.getDate()).padStart(
+      2,
+      "0"
+    ),
   ].join("-");
 
   const isToday =
@@ -90,7 +97,9 @@ function ScrollableTimePicker({
       return false;
     }
 
-    return Number(hour) < currentHour;
+    return (
+      Number(hour) < currentHour
+    );
   };
 
   // =====================================================
@@ -112,22 +121,19 @@ function ScrollableTimePicker({
       Number(minute);
 
     if (
-      selectedHour <
-      currentHour
+      selectedHour < currentHour
     ) {
       return true;
     }
 
     if (
-      selectedHour >
-      currentHour
+      selectedHour > currentHour
     ) {
       return false;
     }
 
     return (
-      selectedMinute <=
-      currentMinute
+      selectedMinute <= currentMinute
     );
   };
 
@@ -260,6 +266,7 @@ function ScrollableTimePicker({
                 </div>
               );
             })}
+
           </div>
 
           {/* MINUTES */}
@@ -300,6 +307,7 @@ function ScrollableTimePicker({
                 </div>
               );
             })}
+
           </div>
 
         </div>
@@ -313,6 +321,7 @@ function ScrollableTimePicker({
 // =====================================================
 
 export default function SearchRooms() {
+
   const [filters, setFilters] =
     useState(INITIAL_FILTERS);
 
@@ -338,6 +347,13 @@ export default function SearchRooms() {
     useState(null);
 
   const [detailsOpen, setDetailsOpen] =
+    useState(false);
+
+  // =====================================================
+  // NEW: TRACK CAPACITY VALIDATION
+  // =====================================================
+
+  const [capacityExceeded, setCapacityExceeded] =
     useState(false);
 
   // =====================================================
@@ -411,6 +427,9 @@ export default function SearchRooms() {
       return next;
     });
 
+    // Reset previous validation result
+    setCapacityExceeded(false);
+
     setError("");
   }
 
@@ -420,6 +439,9 @@ export default function SearchRooms() {
 
   async function handleSearch(e) {
     e.preventDefault();
+
+    // Reset capacity validation for every search
+    setCapacityExceeded(false);
 
     if (!canSearch) {
       setError(
@@ -434,15 +456,10 @@ export default function SearchRooms() {
 
     if (
       filters.capacity &&
-      (
-        !Number.isInteger(
-          Number(filters.capacity)
-        ) ||
-        Number(filters.capacity) < 1
-      )
+      Number(filters.capacity) < 1
     ) {
       setError(
-        "Please enter a valid number of participants."
+        "Number of participants must be at least 1."
       );
       return;
     }
@@ -497,6 +514,7 @@ export default function SearchRooms() {
     // =================================================
 
     if (filters.date) {
+
       const selectedDate =
         new Date(
           `${filters.date}T00:00:00`
@@ -546,7 +564,7 @@ export default function SearchRooms() {
       }
 
       // ===============================================
-      // CURRENT TIME VALIDATION FOR TODAY
+      // CURRENT TIME VALIDATION
       // ===============================================
 
       const now =
@@ -565,6 +583,7 @@ export default function SearchRooms() {
       if (
         filters.date === todayStr
       ) {
+
         const currentTime =
           `${String(
             now.getHours()
@@ -600,10 +619,9 @@ export default function SearchRooms() {
 
     setLoading(true);
     setError("");
-    setResults([]);
-    setSearched(false);
 
     try {
+
       const searchPayload = {
         module:
           filters.module ||
@@ -645,18 +663,33 @@ export default function SearchRooms() {
           searchPayload
         );
 
-      const roomResults =
+      const searchResults =
         Array.isArray(data)
           ? data
           : [];
 
-      setResults(roomResults);
+      setResults(
+        searchResults
+      );
+
+      // ===============================================
+      // CAPACITY EXCEEDED DETECTION
+      // ===============================================
+
+      if (
+        searchResults.length === 0 &&
+        filters.capacity &&
+        Number(filters.capacity) > 0
+      ) {
+        setCapacityExceeded(true);
+      }
 
       setResultsOpen(true);
 
       setSearched(true);
 
     } catch (err) {
+
       console.error(err);
 
       setError(
@@ -665,7 +698,9 @@ export default function SearchRooms() {
       );
 
     } finally {
+
       setLoading(false);
+
     }
   }
 
@@ -683,6 +718,7 @@ export default function SearchRooms() {
   // =====================================================
 
   function bookRoomLink(roomId) {
+
     const params =
       new URLSearchParams();
 
@@ -728,6 +764,7 @@ export default function SearchRooms() {
 
   const getStatusBadgeClass =
     (status) => {
+
       const s =
         status?.toLowerCase() ||
         "";
@@ -789,15 +826,6 @@ export default function SearchRooms() {
   ].join("-");
 
   // =====================================================
-  // NO RESULTS MESSAGE
-  // =====================================================
-
-  const noResultsMessage =
-    filters.capacity
-      ? "No room can accommodate the selected number of participants."
-      : "No rooms are available for the selected criteria.";
-
-  // =====================================================
   // UI
   // =====================================================
 
@@ -805,6 +833,7 @@ export default function SearchRooms() {
     <div className="space-y-6">
 
       <div>
+
         <h1 className="font-display text-3xl font-bold">
           Search Rooms
         </h1>
@@ -812,20 +841,24 @@ export default function SearchRooms() {
         <p className="mt-2 text-slate-600">
           Enter any search criteria to find available rooms.
         </p>
+
       </div>
 
       {/* SEARCH FORM */}
 
       <Card>
+
         <form
           onSubmit={handleSearch}
           className="space-y-5"
         >
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 
             {/* MODULE */}
 
             <Field label="1. Select Module">
+
               <Select
                 value={filters.module}
                 onChange={(e) =>
@@ -835,6 +868,7 @@ export default function SearchRooms() {
                   )
                 }
               >
+
                 <option value="">
                   Select Module
                 </option>
@@ -849,12 +883,15 @@ export default function SearchRooms() {
                     </option>
                   )
                 )}
+
               </Select>
+
             </Field>
 
             {/* ROOM TYPE */}
 
             <Field label="2. Select Room Type">
+
               <Select
                 disabled={!canChooseType}
                 value={filters.roomTypeId}
@@ -865,6 +902,7 @@ export default function SearchRooms() {
                   )
                 }
               >
+
                 <option value="">
                   {canChooseType
                     ? "Select Room Type"
@@ -881,16 +919,18 @@ export default function SearchRooms() {
                     </option>
                   )
                 )}
+
               </Select>
+
             </Field>
 
             {/* PARTICIPANTS */}
 
             <Field label="3. Number of Participants">
+
               <Input
                 type="number"
                 min="1"
-                step="1"
                 value={filters.capacity}
                 placeholder="Enter count"
                 onChange={(e) =>
@@ -900,11 +940,13 @@ export default function SearchRooms() {
                   )
                 }
               />
+
             </Field>
 
-            {/* BOOKING DATE */}
+            {/* DATE */}
 
             <Field label="4. Booking Date">
+
               <Input
                 type="date"
                 min={todayStr}
@@ -917,6 +959,7 @@ export default function SearchRooms() {
                   )
                 }
               />
+
             </Field>
 
             {/* START TIME */}
@@ -972,6 +1015,7 @@ export default function SearchRooms() {
           </Button>
 
         </form>
+
       </Card>
 
       {/* MY BOOKINGS */}
@@ -981,6 +1025,7 @@ export default function SearchRooms() {
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
 
           <div>
+
             <h2 className="text-lg font-semibold">
               My Bookings
             </h2>
@@ -988,6 +1033,7 @@ export default function SearchRooms() {
             <p className="text-sm text-slate-500">
               Your recent workspace reservations.
             </p>
+
           </div>
 
           <Link
@@ -1000,10 +1046,13 @@ export default function SearchRooms() {
         </div>
 
         {bookings.length === 0 ? (
+
           <div className="p-5 text-sm text-slate-500">
             No bookings found.
           </div>
+
         ) : (
+
           <div className="divide-y">
 
             {bookings
@@ -1014,7 +1063,9 @@ export default function SearchRooms() {
                   key={booking.bookingId}
                   className="flex items-center justify-between p-4"
                 >
+
                   <div>
+
                     <p className="font-semibold">
                       {booking.roomName}
                     </p>
@@ -1042,6 +1093,7 @@ export default function SearchRooms() {
                         : ""}
 
                     </p>
+
                   </div>
 
                   <span
@@ -1051,11 +1103,13 @@ export default function SearchRooms() {
                   >
                     {booking.status}
                   </span>
+
                 </div>
 
               ))}
 
           </div>
+
         )}
 
       </Card>
@@ -1089,20 +1143,49 @@ export default function SearchRooms() {
       >
 
         <p className="mb-4 text-sm text-slate-600">
+
           {results.length} room
+
           {results.length !== 1
             ? "s"
             : ""}{" "}
+
           found.
+
         </p>
 
-        {/* UPDATED EMPTY RESULT MESSAGE */}
+        {/* =========================================== */}
+        {/* NO RESULTS */}
+        {/* =========================================== */}
 
         {results.length === 0 ? (
-          <p className="text-sm font-medium text-slate-700">
-            {noResultsMessage}
-          </p>
+
+          <div className="space-y-2">
+
+            {capacityExceeded ? (
+
+              <>
+                <p className="text-sm font-medium text-red-600">
+                  No room can accommodate the selected number of participants.
+                </p>
+
+                <p className="text-sm text-slate-500">
+                  Please enter a smaller number of participants and search again.
+                </p>
+              </>
+
+            ) : (
+
+              <p className="text-sm text-slate-500">
+                No rooms are available for the selected criteria.
+              </p>
+
+            )}
+
+          </div>
+
         ) : (
+
           <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-1">
 
             {results.map(
@@ -1113,6 +1196,7 @@ export default function SearchRooms() {
                   <div className="flex items-start justify-between">
 
                     <div>
+
                       <h3 className="text-lg font-semibold">
                         {room.roomName}
                       </h3>
@@ -1120,6 +1204,7 @@ export default function SearchRooms() {
                       <p className="text-sm text-slate-500">
                         {room.module}
                       </p>
+
                     </div>
 
                     <span
@@ -1193,6 +1278,7 @@ export default function SearchRooms() {
             )}
 
           </div>
+
         )}
 
       </Modal>
@@ -1225,6 +1311,7 @@ export default function SearchRooms() {
             <div className="flex items-center justify-between">
 
               <div>
+
                 <p className="text-base font-bold text-slate-900">
                   {selectedRoom.roomName}
                 </p>
@@ -1232,6 +1319,7 @@ export default function SearchRooms() {
                 <p className="text-slate-500">
                   {selectedRoom.module}
                 </p>
+
               </div>
 
               <span
@@ -1281,7 +1369,9 @@ export default function SearchRooms() {
 
               {(filters.startTime ||
                 filters.endTime) && (
+
                 <p>
+
                   <span className="font-medium text-slate-700">
                     Time Slot:
                   </span>{" "}
@@ -1293,7 +1383,9 @@ export default function SearchRooms() {
 
                   {filters.endTime ||
                     "--:--"}
+
                 </p>
+
               )}
 
             </div>
@@ -1317,6 +1409,7 @@ export default function SearchRooms() {
             </div>
 
           </div>
+
         )}
 
       </Modal>
@@ -1338,6 +1431,7 @@ export default function SearchRooms() {
                   <div className="mb-3 flex items-start justify-between">
 
                     <div>
+
                       <h3 className="font-semibold">
                         {room.roomName}
                       </h3>
@@ -1345,6 +1439,7 @@ export default function SearchRooms() {
                       <p className="text-sm text-slate-500">
                         {room.module}
                       </p>
+
                     </div>
 
                     <span
@@ -1358,20 +1453,27 @@ export default function SearchRooms() {
                   </div>
 
                   <p className="text-sm">
+
                     <strong>
                       Room Type:
                     </strong>{" "}
+
                     {room.roomType}
+
                   </p>
 
                   <p className="text-sm">
+
                     <strong>
                       Capacity:
                     </strong>{" "}
+
                     {room.capacity}
+
                   </p>
 
                   <p className="mb-4 text-sm">
+
                     <strong>
                       Facilities:
                     </strong>{" "}
@@ -1379,6 +1481,7 @@ export default function SearchRooms() {
                     {room.facilities?.length
                       ? room.facilities.join(", ")
                       : "None"}
+
                   </p>
 
                   <div className="flex gap-2">
@@ -1412,6 +1515,7 @@ export default function SearchRooms() {
             )}
 
           </div>
+
         )}
 
     </div>
