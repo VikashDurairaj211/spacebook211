@@ -1035,12 +1035,6 @@ export default function SearchRooms() {
 
           </div>
 
-          {/* OFFICE HOURS INFORMATION */}
-
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-            Office hours: <strong>10:00 AM to 07:00 PM</strong>
-          </div>
-
           {/* ERROR */}
 
           {error && (
