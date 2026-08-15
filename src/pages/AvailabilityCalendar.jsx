@@ -110,8 +110,11 @@ export default function AvailabilityCalendar() {
   const today = localDate();
 
   const [selectedDate, setSelectedDate] = useState(today);
+
   const [rooms, setRooms] = useState([]);
+
   const [loading, setLoading] = useState(false);
+
   const [error, setError] = useState(null);
 
   const [filters, setFilters] = useState({
@@ -123,9 +126,7 @@ export default function AvailabilityCalendar() {
 
   const [selectedSlot, setSelectedSlot] = useState(null);
 
-  const [nowMinutes, setNowMinutes] = useState(
-    getNowMinutes()
-  );
+  const [nowMinutes, setNowMinutes] = useState(getNowMinutes());
 
   // =====================================================
   // UPDATE CURRENT TIME EVERY MINUTE
@@ -148,6 +149,10 @@ export default function AvailabilityCalendar() {
   useEffect(() => {
     let isMounted = true;
 
+    // -------------------------------------------------
+    // FRONTEND WEEKEND BLOCK
+    // -------------------------------------------------
+
     if (isWeekend(selectedDate)) {
       setRooms([]);
       setLoading(false);
@@ -168,185 +173,151 @@ export default function AvailabilityCalendar() {
         );
 
         // =============================================
-// HANDLE DIFFERENT API RESPONSE SHAPES
-// =============================================
-
-const availabilityRooms =
-  Array.isArray(data)
-    ? data
-    : data?.rooms ||
-      data?.data ||
-      data?.result ||
-      [];
-
-console.log(
-  "Availability Rooms:",
-  availabilityRooms
-);
-
-console.log(
-  "FIRST ROOM API DATA:",
-  JSON.stringify(
-    availabilityRooms[0],
-    null,
-    2
-  )
-);
-
+        // HANDLE DIFFERENT API RESPONSE SHAPES
         // =============================================
-        // DEBUG: DISCUSSION ROOM 1
-        // =============================================
+
+        const availabilityRooms =
+          Array.isArray(data)
+            ? data
+            : data?.rooms ||
+              data?.data ||
+              data?.result ||
+              [];
 
         console.log(
-          "Discussion Room 1:",
-          availabilityRooms.find(
-            (room) =>
-              room.roomName === "Discussion Room 1" ||
-              room.name === "Discussion Room 1"
-          )
+          "Availability Rooms:",
+          availabilityRooms
         );
 
         // =============================================
         // MAP BACKEND DATA
         // =============================================
 
-        const mappedRooms = availabilityRooms.map((room) => {
-          const rawRoomType =
-            room.roomType ||
-            room.type ||
-            room.roomTypeName ||
-            room.typeName ||
-            "";
+        const mappedRooms =
+          availabilityRooms.map((room) => {
+            const rawRoomType =
+              room.roomType ||
+              room.type ||
+              room.roomTypeName ||
+              room.typeName ||
+              "";
 
-          const rawTimeSlots =
-            room.timeSlots ||
-            room.slots ||
-            room.availabilitySlots ||
-            [];
+            const rawTimeSlots =
+              room.timeSlots ||
+              room.slots ||
+              room.availabilitySlots ||
+              [];
 
-          // ===========================================
-          // GET ROOM LOCATION
-          // ===========================================
+            return {
+              ...room,
 
-          const roomLocation =
-            room.location ||
-            room.roomLocation ||
-            room.locationName ||
-            room.module ||
-            room.moduleName ||
-            room.office ||
-            room.officeName ||
-            room.room?.location ||
-            room.room?.module ||
-            room.room?.moduleName ||
-            "";
+              // ---------------------------------------
+              // ROOM ID
+              // ---------------------------------------
 
-          return {
-            ...room,
+              id:
+                room.roomId ||
+                room.id ||
+                room.roomID,
 
-            // -----------------------------------------
-            // ROOM ID
-            // -----------------------------------------
+              // ---------------------------------------
+              // ROOM NAME
+              // ---------------------------------------
 
-            id:
-              room.roomId ||
-              room.id ||
-              room.roomID,
+              name:
+                room.roomName ||
+                room.name ||
+                room.roomNumber ||
+                "Unnamed Room",
 
-            // -----------------------------------------
-            // ROOM NAME
-            // -----------------------------------------
+              // ---------------------------------------
+              // ROOM TYPE
+              // ---------------------------------------
 
-            name:
-              room.roomName ||
-              room.name ||
-              room.roomNumber ||
-              "Unnamed Room",
+              type: normalizeRoomType(rawRoomType),
 
-            // -----------------------------------------
-            // ROOM TYPE
-            // -----------------------------------------
+              rawRoomType,
 
-            type: normalizeRoomType(rawRoomType),
+              // ---------------------------------------
+              // ROOM LOCATION
+              //
+              // IMPORTANT:
+              // Backend currently provides the location
+              // through the "module" property.
+              // ---------------------------------------
 
-            rawRoomType,
-
-            // -----------------------------------------
-            // ROOM LOCATION
-            // -----------------------------------------
-
-            location: roomLocation,
-
-            // -----------------------------------------
-            // CAPACITY
-            // -----------------------------------------
-
-            capacity:
-              room.capacity ||
-              room.roomCapacity ||
-              room.maxCapacity ||
-              0,
-
-            // -----------------------------------------
-            // FACILITIES
-            // -----------------------------------------
-
-            facilities:
-              room.facilities ||
-              room.roomFacilities ||
-              [],
-
-            // -----------------------------------------
-            // CURRENT BOOKING
-            // -----------------------------------------
-
-            currentBooking:
-              room.currentBooking ||
-              room.booking ||
-              null,
-
-            // -----------------------------------------
-            // TIME SLOTS
-            // -----------------------------------------
-
-            timeSlots: rawTimeSlots.map((slot) => ({
-              ...slot,
-
-              start:
-                slot.start ||
-                slot.startTime ||
-                slot.fromTime ||
+              location:
+                room.module ||
+                room.location ||
+                room.roomLocation ||
+                room.locationName ||
+                room.room?.location ||
                 "",
 
-              end:
-                slot.end ||
-                slot.endTime ||
-                slot.toTime ||
-                "",
+              // ---------------------------------------
+              // CAPACITY
+              // ---------------------------------------
 
-              isBooked:
-                slot.isBooked ??
-                slot.booked ??
-                false,
-            })),
-          };
-        });
+              capacity:
+                room.capacity ||
+                room.roomCapacity ||
+                room.maxCapacity ||
+                0,
+
+              // ---------------------------------------
+              // FACILITIES
+              // ---------------------------------------
+
+              facilities:
+                room.facilities ||
+                room.roomFacilities ||
+                [],
+
+              // ---------------------------------------
+              // CURRENT BOOKING
+              // ---------------------------------------
+
+              currentBooking:
+                room.currentBooking ||
+                room.booking ||
+                null,
+
+              // ---------------------------------------
+              // TIME SLOTS
+              // ---------------------------------------
+
+              timeSlots:
+                rawTimeSlots.map((slot) => ({
+                  ...slot,
+
+                  start:
+                    slot.start ||
+                    slot.startTime ||
+                    slot.fromTime ||
+                    "",
+
+                  end:
+                    slot.end ||
+                    slot.endTime ||
+                    slot.toTime ||
+                    "",
+
+                  isBooked:
+                    slot.isBooked ??
+                    slot.booked ??
+                    false,
+                })),
+            };
+          });
 
         console.log(
           "Mapped Rooms:",
           mappedRooms
         );
 
-        console.log(
-          "Mapped Discussion Room 1:",
-          mappedRooms.find(
-            (room) =>
-              room.name === "Discussion Room 1"
-          )
-        );
-
         setRooms(mappedRooms);
       })
+
       .catch((err) => {
         if (isMounted) {
           setError(
@@ -359,6 +330,7 @@ console.log(
           err
         );
       })
+
       .finally(() => {
         if (isMounted) {
           setLoading(false);
@@ -383,6 +355,10 @@ console.log(
 
   const filteredRooms = useMemo(() => {
     const result = rooms.filter((room) => {
+      // -----------------------------------------------
+      // ROOM TYPE FILTER
+      // -----------------------------------------------
+
       if (filters.type !== "All Rooms") {
         const selectedType =
           normalizeRoomType(filters.type);
@@ -394,6 +370,10 @@ console.log(
           return false;
         }
       }
+
+      // -----------------------------------------------
+      // CAPACITY FILTER
+      // -----------------------------------------------
 
       if (
         filters.capacity &&
@@ -453,6 +433,7 @@ console.log(
           timeSlots: futureSlots,
         };
       })
+
       .filter(
         (room) =>
           room.timeSlots.length > 0
@@ -490,6 +471,7 @@ console.log(
     }
 
     setSelectedDate(nextDate);
+
     setSelectedSlot(null);
   }
 
@@ -511,6 +493,7 @@ console.log(
     }
 
     setSelectedDate(value);
+
     setSelectedSlot(null);
   }
 
@@ -538,7 +521,10 @@ console.log(
       const slotStartMinutes =
         timeToMinutes(slotStart);
 
-      if (slotStartMinutes <= nowMinutes) {
+      if (
+        slotStartMinutes <=
+        nowMinutes
+      ) {
         alert(
           "Cannot select or book a time slot in the past for today."
         );
@@ -643,6 +629,8 @@ console.log(
 
         <div className="flex flex-nowrap items-center gap-3">
 
+          {/* PREVIOUS DAY */}
+
           <Button
             variant="secondary"
             onClick={() =>
@@ -656,6 +644,8 @@ console.log(
             <ChevronLeft size={16} />
           </Button>
 
+          {/* DATE */}
+
           <input
             type="date"
             min={today}
@@ -668,6 +658,8 @@ console.log(
             className="min-w-[170px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
           />
 
+          {/* NEXT DAY */}
+
           <Button
             variant="secondary"
             onClick={() =>
@@ -677,6 +669,8 @@ console.log(
           >
             <ChevronRight size={16} />
           </Button>
+
+          {/* ROOM TYPE */}
 
           <Select
             value={filters.type}
@@ -751,7 +745,9 @@ console.log(
             {selectedSlot?.status ===
               "Available" && (
               <Link
-                to={bookingLink(selectedSlot)}
+                to={bookingLink(
+                  selectedSlot
+                )}
               >
                 <Button
                   onClick={() =>
@@ -765,12 +761,17 @@ console.log(
           </>
         }
       >
+
         {selectedSlot && (
           <div className="space-y-3">
+
+            {/* ROOM NAME */}
 
             <p className="font-display text-base font-700 text-ink">
               {selectedSlot.room.name}
             </p>
+
+            {/* ROOM TYPE AND CAPACITY */}
 
             <p>
               {selectedSlot.room.type}
@@ -779,13 +780,17 @@ console.log(
               {selectedSlot.room.capacity}
             </p>
 
-            {/* ROOM LOCATION */}
+            {/* ROOM LOCATION - FIXED */}
 
             <p>
               Location:{" "}
-              {selectedSlot.room.location ||
+              {selectedSlot.room.module ||
+                selectedSlot.room.location ||
+                selectedSlot.room.roomLocation ||
                 "Location not specified"}
             </p>
+
+            {/* DATE AND TIME */}
 
             <p>
               {selectedDate}
@@ -794,8 +799,11 @@ console.log(
                 selectedSlot.slot.startTime}
               {" - "}
               {selectedSlot.slot.end ||
+                selectedSlot.slot.slotEnd ||
                 selectedSlot.slot.endTime}
             </p>
+
+            {/* FACILITIES */}
 
             <p>
               Facilities:{" "}
@@ -803,6 +811,8 @@ console.log(
                 ", "
               ) || "None"}
             </p>
+
+            {/* STATUS */}
 
             <div className="flex items-center gap-2">
 
@@ -820,6 +830,8 @@ console.log(
 
             </div>
 
+            {/* BOOKING */}
+
             {selectedSlot.booking && (
               <p>
                 Booking:{" "}
@@ -830,6 +842,7 @@ console.log(
 
           </div>
         )}
+
       </Modal>
 
     </div>
