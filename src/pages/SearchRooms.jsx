@@ -69,14 +69,8 @@ function ScrollableTimePicker({
 
   const todayStr = [
     now.getFullYear(),
-    String(now.getMonth() + 1).padStart(
-      2,
-      "0"
-    ),
-    String(now.getDate()).padStart(
-      2,
-      "0"
-    ),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
   ].join("-");
 
   const isToday =
@@ -97,9 +91,7 @@ function ScrollableTimePicker({
       return false;
     }
 
-    return (
-      Number(hour) < currentHour
-    );
+    return Number(hour) < currentHour;
   };
 
   // =====================================================
@@ -350,8 +342,11 @@ export default function SearchRooms() {
     useState(false);
 
   // =====================================================
-  // NEW: TRACK CAPACITY VALIDATION
+  // SEARCH RESULT MESSAGE
   // =====================================================
+
+  const [searchMessage, setSearchMessage] =
+    useState("");
 
   const [capacityExceeded, setCapacityExceeded] =
     useState(false);
@@ -427,9 +422,8 @@ export default function SearchRooms() {
       return next;
     });
 
-    // Reset previous validation result
     setCapacityExceeded(false);
-
+    setSearchMessage("");
     setError("");
   }
 
@@ -438,10 +432,13 @@ export default function SearchRooms() {
   // =====================================================
 
   async function handleSearch(e) {
+
     e.preventDefault();
 
-    // Reset capacity validation for every search
+    // Reset previous search state
     setCapacityExceeded(false);
+    setSearchMessage("");
+    setResults([]);
 
     if (!canSearch) {
       setError(
@@ -563,10 +560,6 @@ export default function SearchRooms() {
         return;
       }
 
-      // ===============================================
-      // CURRENT TIME VALIDATION
-      // ===============================================
-
       const now =
         new Date();
 
@@ -663,26 +656,59 @@ export default function SearchRooms() {
           searchPayload
         );
 
-      const searchResults =
+      // ===============================================
+      // BACKEND RESPONSE HANDLING
+      // ===============================================
+
+      let searchResults = [];
+
+      if (
         Array.isArray(data)
-          ? data
-          : [];
+      ) {
+        // Backward compatibility:
+        // API directly returns an array
+        searchResults = data;
+
+      } else if (
+        data &&
+        Array.isArray(data.rooms)
+      ) {
+        // New backend response
+        searchResults =
+          data.rooms;
+
+        setSearchMessage(
+          data.message || ""
+        );
+
+        setCapacityExceeded(
+          data.capacityExceeded === true
+        );
+
+      } else {
+
+        searchResults = [];
+
+        if (
+          data?.message
+        ) {
+          setSearchMessage(
+            data.message
+          );
+        }
+
+        if (
+          data?.capacityExceeded === true
+        ) {
+          setCapacityExceeded(
+            true
+          );
+        }
+      }
 
       setResults(
         searchResults
       );
-
-      // ===============================================
-      // CAPACITY EXCEEDED DETECTION
-      // ===============================================
-
-      if (
-        searchResults.length === 0 &&
-        filters.capacity &&
-        Number(filters.capacity) > 0
-      ) {
-        setCapacityExceeded(true);
-      }
 
       setResultsOpen(true);
 
@@ -694,6 +720,7 @@ export default function SearchRooms() {
 
       setError(
         err?.response?.data?.message ||
+        err?.response?.data?.Message ||
         "Unable to search rooms."
       );
 
@@ -1077,19 +1104,13 @@ export default function SearchRooms() {
                       {" • "}
 
                       {booking.startTime
-                        ? booking.startTime.substring(
-                            0,
-                            5
-                          )
+                        ? booking.startTime.substring(0, 5)
                         : ""}
 
                       {" - "}
 
                       {booking.endTime
-                        ? booking.endTime.substring(
-                            0,
-                            5
-                          )
+                        ? booking.endTime.substring(0, 5)
                         : ""}
 
                     </p>
@@ -1154,9 +1175,7 @@ export default function SearchRooms() {
 
         </p>
 
-        {/* =========================================== */}
         {/* NO RESULTS */}
-        {/* =========================================== */}
 
         {results.length === 0 ? (
 
@@ -1166,7 +1185,8 @@ export default function SearchRooms() {
 
               <>
                 <p className="text-sm font-medium text-red-600">
-                  No room can accommodate the selected number of participants.
+                  {searchMessage ||
+                    "No room can accommodate the selected number of participants."}
                 </p>
 
                 <p className="text-sm text-slate-500">
@@ -1177,7 +1197,8 @@ export default function SearchRooms() {
             ) : (
 
               <p className="text-sm text-slate-500">
-                No rooms are available for the selected criteria.
+                {searchMessage ||
+                  "No rooms are available for the selected criteria."}
               </p>
 
             )}
