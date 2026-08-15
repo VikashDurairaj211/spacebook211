@@ -41,6 +41,7 @@ function ScrollableTimePicker({
   selectedDate,
 }) {
   const [isOpen, setIsOpen] = useState(false);
+
   const containerRef = useRef(null);
 
   const [hours = "09", minutes = "00"] =
@@ -428,6 +429,25 @@ export default function SearchRooms() {
     }
 
     // =================================================
+    // PARTICIPANT COUNT VALIDATION
+    // =================================================
+
+    if (
+      filters.capacity &&
+      (
+        !Number.isInteger(
+          Number(filters.capacity)
+        ) ||
+        Number(filters.capacity) < 1
+      )
+    ) {
+      setError(
+        "Please enter a valid number of participants."
+      );
+      return;
+    }
+
+    // =================================================
     // START / END TIME VALIDATION
     // =================================================
 
@@ -525,9 +545,9 @@ export default function SearchRooms() {
         return;
       }
 
-      // =================================================
+      // ===============================================
       // CURRENT TIME VALIDATION FOR TODAY
-      // =================================================
+      // ===============================================
 
       const now =
         new Date();
@@ -580,6 +600,8 @@ export default function SearchRooms() {
 
     setLoading(true);
     setError("");
+    setResults([]);
+    setSearched(false);
 
     try {
       const searchPayload = {
@@ -623,13 +645,15 @@ export default function SearchRooms() {
           searchPayload
         );
 
-      setResults(
+      const roomResults =
         Array.isArray(data)
           ? data
-          : []
-      );
+          : [];
+
+      setResults(roomResults);
 
       setResultsOpen(true);
+
       setSearched(true);
 
     } catch (err) {
@@ -765,6 +789,15 @@ export default function SearchRooms() {
   ].join("-");
 
   // =====================================================
+  // NO RESULTS MESSAGE
+  // =====================================================
+
+  const noResultsMessage =
+    filters.capacity
+      ? "No room can accommodate the selected number of participants."
+      : "No rooms are available for the selected criteria.";
+
+  // =====================================================
   // UI
   // =====================================================
 
@@ -789,6 +822,8 @@ export default function SearchRooms() {
           className="space-y-5"
         >
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+
+            {/* MODULE */}
 
             <Field label="1. Select Module">
               <Select
@@ -816,6 +851,8 @@ export default function SearchRooms() {
                 )}
               </Select>
             </Field>
+
+            {/* ROOM TYPE */}
 
             <Field label="2. Select Room Type">
               <Select
@@ -847,10 +884,13 @@ export default function SearchRooms() {
               </Select>
             </Field>
 
+            {/* PARTICIPANTS */}
+
             <Field label="3. Number of Participants">
               <Input
                 type="number"
                 min="1"
+                step="1"
                 value={filters.capacity}
                 placeholder="Enter count"
                 onChange={(e) =>
@@ -861,6 +901,8 @@ export default function SearchRooms() {
                 }
               />
             </Field>
+
+            {/* BOOKING DATE */}
 
             <Field label="4. Booking Date">
               <Input
@@ -877,6 +919,8 @@ export default function SearchRooms() {
               />
             </Field>
 
+            {/* START TIME */}
+
             <ScrollableTimePicker
               label="5. Start Time"
               value={filters.startTime}
@@ -888,6 +932,8 @@ export default function SearchRooms() {
                 )
               }
             />
+
+            {/* END TIME */}
 
             <ScrollableTimePicker
               label="6. End Time"
@@ -903,11 +949,15 @@ export default function SearchRooms() {
 
           </div>
 
+          {/* ERROR */}
+
           {error && (
             <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
               {error}
             </div>
           )}
+
+          {/* SEARCH BUTTON */}
 
           <Button
             type="submit"
@@ -1046,9 +1096,11 @@ export default function SearchRooms() {
           found.
         </p>
 
+        {/* UPDATED EMPTY RESULT MESSAGE */}
+
         {results.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            No rooms are available for the selected criteria.
+          <p className="text-sm font-medium text-slate-700">
+            {noResultsMessage}
           </p>
         ) : (
           <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-1">
