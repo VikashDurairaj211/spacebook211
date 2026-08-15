@@ -103,6 +103,22 @@ function normalizeRoomType(type) {
 }
 
 // =====================================================
+// GET ROOM LOCATION
+// =====================================================
+
+function getRoomLocation(room) {
+  return (
+    room?.module ||
+    room?.location ||
+    room?.roomLocation ||
+    room?.locationName ||
+    room?.room?.module ||
+    room?.room?.location ||
+    "Location not specified"
+  );
+}
+
+// =====================================================
 // AVAILABILITY CALENDAR
 // =====================================================
 
@@ -783,11 +799,7 @@ export default function AvailabilityCalendar() {
             {/* ROOM LOCATION - FIXED */}
 
             <p>
-              Location:{" "}
-              {selectedSlot.room.module ||
-                selectedSlot.room.location ||
-                selectedSlot.room.roomLocation ||
-                "Location not specified"}
+              Location: {getRoomLocation(selectedSlot.room)}
             </p>
 
             {/* DATE AND TIME */}
