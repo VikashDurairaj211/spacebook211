@@ -31,6 +31,13 @@ const INITIAL_FILTERS = {
 };
 
 // =====================================================
+// OFFICE HOURS
+// =====================================================
+
+const OFFICE_START_TIME = "10:00";
+const OFFICE_END_TIME = "19:00";
+
+// =====================================================
 // SCROLLABLE TIME PICKER
 // =====================================================
 
@@ -43,16 +50,19 @@ function ScrollableTimePicker({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
 
-  const [hours = "09", minutes = "00"] =
+  const [hours = "10", minutes = "00"] =
     value
       ? value.split(":")
-      : ["09", "00"];
+      : ["10", "00"];
 
-  // Office hours: 09:00 to 18:00
+  // =====================================================
+  // OFFICE HOURS: 10:00 AM TO 07:00 PM
+  // =====================================================
+
   const hoursList = Array.from(
     { length: 10 },
     (_, i) =>
-      String(i + 9).padStart(2, "0")
+      String(i + 10).padStart(2, "0")
   );
 
   const minutesList = Array.from(
@@ -137,6 +147,7 @@ function ScrollableTimePicker({
     newHours,
     newMinutes
   ) => {
+    // Do not allow a past time for today
     if (
       isMinuteDisabled(
         newHours,
@@ -146,9 +157,20 @@ function ScrollableTimePicker({
       return;
     }
 
-    onChange(
-      `${newHours}:${newMinutes}`
-    );
+    // Do not allow time outside office hours
+    const selectedTime =
+      `${newHours}:${newMinutes}`;
+
+    if (
+      selectedTime <
+        OFFICE_START_TIME ||
+      selectedTime >
+        OFFICE_END_TIME
+    ) {
+      return;
+    }
+
+    onChange(selectedTime);
   };
 
   // =====================================================
@@ -480,18 +502,12 @@ export default function SearchRooms() {
     // OFFICE HOURS VALIDATION
     // =================================================
 
-    const OFFICE_START_TIME =
-      "09:00";
-
-    const OFFICE_END_TIME =
-      "18:00";
-
     if (
       filters.startTime &&
       filters.startTime < OFFICE_START_TIME
     ) {
       setError(
-        "Bookings are allowed only during office hours: 09:00 AM to 06:00 PM."
+        "Bookings are allowed only during office hours: 10:00 AM to 07:00 PM."
       );
       return;
     }
@@ -501,7 +517,7 @@ export default function SearchRooms() {
       filters.endTime > OFFICE_END_TIME
     ) {
       setError(
-        "Bookings are allowed only during office hours: 09:00 AM to 06:00 PM."
+        "Bookings are allowed only during office hours: 10:00 AM to 07:00 PM."
       );
       return;
     }
@@ -1017,6 +1033,12 @@ export default function SearchRooms() {
               }
             />
 
+          </div>
+
+          {/* OFFICE HOURS INFORMATION */}
+
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+            Office hours: <strong>10:00 AM to 07:00 PM</strong>
           </div>
 
           {/* ERROR */}
