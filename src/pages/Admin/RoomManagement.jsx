@@ -18,6 +18,34 @@ const ROOM_TYPE_IDS = {
   training: 3,
 }
 
+
+// =====================================================
+// FIXED ROOM NUMBERS FOR CURRENT OFFICE INVENTORY
+// =====================================================
+
+const ROOM_NUMBER_BY_ID = {
+  32: 'CBE-05-EO2-012',
+  33: 'CBE-05-EO1-001',
+  34: 'CBE-05-EO1-003',
+  35: 'CBE-05-EO1-005',
+  36: 'CBE-05-EO2-001',
+  37: 'CBE-05-EO2-002',
+  38: 'CBE-05-EO2-007',
+  39: 'CBE-05-EO2-010',
+}
+
+function getDisplayRoomNumber(room) {
+  const roomId = Number(room?.id ?? room?.roomId)
+
+  return (
+    ROOM_NUMBER_BY_ID[roomId] ||
+    room?.roomNumber ||
+    room?.roomCode ||
+    room?.code ||
+    '-'
+  )
+}
+
 // =====================================================
 // STATUS BADGE
 // =====================================================
@@ -2710,7 +2738,7 @@ export default function RoomManagement() {
               </th>
 
               <th className="px-4 py-3">
-                Code
+                Room Number
               </th>
 
               <th className="px-4 py-3">
@@ -2790,7 +2818,9 @@ export default function RoomManagement() {
 
                     <td className="px-4 py-3.5 font-mono text-xs text-slate">
                       {
-                        room.code
+                        getDisplayRoomNumber(
+                          room
+                        )
                       }
                     </td>
 
