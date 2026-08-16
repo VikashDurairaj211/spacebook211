@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import client from '../../api/client'
 
@@ -776,6 +777,7 @@ async function deleteAdminRoom(
 // =====================================================
 
 export default function RoomManagement() {
+  const [searchParams] = useSearchParams()
   // ===================================================
   // ROOM STATE
   // ===================================================
@@ -817,6 +819,19 @@ export default function RoomManagement() {
 
   const [search, setSearch] =
     useState('')
+
+  // ===================================================
+  // TOP NAV SEARCH
+  // Reads the search value from:
+  // /admin/rooms?search=Conference%20Room
+  // ===================================================
+
+  useEffect(() => {
+    const searchFromUrl =
+      searchParams.get('search') || ''
+
+    setSearch(searchFromUrl)
+  }, [searchParams])
 
   const [
     statusFilter,

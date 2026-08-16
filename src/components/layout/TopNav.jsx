@@ -13,7 +13,11 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 
 import client from '../../api/client'
 
-import { rooms as ROOMS, bookings as BOOKINGS } from '../../services/mockData'
+import {
+  rooms as ROOMS,
+  bookings as BOOKINGS,
+} from '../../services/mockData'
+
 import NotificationDropdown from '../common/NotificationDropdown'
 
 export default function TopNav({
@@ -27,14 +31,19 @@ export default function TopNav({
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [searchInput, setSearchInput] = useState('')
-  const [showSearchResults, setShowSearchResults] = useState(false)
+  const [showSearchResults, setShowSearchResults] =
+    useState(false)
 
   const [notifications, setNotifications] = useState([])
-  const [loadingNotifications, setLoadingNotifications] = useState(false)
+  const [loadingNotifications, setLoadingNotifications] =
+    useState(false)
 
   const notificationButtonRef = useRef(null)
 
+  // =====================================================
   // Determine whether logged-in user is Admin
+  // =====================================================
+
   const isAdmin =
     user?.role === 'Admin' ||
     user?.role === 'admin' ||
@@ -42,14 +51,15 @@ export default function TopNav({
 
   // =====================================================
   // Fetch Notifications
-  // Uses deployed Render API through axios client
   // =====================================================
 
   const fetchNotifications = async () => {
     try {
       setLoadingNotifications(true)
 
-      const token = localStorage.getItem('spacebook_token')
+      const token = localStorage.getItem(
+        'spacebook_token'
+      )
 
       if (!token || !user) {
         setNotifications([])
@@ -81,7 +91,9 @@ export default function TopNav({
 
   const handleMarkAllRead = async () => {
     try {
-      const token = localStorage.getItem('spacebook_token')
+      const token = localStorage.getItem(
+        'spacebook_token'
+      )
 
       if (!token) {
         return
@@ -100,7 +112,9 @@ export default function TopNav({
         }))
       )
 
-      window.dispatchEvent(new Event('notificationsRead'))
+      window.dispatchEvent(
+        new Event('notificationsRead')
+      )
     } catch (error) {
       console.error(
         'Failed to mark notifications as read:',
@@ -159,7 +173,9 @@ export default function TopNav({
       }
     }
 
-    const query = searchInput.trim().toLowerCase()
+    const query = searchInput
+      .trim()
+      .toLowerCase()
 
     const matchedRooms = ROOMS.filter((room) => {
       return (
@@ -169,12 +185,18 @@ export default function TopNav({
       )
     }).slice(0, 5)
 
-    const matchedBookings = BOOKINGS.filter((booking) => {
-      return (
-        booking.roomName?.toLowerCase().includes(query) ||
-        booking.title?.toLowerCase().includes(query)
-      )
-    }).slice(0, 5)
+    const matchedBookings = BOOKINGS.filter(
+      (booking) => {
+        return (
+          booking.roomName
+            ?.toLowerCase()
+            .includes(query) ||
+          booking.title
+            ?.toLowerCase()
+            .includes(query)
+        )
+      }
+    ).slice(0, 5)
 
     return {
       rooms: matchedRooms,
@@ -195,9 +217,23 @@ export default function TopNav({
       return
     }
 
-    navigate(
-      `/search-rooms?q=${encodeURIComponent(query)}`
-    )
+    // ADMIN SEARCH
+    if (isAdmin) {
+      navigate(
+        `/admin/room-management?search=${encodeURIComponent(
+          query
+        )}`
+      )
+    }
+
+    // EMPLOYEE SEARCH
+    else {
+      navigate(
+        `/search-rooms?q=${encodeURIComponent(
+          query
+        )}`
+      )
+    }
 
     setSearchInput('')
     setShowSearchResults(false)
@@ -207,16 +243,53 @@ export default function TopNav({
   // Select Search Result
   // =====================================================
 
-  function handleSelectResult(queryTerm) {
-    const query = String(queryTerm || '').trim()
+  function handleSelectResult(
+    queryTerm,
+    type = 'room'
+  ) {
+    const query = String(
+      queryTerm || ''
+    ).trim()
 
     if (!query) {
       return
     }
 
-    navigate(
-      `/search-rooms?q=${encodeURIComponent(query)}`
-    )
+    // =================================================
+    // ADMIN NAVIGATION
+    // =================================================
+
+    if (isAdmin) {
+      // Booking search result
+      if (type === 'booking') {
+        navigate(
+          `/admin/booking-management?search=${encodeURIComponent(
+            query
+          )}`
+        )
+      }
+
+      // Room search result
+      else {
+        navigate(
+          `/admin/room-management?search=${encodeURIComponent(
+            query
+          )}`
+        )
+      }
+    }
+
+    // =================================================
+    // EMPLOYEE NAVIGATION
+    // =================================================
+
+    else {
+      navigate(
+        `/search-rooms?q=${encodeURIComponent(
+          query
+        )}`
+      )
+    }
 
     setSearchInput('')
     setShowSearchResults(false)
@@ -237,6 +310,7 @@ export default function TopNav({
 
   return (
     <header className="fixed top-0 left-0 right-0 z-40 flex h-[52px] items-center justify-between border-b border-sky-200 bg-sky-100 px-4 shadow-sm">
+
       {/* =================================================
           LEFT SIDE
       ================================================= */}
@@ -246,7 +320,7 @@ export default function TopNav({
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="mr-3 rounded-lg p-1.5 text-sky-900 hover:bg-sky-200 transition"
+            className="mr-3 rounded-lg p-1.5 text-sky-900 transition hover:bg-sky-200"
             aria-label={
               sidebarCollapsed
                 ? 'Open sidebar'
@@ -263,7 +337,13 @@ export default function TopNav({
 
         <div
           className="flex cursor-pointer items-center gap-2"
-          onClick={() => navigate('/dashboard')}
+          onClick={() =>
+            navigate(
+              isAdmin
+                ? '/admin/dashboard'
+                : '/dashboard'
+            )
+          }
         >
           <img
             src="/Logo.png"
@@ -287,6 +367,7 @@ export default function TopNav({
           className="relative mx-6 hidden max-w-sm flex-1 md:flex"
         >
           <div className="flex w-full items-center gap-2 rounded-lg border border-sky-300 bg-white/60 px-3 py-1 focus-within:border-sky-500">
+
             <button
               type="submit"
               className="text-sky-900 transition-opacity hover:opacity-80"
@@ -303,7 +384,9 @@ export default function TopNav({
               placeholder="Search rooms, bookings..."
               value={searchInput}
               onChange={(event) => {
-                setSearchInput(event.target.value)
+                setSearchInput(
+                  event.target.value
+                )
                 setShowSearchResults(true)
               }}
               onFocus={() => {
@@ -317,79 +400,94 @@ export default function TopNav({
 
           {/* Search Dropdown */}
 
-          {showSearchResults && searchInput.trim() && (
-            <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-64 overflow-auto rounded-lg border border-line bg-white text-ink shadow-lg">
-              {/* Rooms */}
+          {showSearchResults &&
+            searchInput.trim() && (
+              <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-64 overflow-auto rounded-lg border border-line bg-white text-ink shadow-lg">
 
-              {searchResults.rooms.length > 0 && (
-                <div className="border-b border-line">
-                  <div className="bg-portal-bg px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-slate">
-                    Rooms
-                  </div>
+                {/* Rooms */}
 
-                  {searchResults.rooms.map((room) => (
-                    <button
-                      key={room.id}
-                      type="button"
-                      onClick={() =>
-                        handleSelectResult(room.name)
-                      }
-                      className="flex w-full flex-col px-3 py-2 text-left font-sans text-sm transition-colors hover:bg-portal-bg/80"
-                    >
-                      <span className="font-medium text-ink">
-                        {room.name}
-                      </span>
+                {searchResults.rooms.length > 0 && (
+                  <div className="border-b border-line">
 
-                      <span className="text-xs text-slate">
-                        {room.module} · {room.type}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
+                    <div className="bg-portal-bg px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-slate">
+                      Rooms
+                    </div>
 
-              {/* Bookings */}
+                    {searchResults.rooms.map(
+                      (room) => (
+                        <button
+                          key={room.id}
+                          type="button"
+                          onClick={() =>
+                            handleSelectResult(
+                              room.name,
+                              'room'
+                            )
+                          }
+                          className="flex w-full flex-col px-3 py-2 text-left font-sans text-sm transition-colors hover:bg-portal-bg/80"
+                        >
+                          <span className="font-medium text-ink">
+                            {room.name}
+                          </span>
 
-              {searchResults.bookings.length > 0 && (
-                <div>
-                  <div className="bg-portal-bg px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-slate">
-                    Bookings
-                  </div>
-
-                  {searchResults.bookings.map((booking) => (
-                    <button
-                      key={booking.id}
-                      type="button"
-                      onClick={() =>
-                        handleSelectResult(
-                          booking.title ||
-                            booking.roomName
-                        )
-                      }
-                      className="flex w-full flex-col px-3 py-2 text-left font-sans text-sm transition-colors hover:bg-portal-bg/80"
-                    >
-                      <span className="font-medium text-ink">
-                        {booking.title}
-                      </span>
-
-                      <span className="text-xs text-slate">
-                        {booking.roomName} · {booking.date}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* No Results */}
-
-              {searchResults.rooms.length === 0 &&
-                searchResults.bookings.length === 0 && (
-                  <div className="px-3 py-4 text-center font-sans text-sm text-slate">
-                    No rooms or bookings found
+                          <span className="text-xs text-slate">
+                            {room.module} · {room.type}
+                          </span>
+                        </button>
+                      )
+                    )}
                   </div>
                 )}
-            </div>
-          )}
+
+                {/* Bookings */}
+
+                {searchResults.bookings.length >
+                  0 && (
+                  <div>
+
+                    <div className="bg-portal-bg px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-slate">
+                      Bookings
+                    </div>
+
+                    {searchResults.bookings.map(
+                      (booking) => (
+                        <button
+                          key={booking.id}
+                          type="button"
+                          onClick={() =>
+                            handleSelectResult(
+                              booking.title ||
+                                booking.roomName,
+                              'booking'
+                            )
+                          }
+                          className="flex w-full flex-col px-3 py-2 text-left font-sans text-sm transition-colors hover:bg-portal-bg/80"
+                        >
+                          <span className="font-medium text-ink">
+                            {booking.title}
+                          </span>
+
+                          <span className="text-xs text-slate">
+                            {booking.roomName} ·{' '}
+                            {booking.date}
+                          </span>
+                        </button>
+                      )
+                    )}
+                  </div>
+                )}
+
+                {/* No Results */}
+
+                {searchResults.rooms.length === 0 &&
+                  searchResults.bookings.length ===
+                    0 && (
+                    <div className="px-3 py-4 text-center font-sans text-sm text-slate">
+                      No rooms or bookings found
+                    </div>
+                  )}
+              </div>
+            )}
         </form>
       )}
 
@@ -399,7 +497,8 @@ export default function TopNav({
 
       {!publicOnly && (
         <div className="flex items-center gap-2">
-          {/* SharePoint - Opens in the same tab */}
+
+          {/* SharePoint */}
 
           <a
             href="https://vmivsp.sharepoint.com"
@@ -412,6 +511,7 @@ export default function TopNav({
           {/* Notifications */}
 
           <div className="relative">
+
             <button
               ref={notificationButtonRef}
               type="button"
@@ -442,9 +542,16 @@ export default function TopNav({
               onClose={() =>
                 setNotificationOpen(false)
               }
-              onMarkAllRead={handleMarkAllRead}
+              onMarkAllRead={
+                handleMarkAllRead
+              }
               onViewAll={() => {
-                navigate('/notifications')
+                navigate(
+                  isAdmin
+                    ? '/admin/notifications'
+                    : '/notifications'
+                )
+
                 setNotificationOpen(false)
               }}
             />
@@ -453,22 +560,29 @@ export default function TopNav({
           {/* User Menu */}
 
           <div className="relative">
+
             <button
               type="button"
               onClick={() =>
-                setMenuOpen((value) => !value)
+                setMenuOpen(
+                  (value) => !value
+                )
               }
               className="flex items-center gap-2 rounded-lg border border-sky-300 px-2 py-1 text-xs text-sky-950 hover:bg-sky-200"
             >
               <User size={14} />
 
               <span className="max-w-[100px] truncate font-mono text-xs">
-                {user?.name || 'Employee'}
+                {user?.name ||
+                  (isAdmin
+                    ? 'Admin'
+                    : 'Employee')}
               </span>
             </button>
 
             {menuOpen && (
               <div className="absolute right-0 top-full z-50 mt-1 w-32 rounded-lg border border-slate-200 bg-white py-1 font-sans text-sm text-ink shadow-md">
+
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -476,6 +590,7 @@ export default function TopNav({
                 >
                   Sign out
                 </button>
+
               </div>
             )}
           </div>
