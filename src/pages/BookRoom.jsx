@@ -918,14 +918,7 @@ export default function BookRoom() {
 
           {/* FIXED ROOM LOCATION */}
 
-          <p>
-            <strong>
-              Location:
-            </strong>{' '}
-            {selectedRoomDetails?.location ||
-              'Location not specified'}
-          </p>
-
+          
           <p>
             <strong>
               Date & time:
