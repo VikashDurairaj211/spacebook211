@@ -346,7 +346,7 @@ export default function BookRoom() {
   const minStartTime =
     isSelectedDateToday
       ? currentTime
-      : '09:00'
+      : '10:00'
 
   // =====================================================
   // SUBMIT BOOKING
@@ -474,10 +474,10 @@ export default function BookRoom() {
     // -------------------------------------------------
 
     const OFFICE_START_TIME =
-      '09:00'
+      '10:00'
 
     const OFFICE_END_TIME =
-      '19:00'
+      '19:01'
 
     if (
       form.startTime <
@@ -485,7 +485,7 @@ export default function BookRoom() {
     ) {
       setErrors({
         startTime:
-          'Bookings are allowed only between 09:00 AM and 06:00 PM.',
+          'Bookings are allowed only between 10:00 AM and 07:00 PM.',
       })
 
       return
@@ -497,7 +497,7 @@ export default function BookRoom() {
     ) {
       setErrors({
         endTime:
-          'Bookings are allowed only between 09:00 AM and 06:00 PM.',
+          'Bookings are allowed only between 10:00 AM and 07:00 PM.',
       })
 
       return
@@ -750,7 +750,7 @@ export default function BookRoom() {
               <Input
                 type="time"
                 min={minStartTime}
-                max="19:00"
+                max="19:01"
                 value={form.startTime}
                 onChange={(e) =>
                   update(
@@ -776,7 +776,7 @@ export default function BookRoom() {
                   form.startTime ||
                   minStartTime
                 }
-                max="19:00"
+                max="19:01"
                 value={form.endTime}
                 onChange={(e) =>
                   update(

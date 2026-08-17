@@ -35,7 +35,7 @@ const INITIAL_FILTERS = {
 // =====================================================
 
 const OFFICE_START_TIME = "10:00";
-const OFFICE_END_TIME = "19:00";
+const OFFICE_END_TIME = "19:01";
 
 // =====================================================
 // SCROLLABLE TIME PICKER
