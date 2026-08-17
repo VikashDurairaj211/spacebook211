@@ -344,21 +344,12 @@ export default function AvailabilityCalendar() {
 
               // -----------------------------------------
               // LOCATION
-              //
-              // Store the SAME resolved value in all
-              // commonly used location fields.
               // -----------------------------------------
 
               resolvedLocation,
-
-              location:
-                resolvedLocation,
-
-              roomLocation:
-                resolvedLocation,
-
-              module:
-                resolvedLocation,
+              location: resolvedLocation,
+              roomLocation: resolvedLocation,
+              module: resolvedLocation,
 
               // -----------------------------------------
               // CAPACITY
@@ -646,14 +637,6 @@ export default function AvailabilityCalendar() {
       }
     }
 
-    // ===============================================
-    // IMPORTANT FIX
-    //
-    // Create a new room object and explicitly preserve
-    // the resolved location before storing the selected
-    // slot in state.
-    // ===============================================
-
     const resolvedLocation =
       getRoomLocation(slot.room);
 
@@ -730,8 +713,6 @@ export default function AvailabilityCalendar() {
             filters.capacity || 1
           ),
 
-        // Location can also be passed to the booking page
-        // if that page needs to display it.
         location:
           getRoomLocation(
             slot.room
@@ -765,7 +746,9 @@ export default function AvailabilityCalendar() {
 
     if (
       s === "rejected" ||
-      s === "cancelled"
+      s === "cancelled" ||
+      s === "booked" ||
+      s === "unavailable"
     ) {
       return "bg-[#B85450] text-white";
     }

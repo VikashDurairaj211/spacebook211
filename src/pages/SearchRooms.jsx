@@ -147,7 +147,6 @@ function ScrollableTimePicker({
     newHours,
     newMinutes
   ) => {
-    // Do not allow a past time for today
     if (
       isMinuteDisabled(
         newHours,
@@ -157,7 +156,6 @@ function ScrollableTimePicker({
       return;
     }
 
-    // Do not allow time outside office hours
     const selectedTime =
       `${newHours}:${newMinutes}`;
 
@@ -345,9 +343,6 @@ export default function SearchRooms() {
   const [loading, setLoading] =
     useState(false);
 
-  const [searched, setSearched] =
-    useState(false);
-
   const [error, setError] =
     useState("");
 
@@ -400,16 +395,8 @@ export default function SearchRooms() {
   // SEARCH CRITERIA
   // =====================================================
 
-  const hasAnySearchCriteria =
-    Boolean(filters.module) ||
-    Boolean(filters.roomTypeId) ||
-    Boolean(filters.capacity) ||
-    Boolean(filters.date) ||
-    Boolean(filters.startTime) ||
-    Boolean(filters.endTime);
-
   const canSearch =
-    hasAnySearchCriteria;
+    Boolean(filters.module) && Boolean(filters.roomTypeId);
 
   const canChooseType =
     Boolean(filters.module);
@@ -462,10 +449,13 @@ export default function SearchRooms() {
     setSearchMessage("");
     setResults([]);
 
-    if (!canSearch) {
-      setError(
-        "Please select or enter at least one search criteria."
-      );
+    if (!filters.module) {
+      setError("Please select a module.");
+      return;
+    }
+
+    if (!filters.roomTypeId) {
+      setError("Please select a room type.");
       return;
     }
 
@@ -681,15 +671,12 @@ export default function SearchRooms() {
       if (
         Array.isArray(data)
       ) {
-        // Backward compatibility:
-        // API directly returns an array
         searchResults = data;
 
       } else if (
         data &&
         Array.isArray(data.rooms)
       ) {
-        // New backend response
         searchResults =
           data.rooms;
 
@@ -727,8 +714,6 @@ export default function SearchRooms() {
       );
 
       setResultsOpen(true);
-
-      setSearched(true);
 
     } catch (err) {
 
@@ -882,7 +867,7 @@ export default function SearchRooms() {
         </h1>
 
         <p className="mt-2 text-slate-600">
-          Enter any search criteria to find available rooms.
+          Select module and room type to find available rooms.
         </p>
 
       </div>
@@ -898,9 +883,15 @@ export default function SearchRooms() {
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 
-            {/* MODULE */}
+            {/* MODULE (MANDATORY) */}
 
-            <Field label="1. Select Module">
+            <Field
+              label={
+                <span>
+                  1. Select Module <span className="text-red-500">*</span>
+                </span>
+              }
+            >
 
               <Select
                 value={filters.module}
@@ -931,9 +922,15 @@ export default function SearchRooms() {
 
             </Field>
 
-            {/* ROOM TYPE */}
+            {/* ROOM TYPE (MANDATORY) */}
 
-            <Field label="2. Select Room Type">
+            <Field
+              label={
+                <span>
+                  2. Select Room Type <span className="text-red-500">*</span>
+                </span>
+              }
+            >
 
               <Select
                 disabled={!canChooseType}
@@ -1450,110 +1447,6 @@ export default function SearchRooms() {
         )}
 
       </Modal>
-
-      {/* RESULTS GRID */}
-
-      {searched &&
-        !loading &&
-        !resultsOpen &&
-        results.length > 0 && (
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-
-            {results.map(
-              (room) => (
-
-                <Card key={room.roomId}>
-
-                  <div className="mb-3 flex items-start justify-between">
-
-                    <div>
-
-                      <h3 className="font-semibold">
-                        {room.roomName}
-                      </h3>
-
-                      <p className="text-sm text-slate-500">
-                        {room.module}
-                      </p>
-
-                    </div>
-
-                    <span
-                      className={`inline-block w-28 rounded-full py-1 text-center text-xs font-bold tracking-wider uppercase ${getStatusBadgeClass(
-                        "Available"
-                      )}`}
-                    >
-                      Available
-                    </span>
-
-                  </div>
-
-                  <p className="text-sm">
-
-                    <strong>
-                      Room Type:
-                    </strong>{" "}
-
-                    {room.roomType}
-
-                  </p>
-
-                  <p className="text-sm">
-
-                    <strong>
-                      Capacity:
-                    </strong>{" "}
-
-                    {room.capacity}
-
-                  </p>
-
-                  <p className="mb-4 text-sm">
-
-                    <strong>
-                      Facilities:
-                    </strong>{" "}
-
-                    {room.facilities?.length
-                      ? room.facilities.join(", ")
-                      : "None"}
-
-                  </p>
-
-                  <div className="flex gap-2">
-
-                    <Button
-                      variant="secondary"
-                      className="flex-1 py-2 text-xs"
-                      onClick={() =>
-                        handleOpenDetails(room)
-                      }
-                    >
-                      Details
-                    </Button>
-
-                    <Link
-                      to={bookRoomLink(
-                        room.roomId
-                      )}
-                      className="flex-1"
-                    >
-                      <Button className="w-full py-2 text-xs">
-                        Book Room
-                      </Button>
-                    </Link>
-
-                  </div>
-
-                </Card>
-
-              )
-            )}
-
-          </div>
-
-        )}
 
     </div>
   );
