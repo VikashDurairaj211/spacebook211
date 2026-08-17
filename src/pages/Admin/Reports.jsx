@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
+import { Download, RefreshCw } from "lucide-react";
 
 import BookingTrendChart from "../../components/reports/BookingTrendChart";
 import StatusChart from "../../components/reports/StatusChart";
@@ -8,7 +9,7 @@ import Button from "../../components/common/Button";
 import {
   getBookingTrendReport,
   getBookingStatusReport,
-  getRoomUsageReport
+  getRoomUsageReport,
 } from "../../api/adminReports";
 
 const CHART_VIEWS = [
@@ -17,22 +18,46 @@ const CHART_VIEWS = [
   { id: 2, title: "Room Type Usage" },
 ];
 
-const MODULE_OPTIONS = ["All", "Block A", "Block B", "Block C", "Module A", "Module 1", "Module 2"];
-const ROOM_TYPE_OPTIONS = ["All", "Conference", "Training", "Discussion", "Meeting"];
-const STATUS_OPTIONS = ["All", "Confirmed", "Pending", "Cancelled", "Rejected"];
+const MODULE_OPTIONS = [
+  "All",
+  "Module 1 - Elcot Park - CMB",
+  "Module 2 - Elcot Park - CMB",
+];
+
+const ROOM_TYPES = [
+  { id: "", name: "All Room Types" },
+  { id: 1, name: "Conference" },
+  { id: 2, name: "Training" },
+  { id: 3, name: "Discussion" },
+];
+
+const STATUS_OPTIONS = [
+  "All",
+  "Confirmed",
+  "Pending",
+  "Cancelled",
+  "Rejected",
+];
+
+const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+];
+
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function Reports() {
   const [filters, setFilters] = useState({
     reportType: "Monthly",
     module: "All",
-    roomType: "All",
+    roomTypeId: "",
     status: "All",
   });
 
   const [activeGraphIndex, setActiveGraphIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Live API State
   const [trendData, setTrendData] = useState([]);
   const [statusDistribution, setStatusDistribution] = useState([]);
   const [roomTypeUsage, setRoomTypeUsage] = useState([]);
@@ -43,15 +68,15 @@ export default function Reports() {
     avgDuration: "0h 00m",
   });
 
-  // Fetch Reports Data from API
-  const fetchReportsData = async () => {
+  const handleGenerateReport = async () => {
     try {
       setLoading(true);
+      setError(null);
 
       const filterDto = {
         reportType: filters.reportType,
         module: filters.module === "All" ? null : filters.module,
-        roomType: filters.roomType === "All" ? null : filters.roomType,
+        roomTypeId: filters.roomTypeId ? Number(filters.roomTypeId) : null,
         status: filters.status === "All" ? null : filters.status,
       };
 
@@ -61,36 +86,86 @@ export default function Reports() {
         getRoomUsageReport(filterDto),
       ]);
 
-      // 1. Process Trend & Summary Metrics
+      console.log("Trend Response:", trendRes);
+      console.log("Status Response:", statusRes);
+      console.log("Usage Response:", usageRes);
+
+      // 1. Process Trend & Summary
       if (trendRes) {
         setSummary({
-          totalBookings: trendRes.totalBookings ?? 4,
-          uniqueRooms: trendRes.uniqueRooms ?? 3,
-          confirmedRate: trendRes.confirmedRate ?? "50%",
-          avgDuration: trendRes.avgDuration ?? "2h 04m",
+          totalBookings: trendRes.totalBookings ?? trendRes.totalCount ?? 0,
+          uniqueRooms: trendRes.uniqueRooms ?? trendRes.totalRooms ?? 0,
+          confirmedRate:
+            trendRes.confirmedRate !== undefined
+              ? String(trendRes.confirmedRate).includes("%")
+                ? trendRes.confirmedRate
+                : `${trendRes.confirmedRate}%`
+              : "0%",
+          avgDuration: trendRes.avgDuration || "0h 00m",
         });
 
+        // Extract trend array from any common backend property
+        const rawTrendList =
+          trendRes.monthlyData ||
+          trendRes.weeklyData ||
+          trendRes.trends ||
+          trendRes.trendData ||
+          trendRes.bookingTrends ||
+          trendRes.data ||
+          trendRes.result ||
+          (Array.isArray(trendRes) ? trendRes : []);
+
         if (filters.reportType === "Weekly") {
-          const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-          const formattedWeekly = days.map((day) => {
-            const found = (trendRes.weeklyData || trendRes.data || []).find(
-              (item) => item.day?.substring(0, 3).toLowerCase() === day.toLowerCase()
-            );
+          const formattedWeekly = DAY_NAMES.map((dayName, index) => {
+            const found = rawTrendList.find((item) => {
+              const val = String(item.day || item.dayName || item.label || item.name || item.date || "").toLowerCase();
+              return val.includes(dayName.toLowerCase()) || Number(item.dayOfWeek ?? item.dayIndex) === index;
+            });
+
             return {
-              day,
-              bookings: found ? found.count || found.bookings : 0,
+              day: dayName,
+              bookings: Number(
+                found?.count ??
+                found?.bookings ??
+                found?.bookingCount ??
+                found?.totalBookings ??
+                found?.total ??
+                found?.value ??
+                0
+              ),
             };
           });
           setTrendData(formattedWeekly);
         } else {
-          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-          const formattedMonthly = months.map((month) => {
-            const found = (trendRes.monthlyData || trendRes.data || []).find(
-              (item) => item.month?.substring(0, 3).toLowerCase() === month.toLowerCase()
-            );
+          const formattedMonthly = MONTH_NAMES.map((monthName, index) => {
+            const monthNumber = index + 1;
+            const found = rawTrendList.find((item) => {
+              const rawMonth = item.month ?? item.monthName ?? item.monthNumber ?? item.label ?? item.name ?? item.period ?? item.date ?? "";
+              
+              // Handle numeric month (e.g. 8 or "08" or "8")
+              if (!isNaN(rawMonth) && rawMonth !== "") {
+                return Number(rawMonth) === monthNumber;
+              }
+
+              // Handle string month (e.g. "August", "Aug", "2026-08")
+              const strMonth = String(rawMonth).toLowerCase();
+              return (
+                strMonth.includes(monthName.toLowerCase()) ||
+                strMonth === String(monthNumber).padStart(2, "0")
+              );
+            });
+
             return {
-              month,
-              bookings: found ? found.count || found.bookings : month === "Aug" ? (trendRes.totalBookings || 4) : 0,
+              month: monthName,
+              bookings: Number(
+                found?.count ??
+                found?.bookings ??
+                found?.bookingCount ??
+                found?.totalBookings ??
+                found?.total ??
+                found?.value ??
+                0
+              ),
             };
           });
           setTrendData(formattedMonthly);
@@ -99,49 +174,94 @@ export default function Reports() {
 
       // 2. Process Status Distribution
       if (statusRes) {
-        const mappedStatus = (statusRes.statusData || statusRes || []).map((item) => ({
-          name: item.status || item.name,
-          value: item.count || item.value,
-        }));
+        const rawStatus =
+          statusRes.statusData ||
+          statusRes.statuses ||
+          statusRes.data ||
+          (Array.isArray(statusRes) ? statusRes : []);
 
         setStatusDistribution(
-          mappedStatus.length > 0
-            ? mappedStatus
-            : [
-                { name: "Confirmed", value: 2 },
-                { name: "Pending", value: 1 },
-                { name: "Cancelled", value: 1 },
-              ]
+          rawStatus.map((item) => ({
+            name: item.status || item.statusName || item.name || item.label || "Unknown",
+            value: Number(item.count ?? item.value ?? item.total ?? 0),
+          }))
         );
       }
 
       // 3. Process Room Type Usage
       if (usageRes) {
-        const mappedUsage = (usageRes.usageData || usageRes || []).map((item) => ({
-          name: item.roomType || item.name,
-          value: item.count || item.value,
-        }));
+        const rawUsage =
+          usageRes.usageData ||
+          usageRes.roomUsage ||
+          usageRes.roomTypeUsage ||
+          usageRes.data ||
+          (Array.isArray(usageRes) ? usageRes : []);
 
         setRoomTypeUsage(
-          mappedUsage.length > 0
-            ? mappedUsage
-            : [
-                { name: "Conference", value: 2 },
-                { name: "Discussion", value: 1 },
-                { name: "Training", value: 1 },
-              ]
+          rawUsage.map((item) => ({
+            name: item.roomType || item.roomTypeName || item.name || item.label || "Unknown",
+            value: Number(item.count ?? item.value ?? item.total ?? 0),
+          }))
         );
       }
     } catch (err) {
       console.error("Failed to fetch reports:", err);
+      setError("Unable to load report analytics from server.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchReportsData();
-  }, [filters]);
+    handleGenerateReport();
+  }, []);
+
+  const handleExportCSV = () => {
+    let headers = [];
+    let rows = [];
+
+    if (activeGraphIndex === 0) {
+      headers = [filters.reportType === "Weekly" ? "Day" : "Month", "Bookings"];
+      rows = trendData.map((d) => [
+        filters.reportType === "Weekly" ? d.day : d.month,
+        d.bookings,
+      ]);
+    } else if (activeGraphIndex === 1) {
+      headers = ["Status", "Count"];
+      rows = statusDistribution.map((d) => [d.name, d.value]);
+    } else {
+      headers = ["Room Type", "Count"];
+      rows = roomTypeUsage.map((d) => [d.name, d.value]);
+    }
+
+    const summaryRows = [
+      ["Metric", "Value"],
+      ["Total Bookings", summary.totalBookings],
+      ["Unique Rooms", summary.uniqueRooms],
+      ["Confirmed Rate", summary.confirmedRate],
+      ["Avg Duration", summary.avgDuration],
+      [],
+    ];
+
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [
+        ...summaryRows.map((e) => e.join(",")),
+        headers.join(","),
+        ...rows.map((e) => e.join(",")),
+      ].join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute(
+      "download",
+      `${CHART_VIEWS[activeGraphIndex].title.replace(/\s+/g, "_")}_${filters.reportType}_Report.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const kpiMetrics = [
     { label: "Total Bookings", value: summary.totalBookings },
@@ -158,32 +278,38 @@ export default function Reports() {
   };
 
   const handlePrevGraph = () => {
-    setActiveGraphIndex((prev) => (prev === 0 ? CHART_VIEWS.length - 1 : prev - 1));
+    setActiveGraphIndex((prev) =>
+      prev === 0 ? CHART_VIEWS.length - 1 : prev - 1
+    );
   };
 
   const handleNextGraph = () => {
-    setActiveGraphIndex((prev) => (prev === CHART_VIEWS.length - 1 ? 0 : prev + 1));
+    setActiveGraphIndex((prev) =>
+      prev === CHART_VIEWS.length - 1 ? 0 : prev + 1
+    );
   };
 
   return (
     <div className="space-y-6">
       {/* Header Banner */}
       <div className="rounded-2xl border border-ink bg-white p-5">
-        <h1 className="font-display text-xl font-bold text-ink">Reports & Analytics</h1>
+        <h1 className="font-display text-xl font-bold text-ink">
+          Reports & Review
+        </h1>
         <p className="mt-2 text-sm text-slate">
-          Analyze room utilization, booking trends, and status distribution across workspace modules.
+          Generate workspace utilization reports, analyze booking trends, and export analytics for optimization insights.
         </p>
       </div>
 
-      {/* Persistent Analytics Container */}
-      <div className="rounded-2xl border border-line bg-white p-6 shadow-sm space-y-6">
-        
-        {/* Controls & Graph Switcher Row */}
+      <div className="space-y-6 rounded-2xl border border-line bg-white p-6 shadow-sm">
+        {/* Controls, Generate & Export Action Row */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
           <div className="flex flex-wrap items-center gap-3">
             <select
               value={filters.reportType}
-              onChange={(e) => handleFilterChange("reportType", e.target.value)}
+              onChange={(e) =>
+                handleFilterChange("reportType", e.target.value)
+              }
               className="rounded-xl border border-line bg-white px-3 py-2 text-xs text-ink outline-none"
             >
               <option value="Monthly">Monthly</option>
@@ -192,44 +318,86 @@ export default function Reports() {
 
             <select
               value={filters.module}
-              onChange={(e) => handleFilterChange("module", e.target.value)}
+              onChange={(e) =>
+                handleFilterChange("module", e.target.value)
+              }
               className="rounded-xl border border-line bg-white px-3 py-2 text-xs text-ink outline-none"
             >
               {MODULE_OPTIONS.map((mod) => (
-                <option key={mod} value={mod}>{mod}</option>
+                <option key={mod} value={mod}>
+                  {mod}
+                </option>
               ))}
             </select>
 
             <select
-              value={filters.roomType}
-              onChange={(e) => handleFilterChange("roomType", e.target.value)}
+              value={filters.roomTypeId}
+              onChange={(e) =>
+                handleFilterChange("roomTypeId", e.target.value)
+              }
               className="rounded-xl border border-line bg-white px-3 py-2 text-xs text-ink outline-none"
             >
-              {ROOM_TYPE_OPTIONS.map((type) => (
-                <option key={type} value={type}>{type}</option>
+              {ROOM_TYPES.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
               ))}
             </select>
 
             <select
               value={filters.status}
-              onChange={(e) => handleFilterChange("status", e.target.value)}
+              onChange={(e) =>
+                handleFilterChange("status", e.target.value)
+              }
               className="rounded-xl border border-line bg-white px-3 py-2 text-xs text-ink outline-none"
             >
               {STATUS_OPTIONS.map((st) => (
-                <option key={st} value={st}>{st}</option>
+                <option key={st} value={st}>
+                  {st}
+                </option>
               ))}
             </select>
+
+            <Button
+              size="sm"
+              onClick={handleGenerateReport}
+              disabled={loading}
+              className="flex items-center gap-1.5 text-xs"
+            >
+              <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+              {loading ? "Generating..." : "Generate"}
+            </Button>
+
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleExportCSV}
+              disabled={loading}
+              className="flex items-center gap-1.5 text-xs"
+            >
+              <Download size={13} />
+              Export
+            </Button>
           </div>
 
-          {/* Graph Next / Prev Switcher */}
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="secondary" onClick={handlePrevGraph} className="text-xs">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handlePrevGraph}
+              className="text-xs"
+            >
               ← Prev Graph
             </Button>
-            <span className="text-xs font-mono text-slate px-2">
+            <span className="px-2 font-mono text-xs text-slate">
               {activeGraphIndex + 1} / {CHART_VIEWS.length}
             </span>
-            <Button size="sm" variant="secondary" onClick={handleNextGraph} className="text-xs">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleNextGraph}
+              className="text-xs"
+            >
               Next Graph →
             </Button>
           </div>
@@ -238,22 +406,31 @@ export default function Reports() {
         {/* KPI Metrics Bar */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {kpiMetrics.map((kpi, idx) => (
-            <div key={idx} className="rounded-xl border border-line bg-portal-bg p-3">
-              <p className="font-mono text-[11px] uppercase tracking-wider text-slate">{kpi.label}</p>
+            <div
+              key={idx}
+              className="rounded-xl border border-line bg-portal-bg p-3"
+            >
+              <p className="font-mono text-[11px] uppercase tracking-wider text-slate">
+                {kpi.label}
+              </p>
               <p className="mt-1 text-2xl font-bold text-ink">{kpi.value}</p>
             </div>
           ))}
         </div>
 
         {/* Dynamic Graph Section */}
-        <div className="pt-2 min-h-[400px]">
-          <h2 className="mb-4 font-display text-xs font-bold text-slate uppercase tracking-wider">
+        <div className="min-h-[400px] pt-2">
+          <h2 className="mb-4 font-display text-xs font-bold uppercase tracking-wider text-slate">
             {CHART_VIEWS[activeGraphIndex].title}
           </h2>
 
           {loading ? (
             <div className="flex h-64 items-center justify-center text-sm text-slate">
-              Loading report analytics...
+              Generating report analytics...
+            </div>
+          ) : error ? (
+            <div className="flex h-64 items-center justify-center text-sm text-red-600">
+              {error}
             </div>
           ) : (
             <>
@@ -280,7 +457,6 @@ export default function Reports() {
             </>
           )}
         </div>
-
       </div>
     </div>
   );

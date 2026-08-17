@@ -477,7 +477,7 @@ export default function BookRoom() {
       '09:00'
 
     const OFFICE_END_TIME =
-      '18:00'
+      '19:00'
 
     if (
       form.startTime <
@@ -750,7 +750,7 @@ export default function BookRoom() {
               <Input
                 type="time"
                 min={minStartTime}
-                max="18:00"
+                max="19:00"
                 value={form.startTime}
                 onChange={(e) =>
                   update(
@@ -776,7 +776,7 @@ export default function BookRoom() {
                   form.startTime ||
                   minStartTime
                 }
-                max="18:00"
+                max="19:00"
                 value={form.endTime}
                 onChange={(e) =>
                   update(
