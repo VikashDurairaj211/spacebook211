@@ -1,25 +1,66 @@
+import { useState, useEffect } from "react";
 import { BarChart3 } from "lucide-react";
 
-export function BookingStatsCard({ modules = [], bookings = [] }) {
-  // Aggregate all seats across all modules
+const API_BASE = "https://spacebook-505h.onrender.com/api/Hotseat";
+
+export function BookingStatsCard() {
+  const [modules, setModules] = useState([]);
+  const [bookings, setBookings] = useState([]);
+
+  useEffect(() => {
+    async function fetchStatsData() {
+      try {
+        const token = localStorage.getItem("spacebook_token") || "";
+        const headers = { Authorization: `Bearer ${token}` };
+
+        const [seatsRes, bookingsRes] = await Promise.all([
+          fetch(API_BASE, { headers }),
+          fetch(`${API_BASE}/my-bookings`, { headers }),
+        ]);
+
+        if (seatsRes.ok) {
+          const rawSeats = await seatsRes.json();
+          const module1Seats = rawSeats
+            .filter((s) => s.seatNumber.includes("EO1"))
+            .map((s) => ({ status: s.status }));
+          const module2Seats = rawSeats
+            .filter((s) => s.seatNumber.includes("EO2"))
+            .map((s) => ({ status: s.status }));
+
+          setModules([
+            { id: "module1", seats: module1Seats },
+            { id: "module2", seats: module2Seats },
+          ]);
+        }
+
+        if (bookingsRes.ok) {
+          const myBookings = await bookingsRes.json();
+          setBookings(myBookings);
+        }
+      } catch (err) {
+        console.error("Failed to load sidebar stats:", err);
+      }
+    }
+
+    fetchStatsData();
+  }, []);
+
   const allSeats = modules.flatMap((module) => module.seats || []);
 
   const totalSpaces = allSeats.length;
-  const availableCount = allSeats.filter((seat) => seat.status === "vacant").length;
-  const bookedCount = allSeats.filter((seat) => seat.status === "occupied").length;
+  const availableCount = allSeats.filter((seat) => seat.status?.toLowerCase() === "vacant").length;
+  const bookedCount = allSeats.filter((seat) => seat.status?.toLowerCase() === "occupied" || seat.status?.toLowerCase() === "booked").length;
   const pendingCheckInCount = allSeats.filter(
-    (seat) => seat.status === "reserved" || seat.status === "my-booked"
+    (seat) => seat.status?.toLowerCase() === "reserved" || seat.status === "my-booked"
   ).length;
 
-  // Active bookings count for today
   const todayKey = new Date().toISOString().split("T")[0];
   const bookingsToday = bookings.filter(
-    (b) => b.date === todayKey && ["RESERVED", "OCCUPIED"].includes(b.status)
+    (b) => (b.bookingDate === todayKey || b.date === todayKey)
   ).length;
 
   return (
     <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-3">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-800">
           Hotseat Stats
@@ -27,9 +68,7 @@ export function BookingStatsCard({ modules = [], bookings = [] }) {
         <BarChart3 size={14} className="text-sky-600" />
       </div>
 
-      {/* Main Status Counts matching legend exact naming & colors */}
       <div className="flex flex-col gap-2 text-xs">
-        {/* AVAILABLE */}
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2 text-slate-700 font-medium">
             <span className="w-2.5 h-2.5 rounded bg-white border-2 border-[#2563EB] inline-block shadow-sm" /> Available
@@ -37,7 +76,6 @@ export function BookingStatsCard({ modules = [], bookings = [] }) {
           <span className="font-bold text-sky-950">{availableCount}</span>
         </div>
 
-        {/* BOOKED */}
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2 text-slate-700 font-medium">
             <span className="w-2.5 h-2.5 rounded bg-[#8E9EB5] inline-block shadow-sm" /> Booked
@@ -45,7 +83,6 @@ export function BookingStatsCard({ modules = [], bookings = [] }) {
           <span className="font-bold text-sky-950">{bookedCount}</span>
         </div>
 
-        {/* PENDING CHECK-IN */}
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2 text-slate-700 font-medium">
             <span className="w-2.5 h-2.5 rounded bg-[#FEF3C7] border border-[#F59E0B] inline-block shadow-sm" /> Pending Check-in
@@ -54,10 +91,8 @@ export function BookingStatsCard({ modules = [], bookings = [] }) {
         </div>
       </div>
 
-      {/* Divider */}
       <div className="border-t border-sky-100 my-1" />
 
-      {/* Footer Metrics */}
       <div className="flex flex-col gap-1.5 text-xs text-sky-900/70">
         <div className="flex items-center justify-between">
           <span>Bookings today</span>

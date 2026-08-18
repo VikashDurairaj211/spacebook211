@@ -54,6 +54,7 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
 
             {!collapsed && (
               <div className="pt-2 space-y-4">
+                {/* Live Hotseat Stats Card */}
                 <BookingStatsCard modules={modules} bookings={bookings} />
 
                 {/* Office Policy Card */}

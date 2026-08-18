@@ -248,7 +248,7 @@ export default function HotseatBookingApp() {
   const [loading, setLoading] = useState(true);
 
   const getAuthHeaders = () => {
-    const token = localStorage.getItem("token") || ""; 
+    const token = localStorage.getItem("spacebook_token") || ""; 
     return {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`
@@ -318,7 +318,8 @@ export default function HotseatBookingApp() {
         body: JSON.stringify({
           seatId: numericSeatId,
           bookingDate: targetDate,
-          expectedCheckInTime: expectedCheckIn
+          expectedCheckInTime: `${expectedCheckIn}:00`,
+          request: {}
         }),
       });
 
@@ -345,7 +346,8 @@ export default function HotseatBookingApp() {
         body: JSON.stringify({
           seatId: numericSeatId,
           bookingDate: changes.date,
-          expectedCheckInTime: changes.expectedCheckIn
+          expectedCheckInTime: `${changes.expectedCheckIn}:00`,
+          request: {}
         }),
       });
 
@@ -433,7 +435,7 @@ function OfficeMapTab({ modules, bookings, onReserve, onEdit, onCancel }) {
 
   const currentSeats = (currentModule?.seats || []).map((seat) => {
     if (seat.id === active?.id) {
-      return { ...seat, status: "selected" }; // Blue for selected
+      return { ...seat, status: "selected" };
     }
     if (seat.id === myBookedSeatId) {
       return { ...seat, status: "my-booked" };
