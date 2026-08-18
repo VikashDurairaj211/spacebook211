@@ -1,11 +1,13 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Search, CalendarRange, ShieldCheck, Building2, BookOpenCheck, BarChart3, Clock } from 'lucide-react'
+import { LayoutDashboard, Search, CalendarRange, MapPin, ShieldCheck, Building2, BookOpenCheck, BarChart3, Clock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { BookingStatsCard } from '../cards/BookingStatsCard'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/search-rooms', label: 'Search Rooms', icon: Search },
   { to: '/availability-calendar', label: 'Availability Calendar', icon: CalendarRange },
+  { to: '/office-map', label: 'Hotseat Reservation', icon: MapPin },
 ]
 
 const ADMIN_ITEMS = [
@@ -15,7 +17,7 @@ const ADMIN_ITEMS = [
   { to: '/admin/reports', label: 'Reports', icon: BarChart3 },
 ]
 
-export default function Sidebar({ collapsed = true }) {
+export default function Sidebar({ collapsed = true, modules = [], bookings = [] }) {
   const widthClass = collapsed ? 'w-20' : 'w-64'
   const { user } = useAuth()
   const isAdmin = user?.role === 'Admin' || user?.isAdmin === true
@@ -50,9 +52,13 @@ export default function Sidebar({ collapsed = true }) {
               </ul>
             </div>
 
-            {/* Employee Office Policy Reminder Widget */}
+            {/* Booking Stats & Employee Office Policy Reminder Widgets */}
             {!collapsed && (
-              <div className="pt-2">
+              <div className="pt-2 space-y-4">
+                {/* --- BOOKING STATS CARD ON TOP --- */}
+                <BookingStatsCard modules={modules} bookings={bookings} />
+
+                {/* --- OFFICE POLICY CARD --- */}
                 <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-800">
@@ -102,7 +108,11 @@ export default function Sidebar({ collapsed = true }) {
 
             {/* Admin Policy Reminder Widget */}
             {!collapsed && (
-              <div className="mt-6 pt-2">
+              <div className="mt-6 pt-2 space-y-4">
+                {/* --- BOOKING STATS CARD ON TOP --- */}
+                <BookingStatsCard modules={modules} bookings={bookings} />
+
+                {/* --- OFFICE POLICY CARD --- */}
                 <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-800">
