@@ -20,6 +20,7 @@ function toDateKey(date) {
 }
 
 function formatDate(dateKey) {
+  if (!dateKey) return "";
   const [year, month, day] = dateKey.split("-");
   return `${month}-${day}-${year}`;
 }
@@ -33,60 +34,6 @@ function getTomorrowKey() {
   tomorrow.setDate(tomorrow.getDate() + 1);
   return toDateKey(tomorrow);
 }
-
-// ---------------------------------------------------------------------------
-// Dynamic Module + Seat Generation
-// ---------------------------------------------------------------------------
-
-function statusForIndex(i, offset) {
-  const n = (i + offset) % 9;
-  if (n === 0 || n === 4) return "occupied";
-  if (n === 2 || n === 7) return "reserved";
-  return "vacant";
-}
-
-function buildModule(moduleId, label, offset, seatCount) {
-  const seats = [];
-  for (let i = 1; i <= seatCount; i++) {
-    seats.push({
-      id: `${moduleId}-HS-${String(i).padStart(3, "0")}`,
-      label: `Seat ${String(i).padStart(3, "0")}`,
-      number: i,
-      type: "hotseat",
-      status: statusForIndex(i, offset),
-    });
-  }
-
-  const rooms = [
-    {
-      id: `${moduleId}-CR-1`,
-      label: offset === 0 ? "Amsterdam" : "Lisbon",
-      sub: "Conference Room",
-      type: "conference",
-      capacity: 8,
-      status: offset === 0 ? "vacant" : "reserved",
-    },
-    {
-      id: `${moduleId}-TR-1`,
-      label: offset === 0 ? "Berlin" : "Oslo",
-      sub: "Training Room",
-      type: "training",
-      capacity: 20,
-      status: offset === 0 ? "occupied" : "vacant",
-    },
-  ];
-
-  return { id: moduleId, label, seats, rooms };
-}
-
-const MODULES = [
-  buildModule("module1", "Module 1", 0, 98),
-  buildModule("module2", "Module 2", 3, 131),
-];
-
-const LOCATIONS = ["Coimbatore"];
-const ZONES = ["Elcot Park", "Tidel Park"];
-const INITIAL_BOOKINGS = [];
 
 // ---------------------------------------------------------------------------
 // Dropdown Select Atom
@@ -138,8 +85,8 @@ function CustomTimePicker({ value, onChange, selectedDate }) {
 
   const [selectedHour, selectedMin] = value ? value.split(":") : ["10", "00"];
 
-  const hours = Array.from({ length: 11 }, (_, i) => String(i + 9).padStart(2, "0")); // 09 to 19
-  const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));   // 00 to 59
+  const hours = Array.from({ length: 11 }, (_, i) => String(i + 9).padStart(2, "0")); 
+  const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));   
 
   const now = new Date();
   const todayKey = getTodayKey();
@@ -292,142 +239,151 @@ function Toast({ message, details, onClose }) {
 // Main Hotseat Booking Component
 // ---------------------------------------------------------------------------
 
+const API_BASE = "https://spacebook-505h.onrender.com/api/Hotseat";
+
 export default function HotseatBookingApp() {
-  const [bookings, setBookings] = useState(INITIAL_BOOKINGS);
-  const [modules, setModules] = useState(MODULES);
+  const [bookings, setBookings] = useState([]);
+  const [modules, setModules] = useState([]);
   const [toast, setToast] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("token") || ""; 
+    return {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    };
+  };
+
+  const fetchOfficeData = async () => {
+    try {
+      setLoading(true);
+      const [seatsRes, bookingsRes] = await Promise.all([
+        fetch(API_BASE, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE}/my-bookings`, { headers: getAuthHeaders() })
+      ]);
+
+      if (seatsRes.ok) {
+        const rawSeats = await seatsRes.json();
+        
+        const module1Seats = rawSeats.filter(s => s.seatNumber.includes("EO1")).map(s => ({
+          id: s.seatNumber,
+          label: `Seat ${s.seatNumber.split("-").pop()}`,
+          number: parseInt(s.seatNumber.split("-").pop(), 10),
+          type: "hotseat",
+          status: s.status.toLowerCase()
+        }));
+
+        const module2Seats = rawSeats.filter(s => s.seatNumber.includes("EO2")).map(s => ({
+          id: s.seatNumber,
+          label: `Seat ${s.seatNumber.split("-").pop()}`,
+          number: parseInt(s.seatNumber.split("-").pop(), 10),
+          type: "hotseat",
+          status: s.status.toLowerCase()
+        }));
+
+        setModules([
+          { id: "module1", label: "Module 1", seats: module1Seats, rooms: [] },
+          { id: "module2", label: "Module 2", seats: module2Seats, rooms: [] }
+        ]);
+      }
+
+      if (bookingsRes.ok) {
+        const myBookingsData = await bookingsRes.json();
+        setBookings(myBookingsData);
+      }
+    } catch (err) {
+      console.error("Failed to sync with backend:", err);
+      showToast("Connection Error", "Could not reach the server.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOfficeData();
+  }, []);
 
   const showToast = useCallback((message, details) => {
     setToast({ message, details });
   }, []);
 
-  const updateSeatStatus = useCallback((moduleId, seatId, status) => {
-    setModules((prev) => prev.map((module) => (
-      module.id !== moduleId
-        ? module
-        : { ...module, seats: module.seats.map((seat) => (seat.id === seatId ? { ...seat, status } : seat)) }
-    )));
-  }, []);
+  async function reserveItem({ item, targetDate, expectedCheckIn }) {
+    try {
+      const numericSeatId = parseInt(item.id.replace(/[^0-9]/g, "").slice(-3), 10);
 
-  const expireMissedBookings = useCallback(() => {
-    const now = new Date();
-    const today = getTodayKey();
-    const expired = [];
-    setBookings((prev) => prev.map((booking) => {
-      if (booking.status !== "RESERVED" || booking.date > today) return booking;
-      const deadline = new Date(`${booking.date}T${booking.expectedCheckIn}:00`);
-      deadline.setMinutes(deadline.getMinutes() + 30);
-      if (now > deadline) {
-        expired.push(booking);
-        return { ...booking, status: "EXPIRED" };
+      const response = await fetch(API_BASE, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          seatId: numericSeatId,
+          bookingDate: targetDate,
+          expectedCheckInTime: expectedCheckIn
+        }),
+      });
+
+      if (!response.ok) {
+        return { ok: false, message: "Failed to reserve hotseat." };
       }
-      return booking;
-    }));
-    expired.forEach((booking) => updateSeatStatus(booking.moduleId, booking.seatId, "vacant"));
-  }, [updateSeatStatus]);
 
-  useEffect(() => {
-    const intervalId = window.setInterval(expireMissedBookings, 60_000);
-    return () => window.clearInterval(intervalId);
-  }, [expireMissedBookings]);
-
-  function reserveItem({ moduleId, item, targetDate, expectedCheckIn, location, office }) {
-    expireMissedBookings();
-
-    const now = new Date();
-    const todayKey = getTodayKey();
-    if (targetDate === todayKey) {
-      const selectedTime = new Date(`${todayKey}T${expectedCheckIn}:00`);
-      if (selectedTime < now) {
-        return { ok: false, message: "Cannot book a check-in time in the past." };
-      }
+      showToast("Booking Confirmed!", `Successfully booked seat ${item.label} for ${targetDate}`);
+      await fetchOfficeData(); 
+      return { ok: true };
+    } catch (err) {
+      console.error(err);
+      return { ok: false, message: "Network error during reservation." };
     }
-
-    const currentSeat = modules.find((module) => module.id === moduleId)?.seats.find((seat) => seat.id === item.id);
-    if (!currentSeat || currentSeat.status !== "vacant") {
-      return { ok: false, message: "This seat is no longer vacant." };
-    }
-    if (![getTodayKey(), getTomorrowKey()].includes(targetDate)) {
-      return { ok: false, message: "Seats can only be booked for valid dates." };
-    }
-    if (bookings.some((booking) => booking.date === targetDate && ["RESERVED", "OCCUPIED"].includes(booking.status))) {
-      return { ok: false, message: "Only one seat can be booked per day." };
-    }
-
-    const moduleLabel = modules.find((module) => module.id === moduleId)?.label || moduleId;
-    
-    // Marked as reserved
-    updateSeatStatus(moduleId, item.id, "reserved");
-
-    const booking = {
-      id: Date.now(),
-      name: item.label,
-      seatId: item.id,
-      moduleId,
-      module: moduleLabel,
-      location,
-      office,
-      type: item.type,
-      date: targetDate,
-      expectedCheckIn,
-      time: expectedCheckIn,
-      status: "RESERVED",
-    };
-
-    setBookings((prev) => [booking, ...prev]);
-    showToast(
-      "Booking Confirmed!",
-      `${formatDate(booking.date)} · ${booking.location} · ${booking.office} · ${booking.module} · ${booking.name}`
-    );
-    return { ok: true, booking };
   }
 
-  function editBooking(bookingId, changes) {
-    const booking = bookings.find((entry) => entry.id === bookingId);
-    if (!booking || booking.status !== "RESERVED") return { ok: false, message: "Only active reservations can be edited." };
+  async function editBooking(bookingId, changes) {
+    try {
+      const numericSeatId = parseInt(changes.seatId.replace(/[^0-9]/g, "").slice(-3), 10);
 
-    const now = new Date();
-    const todayKey = getTodayKey();
-    if (changes.date === todayKey) {
-      const selectedTime = new Date(`${todayKey}T${changes.expectedCheckIn}:00`);
-      if (selectedTime < now) {
-        return { ok: false, message: "Cannot set a check-in time in the past." };
+      const response = await fetch(`${API_BASE}/${bookingId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          seatId: numericSeatId,
+          bookingDate: changes.date,
+          expectedCheckInTime: changes.expectedCheckIn
+        }),
+      });
+
+      if (!response.ok) {
+        return { ok: false, message: "Failed to update booking." };
       }
+
+      showToast("Booking Updated", "Your reservation has been modified.");
+      await fetchOfficeData();
+      return { ok: true, message: "Booking updated." };
+    } catch (err) {
+      console.error(err);
+      return { ok: false, message: "Network error during update." };
     }
-
-    const hasConflict = bookings.some((entry) => entry.id !== bookingId && entry.date === changes.date && ["RESERVED", "OCCUPIED"].includes(entry.status));
-    if (hasConflict) return { ok: false, message: "Only one seat can be booked per day." };
-
-    const nextModule = modules.find((module) => module.id === changes.moduleId);
-    const nextSeat = nextModule?.seats.find((seat) => seat.id === changes.seatId);
-    if (!nextSeat) return { ok: false, message: "Selected seat not found." };
-
-    const movingSeat = booking.seatId !== nextSeat.id;
-    if (movingSeat && nextSeat.status !== "vacant") return { ok: false, message: "That hotseat is no longer available." };
-
-    if (movingSeat) {
-      updateSeatStatus(booking.moduleId, booking.seatId, "vacant");
-      updateSeatStatus(nextModule.id, nextSeat.id, "reserved");
-    }
-
-    setBookings((prev) => prev.map((entry) => (
-      entry.id === bookingId
-        ? { ...entry, ...changes, module: nextModule.label, name: nextSeat.label, type: nextSeat.type, time: changes.expectedCheckIn }
-        : entry
-    )));
-
-    showToast("Booking Updated", "Your reservation has been successfully updated.");
-    return { ok: true, message: "Booking updated." };
   }
 
-  function cancelBooking(bookingId) {
-    const booking = bookings.find((entry) => entry.id === bookingId);
-    if (!booking || !["RESERVED", "OCCUPIED"].includes(booking.status)) {
-      return { ok: false, message: "This booking can no longer be cancelled." };
+  async function cancelBooking(bookingId) {
+    try {
+      const response = await fetch(`${API_BASE}/${bookingId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        return { ok: false, message: "Failed to cancel booking." };
+      }
+
+      showToast("Booking Cancelled", "The hotseat is now released.");
+      await fetchOfficeData();
+      return { ok: true, message: "Cancelled successfully." };
+    } catch (err) {
+      console.error(err);
+      return { ok: false, message: "Network error while cancelling." };
     }
-    updateSeatStatus(booking.moduleId, booking.seatId, "vacant");
-    setBookings((prev) => prev.filter((entry) => entry.id !== bookingId));
-    return { ok: true, message: "Booking cancelled. The hotseat is now available." };
+  }
+
+  if (loading) {
+    return <div className="p-10 text-center text-sm text-slate-500">Loading office space map...</div>;
   }
 
   return (
@@ -452,7 +408,7 @@ export default function HotseatBookingApp() {
 }
 
 // ---------------------------------------------------------------------------
-// Office Map Tab
+// Office Map Tab & Color Indicators
 // ---------------------------------------------------------------------------
 
 function OfficeMapTab({ modules, bookings, onReserve, onEdit, onCancel }) {
@@ -465,35 +421,36 @@ function OfficeMapTab({ modules, bookings, onReserve, onEdit, onCancel }) {
   const tomorrow = getTomorrowKey();
   const [targetDate, setTargetDate] = useState(tomorrow);
 
+  const LOCATIONS = ["Coimbatore"];
+  const ZONES = ["Elcot Park", "Tidel Park"];
+
   const currentModule = modules.find((m) => m.id === moduleId);
   const readyForModule = location && zone;
 
-  // Derive user's booked seat ID for the currently selected date and module
   const myBookedSeatId = bookings.find(
-    (b) => b.moduleId === moduleId && b.date === targetDate && ["RESERVED", "OCCUPIED"].includes(b.status)
-  )?.seatId;
+    (b) => b.bookingDate === targetDate
+  )?.seatNumber;
 
-  // Inject 'my-booked' status for user's own seat on the current view
   const currentSeats = (currentModule?.seats || []).map((seat) => {
+    if (seat.id === active?.id) {
+      return { ...seat, status: "selected" }; // Blue for selected
+    }
     if (seat.id === myBookedSeatId) {
       return { ...seat, status: "my-booked" };
     }
-    return seat;
+    return seat; 
   });
 
   function handleSelectSeat(seat) {
-    if (seat.status !== "vacant" && seat.status !== "my-booked") return;
+    if (seat.status === "occupied" && seat.id !== myBookedSeatId) return;
     setActive(seat);
   }
 
-  function handleReserve(item, expectedCheckIn, reservationModuleId = moduleId, bookingDate = targetDate) {
-    const result = onReserve({
-      moduleId: reservationModuleId,
+  async function handleReserve(item, expectedCheckIn) {
+    const result = await onReserve({
       item,
-      targetDate: bookingDate,
+      targetDate,
       expectedCheckIn,
-      location,
-      office: zone,
     });
     setBookingResult(result);
     if (result.ok) setActive(null);
@@ -506,7 +463,6 @@ function OfficeMapTab({ modules, bookings, onReserve, onEdit, onCancel }) {
         Book one hotseat for today or tomorrow, then check in during your expected arrival window.
       </p>
 
-      {/* Filter Card */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           <Select
@@ -586,16 +542,11 @@ function OfficeMapTab({ modules, bookings, onReserve, onEdit, onCancel }) {
           {active && (
             <BookingDialog
               item={active}
-              booking={bookings.find((booking) => booking.seatId === active.id && ["RESERVED", "OCCUPIED"].includes(booking.status))}
-              modules={modules}
+              booking={bookings.find((b) => b.seatNumber === active.id)}
               currentModuleLabel={currentModule.label}
               targetDate={targetDate}
-              location={location}
-              office={zone}
               onClose={() => setActive(null)}
-              onCreate={(details) =>
-                handleReserve(details.item, details.expectedCheckIn, details.moduleId, details.date)
-              }
+              onCreate={(details) => handleReserve(details.item, details.expectedCheckIn)}
               onUpdate={onEdit}
               onCancel={onCancel}
               onResult={(result) => {
@@ -611,21 +562,19 @@ function OfficeMapTab({ modules, bookings, onReserve, onEdit, onCancel }) {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-5 mt-4 text-[11px] text-slate-500">
-            <span className="flex items-center gap-1.5">
-              <span className="seat-legend-box my-booked" style={{ background: "#1B3A66", width: "12px", height: "12px", borderRadius: "3px", display: "inline-block" }} /> SELECTED
+          {/* Color Legend Bar */}
+          <div className="flex flex-wrap items-center gap-6 mt-4 text-[11px] font-semibold text-slate-600">
+            <span className="flex items-center gap-2">
+              <span style={{ background: "#22c55e", width: "12px", height: "12px", borderRadius: "3px", display: "inline-block" }} /> AVAILABLE
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="seat-legend-box vacant" /> AVAILABLE
+            <span className="flex items-center gap-2">
+              <span style={{ background: "#ef4444", width: "12px", height: "12px", borderRadius: "3px", display: "inline-block" }} /> BOOKED
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="seat-legend-box occupied" /> BOOKED
+            <span className="flex items-center gap-2">
+              <span style={{ background: "#3b82f6", width: "12px", height: "12px", borderRadius: "3px", display: "inline-block" }} /> SELECTED
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="seat-legend-box reserved" /> PENDING CHECK-IN
-            </span>
-            <span className="ml-auto text-slate-400">
-              Click a vacant seat to reserve
+            <span className="ml-auto text-slate-400 font-normal">
+              Click a green available seat to reserve
             </span>
           </div>
         </div>
@@ -634,18 +583,11 @@ function OfficeMapTab({ modules, bookings, onReserve, onEdit, onCancel }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Booking Dialog Component
-// ---------------------------------------------------------------------------
-
 function BookingDialog({
   item,
   booking,
-  modules,
   currentModuleLabel,
   targetDate,
-  location,
-  office,
   onClose,
   onCreate,
   onUpdate,
@@ -653,44 +595,29 @@ function BookingDialog({
   onResult,
 }) {
   const isEditing = Boolean(booking);
-  const [date, setDate] = useState(booking?.date || targetDate);
-  const [expectedCheckIn, setExpectedCheckIn] = useState(booking?.expectedCheckIn || "10:00");
+  const [date, setDate] = useState(booking?.bookingDate || targetDate);
+  const [expectedCheckIn, setExpectedCheckIn] = useState(booking?.expectedCheckInTime || "10:00");
   const [confirmation, setConfirmation] = useState(null);
   const [error, setError] = useState("");
 
-  const today = getTodayKey();
-  const tomorrow = getTomorrowKey();
-  const moduleId = item.id.split("-")[0];
-
   function requestSave(event) {
     event.preventDefault();
-
-    const now = new Date();
-    if (date === today) {
-      const selectedTime = new Date(`${today}T${expectedCheckIn}:00`);
-      if (selectedTime < now) {
-        setError("Please choose a future check-in time.");
-        return;
-      }
-    }
-
     setError("");
     setConfirmation(isEditing ? "update" : "create");
   }
 
-  function confirm() {
+  async function confirm() {
     let result;
     if (confirmation === "create") {
-      result = onCreate({ item, expectedCheckIn, moduleId, date });
+      result = await onCreate({ item, expectedCheckIn, date });
     } else if (confirmation === "update") {
-      result = onUpdate(booking.id, {
+      result = await onUpdate(booking.id, {
         date,
         expectedCheckIn,
-        moduleId,
         seatId: item.id,
       });
     } else {
-      result = onCancel(booking.id);
+      result = await onCancel(booking.id);
     }
     onResult?.(result);
     if (!result.ok) {
@@ -700,128 +627,38 @@ function BookingDialog({
   }
 
   return (
-    <Dialog
-      title={
-        confirmation === "cancel"
-          ? "Cancel booking"
-          : isEditing
-          ? "Edit booking"
-          : "Book Hotseat"
-      }
-      onClose={onClose}
-    >
+    <Dialog title={isEditing ? "Edit booking" : "Book Hotseat"} onClose={onClose}>
       {confirmation ? (
         <div>
-          <p className="text-sm text-slate-600">
-            {confirmation === "create"
-              ? "Are you sure you want to confirm this booking?"
-              : confirmation === "update"
-              ? "Are you sure you want to update this booking?"
-              : "Are you sure you want to cancel this booking?"}
-          </p>
+          <p className="text-sm text-slate-600">Are you sure you want to proceed?</p>
           <div className="mt-6 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setConfirmation(null)}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              onClick={confirm}
-              className="rounded-lg bg-[#2F6FE0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1B3A66]"
-            >
-              {confirmation === "create"
-                ? "Confirm Booking"
-                : confirmation === "update"
-                ? "Confirm Update"
-                : "Confirm Cancel"}
-            </button>
+            <button type="button" onClick={() => setConfirmation(null)} className="rounded-lg px-4 py-2 text-sm text-slate-600">Back</button>
+            <button type="button" onClick={confirm} className="rounded-lg bg-[#2F6FE0] px-4 py-2 text-sm text-white">Confirm</button>
           </div>
         </div>
       ) : (
         <form onSubmit={requestSave}>
-          <p className="mb-4 text-sm text-slate-500">
-            {isEditing
-              ? "Update your reservation details."
-              : `Reserve ${currentModuleLabel} · ${item.label}`}
-          </p>
-
-          {/* Selected Seat */}
           <div className="mb-4">
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-              Selected Hotseat
-            </label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Selected Hotseat</label>
             <div className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-medium text-slate-700">
               {currentModuleLabel} · {item.label}
             </div>
           </div>
 
-          {/* Date Selector */}
-          <label className="mb-4 block text-xs font-semibold text-slate-600">
-            Date
-            <div className="relative mt-1.5">
-              <select
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
-                className="w-full appearance-none rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 pr-8 text-sm text-slate-700 focus:border-[#2F6FE0] focus:outline-none"
-              >
-                <option value={today}>{formatDate(today)}</option>
-                <option value={tomorrow}>{formatDate(tomorrow)}</option>
-              </select>
-              <ChevronDown
-                size={15}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
-              />
-            </div>
-          </label>
-
-          {/* Dual Column Time Picker */}
           <div className="mb-2">
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-              Expected check-in time
-            </label>
-            <CustomTimePicker
-              value={expectedCheckIn}
-              onChange={setExpectedCheckIn}
-              selectedDate={date}
-            />
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Expected check-in time</label>
+            <CustomTimePicker value={expectedCheckIn} onChange={setExpectedCheckIn} selectedDate={date} />
           </div>
-
-          <p className="mt-3 text-xs text-slate-500">
-            {location && `${location} · `}
-            {office && `${office} · `}
-            {currentModuleLabel} · {item.label}
-          </p>
 
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
           <div className="mt-6 flex items-center justify-between gap-3">
             {isEditing ? (
-              <button
-                type="button"
-                onClick={() => setConfirmation("cancel")}
-                className="text-sm font-semibold text-red-600 hover:text-red-800"
-              >
-                Cancel Booking
-              </button>
+              <button type="button" onClick={() => setConfirmation("cancel")} className="text-sm font-semibold text-red-600">Cancel Booking</button>
             ) : (
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
-              >
-                Close
-              </button>
+              <button type="button" onClick={onClose} className="rounded-lg px-3 py-2 text-sm text-slate-600">Close</button>
             )}
-
-            <button
-              type="submit"
-              className="rounded-lg bg-[#2F6FE0] px-5 py-2 text-sm font-semibold text-white hover:bg-[#1B3A66] transition-colors"
-            >
-              {isEditing ? "Update booking" : "Book"}
-            </button>
+            <button type="submit" className="rounded-lg bg-[#2F6FE0] px-5 py-2 text-sm text-white">{isEditing ? "Update" : "Book"}</button>
           </div>
         </form>
       )}
@@ -829,29 +666,13 @@ function BookingDialog({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Modal Dialog Shell
-// ---------------------------------------------------------------------------
-
 function Dialog({ title, children, onClose }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4" role="dialog">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
         <div className="mb-5 flex items-start justify-between gap-4">
           <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-700"
-            aria-label="Close dialog"
-          >
-            <X size={20} />
-          </button>
+          <button type="button" onClick={onClose} aria-label="Close dialog"><X size={20} /></button>
         </div>
         {children}
       </div>

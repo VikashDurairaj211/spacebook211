@@ -25,7 +25,7 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
   return (
     <aside className={`hidden md:fixed md:top-14 md:left-0 md:h-[calc(100%-3.5rem)] md:overflow-y-auto md:flex md:flex-col border-r border-sky-200 bg-sky-50/60 transition-all duration-200 ${widthClass}`}>
       <div className="px-4 py-4 space-y-6">
-        {/* Show workspace menu only for non-admin users */}
+        {/* Show workspace menu & widgets for non-admin users */}
         {!isAdmin && (
           <>
             <div>
@@ -52,13 +52,11 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
               </ul>
             </div>
 
-            {/* Booking Stats & Employee Office Policy Reminder Widgets */}
             {!collapsed && (
               <div className="pt-2 space-y-4">
-                {/* --- BOOKING STATS CARD ON TOP --- */}
                 <BookingStatsCard modules={modules} bookings={bookings} />
 
-                {/* --- OFFICE POLICY CARD --- */}
+                {/* Office Policy Card */}
                 <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-800">
@@ -82,7 +80,7 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
           </>
         )}
 
-        {/* Admin menu only for admins */}
+        {/* Show admin menu & Office Policy card for admin users */}
         {isAdmin && (
           <div>
             <p className={`mb-2 font-mono text-[11px] uppercase tracking-[0.25em] text-sky-800/70 ${collapsed ? 'hidden' : 'block'}`}>Admin</p>
@@ -106,13 +104,9 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
               ))}
             </ul>
 
-            {/* Admin Policy Reminder Widget */}
             {!collapsed && (
               <div className="mt-6 pt-2 space-y-4">
-                {/* --- BOOKING STATS CARD ON TOP --- */}
-                <BookingStatsCard modules={modules} bookings={bookings} />
-
-                {/* --- OFFICE POLICY CARD --- */}
+                {/* Office Policy Card for Admin */}
                 <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-800">
