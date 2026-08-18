@@ -2635,14 +2635,14 @@ export default function RoomManagement() {
 
           <div className="flex flex-wrap items-center justify-end gap-3 lg:flex-nowrap">
 
-            <Button
+            {/* <Button
               className="min-w-[96px] shrink-0 justify-center px-3 py-2"
               onClick={
                 openAddModal
               }
             >
               Add Room
-            </Button>
+            </Button> */}
 
             <input
               value={search}
