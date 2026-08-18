@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 import BookingTrendChart from "../../components/reports/BookingTrendChart";
 import StatusChart from "../../components/reports/StatusChart";
@@ -31,27 +31,11 @@ const ROOM_TYPES = [
   { id: 3, name: "Discussion" },
 ];
 
-const STATUS_OPTIONS = [
-  "All",
-  "Confirmed",
-  "Pending",
-  "Cancelled",
-  "Rejected",
-];
-
-const MONTH_NAMES = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-];
-
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
 export default function Reports() {
   const [filters, setFilters] = useState({
     reportType: "Monthly",
     module: "All",
     roomTypeId: "",
-    status: "All",
   });
 
   const [activeGraphIndex, setActiveGraphIndex] = useState(0);
@@ -65,7 +49,6 @@ export default function Reports() {
     totalBookings: 0,
     uniqueRooms: 0,
     confirmedRate: "0%",
-    avgDuration: "0h 00m",
   });
 
   const handleGenerateReport = async () => {
@@ -77,7 +60,7 @@ export default function Reports() {
         reportType: filters.reportType,
         module: filters.module === "All" ? null : filters.module,
         roomTypeId: filters.roomTypeId ? Number(filters.roomTypeId) : null,
-        status: filters.status === "All" ? null : filters.status,
+        status: null,
       };
 
       const [trendRes, statusRes, usageRes] = await Promise.all([
@@ -93,114 +76,38 @@ export default function Reports() {
       // 1. Process Trend & Summary
       if (trendRes) {
         setSummary({
-          totalBookings: trendRes.totalBookings ?? trendRes.totalCount ?? 0,
-          uniqueRooms: trendRes.uniqueRooms ?? trendRes.totalRooms ?? 0,
-          confirmedRate:
-            trendRes.confirmedRate !== undefined
-              ? String(trendRes.confirmedRate).includes("%")
-                ? trendRes.confirmedRate
-                : `${trendRes.confirmedRate}%`
-              : "0%",
-          avgDuration: trendRes.avgDuration || "0h 00m",
+          totalBookings: trendRes.totalBookings ?? 0,
+          uniqueRooms: trendRes.uniqueRooms ?? 0,
+          confirmedRate: `${trendRes.confirmedRate ?? 0}%`,
         });
 
-        // Extract trend array from any common backend property
-        const rawTrendList =
-          trendRes.monthlyData ||
-          trendRes.weeklyData ||
-          trendRes.trends ||
-          trendRes.trendData ||
-          trendRes.bookingTrends ||
-          trendRes.data ||
-          trendRes.result ||
-          (Array.isArray(trendRes) ? trendRes : []);
+        const rawTrendList = trendRes.chart || [];
+        const formattedTrendData = rawTrendList.map((item) => ({
+          [filters.reportType === "Weekly" ? "day" : "month"]: item.label || "Unknown",
+          bookings: Number(item.count ?? 0),
+        }));
 
-        if (filters.reportType === "Weekly") {
-          const formattedWeekly = DAY_NAMES.map((dayName, index) => {
-            const found = rawTrendList.find((item) => {
-              const val = String(item.day || item.dayName || item.label || item.name || item.date || "").toLowerCase();
-              return val.includes(dayName.toLowerCase()) || Number(item.dayOfWeek ?? item.dayIndex) === index;
-            });
-
-            return {
-              day: dayName,
-              bookings: Number(
-                found?.count ??
-                found?.bookings ??
-                found?.bookingCount ??
-                found?.totalBookings ??
-                found?.total ??
-                found?.value ??
-                0
-              ),
-            };
-          });
-          setTrendData(formattedWeekly);
-        } else {
-          const formattedMonthly = MONTH_NAMES.map((monthName, index) => {
-            const monthNumber = index + 1;
-            const found = rawTrendList.find((item) => {
-              const rawMonth = item.month ?? item.monthName ?? item.monthNumber ?? item.label ?? item.name ?? item.period ?? item.date ?? "";
-              
-              // Handle numeric month (e.g. 8 or "08" or "8")
-              if (!isNaN(rawMonth) && rawMonth !== "") {
-                return Number(rawMonth) === monthNumber;
-              }
-
-              // Handle string month (e.g. "August", "Aug", "2026-08")
-              const strMonth = String(rawMonth).toLowerCase();
-              return (
-                strMonth.includes(monthName.toLowerCase()) ||
-                strMonth === String(monthNumber).padStart(2, "0")
-              );
-            });
-
-            return {
-              month: monthName,
-              bookings: Number(
-                found?.count ??
-                found?.bookings ??
-                found?.bookingCount ??
-                found?.totalBookings ??
-                found?.total ??
-                found?.value ??
-                0
-              ),
-            };
-          });
-          setTrendData(formattedMonthly);
-        }
+        setTrendData(formattedTrendData);
       }
 
       // 2. Process Status Distribution
       if (statusRes) {
-        const rawStatus =
-          statusRes.statusData ||
-          statusRes.statuses ||
-          statusRes.data ||
-          (Array.isArray(statusRes) ? statusRes : []);
-
+        const rawStatus = Array.isArray(statusRes) ? statusRes : (statusRes.data || []);
         setStatusDistribution(
           rawStatus.map((item) => ({
-            name: item.status || item.statusName || item.name || item.label || "Unknown",
-            value: Number(item.count ?? item.value ?? item.total ?? 0),
+            name: item.status || "Unknown",
+            value: Number(item.count ?? 0),
           }))
         );
       }
 
       // 3. Process Room Type Usage
       if (usageRes) {
-        const rawUsage =
-          usageRes.usageData ||
-          usageRes.roomUsage ||
-          usageRes.roomTypeUsage ||
-          usageRes.data ||
-          (Array.isArray(usageRes) ? usageRes : []);
-
+        const rawUsage = Array.isArray(usageRes) ? usageRes : (usageRes.data || []);
         setRoomTypeUsage(
           rawUsage.map((item) => ({
-            name: item.roomType || item.roomTypeName || item.name || item.label || "Unknown",
-            value: Number(item.count ?? item.value ?? item.total ?? 0),
+            name: item.roomType || "Unknown",
+            value: Number(item.count ?? 0),
           }))
         );
       }
@@ -216,58 +123,10 @@ export default function Reports() {
     handleGenerateReport();
   }, []);
 
-  const handleExportCSV = () => {
-    let headers = [];
-    let rows = [];
-
-    if (activeGraphIndex === 0) {
-      headers = [filters.reportType === "Weekly" ? "Day" : "Month", "Bookings"];
-      rows = trendData.map((d) => [
-        filters.reportType === "Weekly" ? d.day : d.month,
-        d.bookings,
-      ]);
-    } else if (activeGraphIndex === 1) {
-      headers = ["Status", "Count"];
-      rows = statusDistribution.map((d) => [d.name, d.value]);
-    } else {
-      headers = ["Room Type", "Count"];
-      rows = roomTypeUsage.map((d) => [d.name, d.value]);
-    }
-
-    const summaryRows = [
-      ["Metric", "Value"],
-      ["Total Bookings", summary.totalBookings],
-      ["Unique Rooms", summary.uniqueRooms],
-      ["Confirmed Rate", summary.confirmedRate],
-      ["Avg Duration", summary.avgDuration],
-      [],
-    ];
-
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      [
-        ...summaryRows.map((e) => e.join(",")),
-        headers.join(","),
-        ...rows.map((e) => e.join(",")),
-      ].join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute(
-      "download",
-      `${CHART_VIEWS[activeGraphIndex].title.replace(/\s+/g, "_")}_${filters.reportType}_Report.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const kpiMetrics = [
     { label: "Total Bookings", value: summary.totalBookings },
     { label: "Unique Rooms", value: summary.uniqueRooms },
     { label: "Confirmed Rate", value: summary.confirmedRate },
-    { label: "Avg. Duration", value: summary.avgDuration },
   ];
 
   const handleFilterChange = (field, value) => {
@@ -302,7 +161,7 @@ export default function Reports() {
       </div>
 
       <div className="space-y-6 rounded-2xl border border-line bg-white p-6 shadow-sm">
-        {/* Controls, Generate & Export Action Row */}
+        {/* Controls & Generate Action Row */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
           <div className="flex flex-wrap items-center gap-3">
             <select
@@ -344,20 +203,6 @@ export default function Reports() {
               ))}
             </select>
 
-            <select
-              value={filters.status}
-              onChange={(e) =>
-                handleFilterChange("status", e.target.value)
-              }
-              className="rounded-xl border border-line bg-white px-3 py-2 text-xs text-ink outline-none"
-            >
-              {STATUS_OPTIONS.map((st) => (
-                <option key={st} value={st}>
-                  {st}
-                </option>
-              ))}
-            </select>
-
             <Button
               size="sm"
               onClick={handleGenerateReport}
@@ -366,17 +211,6 @@ export default function Reports() {
             >
               <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
               {loading ? "Generating..." : "Generate"}
-            </Button>
-
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleExportCSV}
-              disabled={loading}
-              className="flex items-center gap-1.5 text-xs"
-            >
-              <Download size={13} />
-              Export
             </Button>
           </div>
 
@@ -404,7 +238,7 @@ export default function Reports() {
         </div>
 
         {/* KPI Metrics Bar */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {kpiMetrics.map((kpi, idx) => (
             <div
               key={idx}
