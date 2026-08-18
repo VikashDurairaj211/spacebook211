@@ -20,6 +20,7 @@ import BookRoomPage from '../pages/BookRoom'
 import MyBookingsPage from '../pages/MyBookings'
 import NotificationsPage from '../pages/Notifications'
 import ProfilePage from '../pages/Profile'
+import HotseatBookingPage from '../components/HotseatMap/HotseatBooking'
 
 // Admin Pages
 import AdminDashboardPage from '../pages/Admin/Dashboard'
@@ -81,6 +82,11 @@ export default function AppRoutes() {
             <Route
               path="/availability-calendar"
               element={<AvailabilityCalendarPage />}
+            />
+
+            <Route
+              path="/office-map"
+              element={<HotseatBookingPage />}
             />
 
             <Route

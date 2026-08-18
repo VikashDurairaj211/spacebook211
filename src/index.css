@@ -116,3 +116,41 @@
     width: 100%;
   }
 }
+
+/* ==========================================================================
+   Hot Seat Map & Floor Plan Styles
+   ========================================================================== */
+
+.seat-legend-box {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.seat-legend-box.vacant {
+  border: 1.5px solid #2F6FE0;
+  background-color: #ffffff;
+}
+
+.seat-legend-box.occupied {
+  background-color: #94A3B8;
+}
+
+.seat-legend-box.reserved {
+  border: 1.5px solid #F59E0B;
+  background-color: #FEF3C7;
+}
+
+.office-map-tab {
+  width: 100%;
+}
+
+.office-map-active {
+  margin-top: 1.25rem;
+}
+
+.hotseat-main {
+  width: 100%;
+}
