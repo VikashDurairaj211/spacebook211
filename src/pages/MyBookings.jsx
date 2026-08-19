@@ -5,6 +5,7 @@ import {
   cancelBooking,
   updateBooking,
 } from "../api/bookings";
+
 import {
   getMyHotseatBookings,
   cancelHotseatBooking,
@@ -25,7 +26,7 @@ export default function MyBookings() {
   const toast = useToast();
 
   // =====================================================
-  // GET ROOM ID
+  // ROOM ID
   // =====================================================
 
   const getRoomId = (booking) => {
@@ -45,7 +46,7 @@ export default function MyBookings() {
   };
 
   // =====================================================
-  // GET MODULE
+  // MODULE
   // =====================================================
 
   const getBookingModule = (booking) => {
@@ -57,21 +58,79 @@ export default function MyBookings() {
       booking.room?.module ||
       booking.room?.Module;
 
-    return mod && String(mod).trim() !== "" ? mod : "-";
+    return mod && String(mod).trim() !== ""
+      ? mod
+      : "-";
   };
 
   // =====================================================
-  // LOAD BOOKINGS
+  // FORMAT DISPLAY TIME
+  // =====================================================
+
+  const formatDisplayTime = (time) => {
+    if (!time) return "";
+
+    const value = String(time);
+
+    if (value.includes("T")) {
+      const timePart = value.split("T")[1] || "";
+      return timePart.substring(0, 5);
+    }
+
+    return value.substring(0, 5);
+  };
+
+  // =====================================================
+  // FORMAT API TIME
+  // =====================================================
+
+  const formatApiTime = (time) => {
+    if (!time) return "";
+
+    const value = String(time);
+
+    if (value.includes("T")) {
+      const timePart = value.split("T")[1] || "";
+
+      return timePart.length === 5
+        ? `${timePart}:00`
+        : timePart;
+    }
+
+    return value.length === 5
+      ? `${value}:00`
+      : value;
+  };
+
+  // =====================================================
+  // TODAY
+  // =====================================================
+
+  const getTodayString = () => {
+    const now = new Date();
+
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayString = getTodayString();
+
+  // =====================================================
+  // LOAD ALL BOOKINGS
   // =====================================================
 
   const load = async () => {
     try {
       setLoading(true);
 
-      const [roomResult, hotseatResult] = await Promise.allSettled([
-        getMyBookings(),
-        getMyHotseatBookings(),
-      ]);
+      const [roomResult, hotseatResult] =
+        await Promise.allSettled([
+          getMyBookings(),
+          getMyHotseatBookings(),
+        ]);
 
       let roomBookings = [];
       let hotseatBookings = [];
@@ -82,8 +141,6 @@ export default function MyBookings() {
 
       if (roomResult.status === "fulfilled") {
         const data = roomResult.value;
-
-        console.log("My Room Bookings API Response:", data);
 
         const bookingList = Array.isArray(data)
           ? data
@@ -102,7 +159,10 @@ export default function MyBookings() {
           isHotseat: false,
         }));
       } else {
-        console.error("Room bookings error:", roomResult.reason);
+        console.error(
+          "Room bookings error:",
+          roomResult.reason
+        );
       }
 
       // =====================================================
@@ -112,68 +172,80 @@ export default function MyBookings() {
       if (hotseatResult.status === "fulfilled") {
         const data = hotseatResult.value;
 
-        console.log("My Hotseat Bookings API Response:", data);
+        console.log(
+          "My Hotseat Bookings API Response:",
+          data
+        );
 
         const bookingList = Array.isArray(data)
           ? data
           : data?.bookings || [];
 
-        hotseatBookings = bookingList.map((booking) => ({
-          ...booking,
-
-          bookingId:
-            booking.bookingId ??
-            booking.id ??
-            booking.Id,
-
-          isHotseat: true,
-
-          bookingDate:
-            booking.bookingDate ??
-            booking.date ??
-            "",
-
-          startTime:
-            booking.startTime ??
-            booking.expectedCheckIn ??
-            "",
-
-          endTime:
-            booking.endTime ??
-            booking.expectedCheckIn ??
-            "",
-
-          roomName:
-            booking.roomName ||
-            (booking.seatNumber
-              ? `Hot Seat ${booking.seatNumber}`
-              : "Hot Seat"),
-
-          module:
-            booking.module ??
-            booking.Module ??
-            "-",
-
-          purpose:
-            booking.purpose ||
-            "Hotseat Booking",
-
-          roomId: null,
-
-          seatId: booking.seatId,
-          seatNumber: booking.seatNumber,
-
-          expectedCheckIn:
+        hotseatBookings = bookingList.map((booking) => {
+          const hotseatTime =
             booking.expectedCheckIn ??
             booking.expectedCheckInTime ??
-            "",
+            booking.startTime ??
+            "";
 
-          checkInTime:
-            booking.checkInTime ?? null,
+          return {
+            ...booking,
 
-          releasedOn:
-            booking.releasedOn ?? null,
-        }));
+            bookingId:
+              booking.bookingId ??
+              booking.id ??
+              booking.Id,
+
+            isHotseat: true,
+
+            bookingDate:
+              booking.bookingDate ??
+              booking.date ??
+              "",
+
+            startTime:
+              booking.startTime ??
+              booking.expectedCheckIn ??
+              booking.expectedCheckInTime ??
+              "",
+
+            endTime:
+              booking.endTime ??
+              booking.expectedCheckIn ??
+              booking.expectedCheckInTime ??
+              "",
+
+            expectedCheckIn: hotseatTime,
+
+            roomName:
+              booking.roomName ||
+              (booking.seatNumber
+                ? `Hot Seat ${booking.seatNumber}`
+                : "Hot Seat"),
+
+            module:
+              booking.module ??
+              booking.Module ??
+              "-",
+
+            purpose:
+              booking.purpose ||
+              "Hotseat Booking",
+
+            roomId: null,
+
+            seatId: booking.seatId,
+
+            seatNumber:
+              booking.seatNumber,
+
+            checkInTime:
+              booking.checkInTime ?? null,
+
+            releasedOn:
+              booking.releasedOn ?? null,
+          };
+        });
       } else {
         console.error(
           "Hotseat bookings error:",
@@ -182,13 +254,17 @@ export default function MyBookings() {
       }
 
       // =====================================================
-      // COMBINE BOOKINGS
+      // COMBINE
       // =====================================================
 
       const combinedBookings = [
         ...roomBookings,
         ...hotseatBookings,
       ];
+
+      // =====================================================
+      // SORT BY BOOKING ID DESC
+      // =====================================================
 
       const sorted = [...combinedBookings].sort(
         (a, b) =>
@@ -197,18 +273,11 @@ export default function MyBookings() {
       );
 
       setBookings(sorted);
-
-      if (
-        roomResult.status === "rejected" &&
-        hotseatResult.status === "rejected"
-      ) {
-        toast.addToast({
-          type: "error",
-          title: "Unable to load bookings.",
-        });
-      }
     } catch (err) {
-      console.error("Error loading bookings:", err);
+      console.error(
+        "Error loading bookings:",
+        err
+      );
 
       setBookings([]);
 
@@ -221,66 +290,119 @@ export default function MyBookings() {
     }
   };
 
+  // =====================================================
+  // INITIAL LOAD
+  // =====================================================
+
   useEffect(() => {
     load();
+
+    const handleRefresh = () => {
+      load();
+    };
+
+    window.addEventListener(
+      "booking-updated",
+      handleRefresh
+    );
+
+    return () => {
+      window.removeEventListener(
+        "booking-updated",
+        handleRefresh
+      );
+    };
   }, []);
 
   // =====================================================
-  // DATE HELPERS
-  // =====================================================
-
-  const getTodayString = () => {
-    const now = new Date();
-
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
-  };
-
-  const todayString = getTodayString();
-
-  // =====================================================
-  // CHECK WHETHER BOOKING CAN BE EDITED / CANCELLED
+  // CHECK WHETHER BOOKING CAN BE MODIFIED
   // =====================================================
 
   const canModifyBooking = (booking) => {
-    const status = booking?.status?.toLowerCase() || "";
+    if (!booking) return false;
+
+    const status =
+      booking.status?.toLowerCase() || "";
 
     if (
       status === "cancelled" ||
-      status === "rejected"
+      status === "rejected" ||
+      status === "expired"
     ) {
       return false;
     }
+
+    if (!booking.bookingDate) {
+      return false;
+    }
+
+    // -----------------------------------------------------
+    // DATE CHECK
+    // -----------------------------------------------------
+
+    if (booking.bookingDate > todayString) {
+      return true;
+    }
+
+    if (booking.bookingDate < todayString) {
+      return false;
+    }
+
+    // -----------------------------------------------------
+    // TODAY
+    // -----------------------------------------------------
+
+    const bookingTime =
+      booking.isHotseat
+        ? booking.expectedCheckIn ||
+          booking.startTime
+        : booking.startTime;
+
+    if (!bookingTime) {
+      return true;
+    }
+
+    const time = formatDisplayTime(
+      bookingTime
+    );
+
+    if (!time) {
+      return true;
+    }
+
+    const [hours, minutes] =
+      time.split(":").map(Number);
 
     if (
-      !booking?.bookingDate ||
-      !booking?.startTime
+      Number.isNaN(hours) ||
+      Number.isNaN(minutes)
     ) {
-      return false;
+      return true;
     }
 
-    const startTime = formatDisplayTime(
-      booking.startTime
-    );
+    const now = new Date();
 
-    const bookingStart = new Date(
-      `${booking.bookingDate}T${startTime}:00`
-    );
+    const currentMinutes =
+      now.getHours() * 60 +
+      now.getMinutes();
 
-    return bookingStart > new Date();
+    const bookingMinutes =
+      hours * 60 + minutes;
+
+    return bookingMinutes > currentMinutes;
   };
 
   // =====================================================
-  // GET DURATION
+  // DURATION
   // =====================================================
 
   const getDuration = (booking) => {
     if (!booking) return "-";
 
+    // =====================================================
     // HOTSEAT
+    // =====================================================
+
     if (booking.isHotseat) {
       if (
         booking.checkInTime &&
@@ -298,7 +420,9 @@ export default function MyBookings() {
           (end - start) / (1000 * 60)
         );
 
-        if (diffMins <= 0) return "-";
+        if (diffMins <= 0) {
+          return "-";
+        }
 
         const hrs = Math.floor(
           diffMins / 60
@@ -306,19 +430,28 @@ export default function MyBookings() {
 
         const mins = diffMins % 60;
 
-        return hrs > 0
-          ? `${hrs}h${mins > 0 ? ` ${mins}m` : ""}`
-          : `${mins}m`;
+        if (hrs > 0) {
+          return `${hrs}h${
+            mins > 0 ? ` ${mins}m` : ""
+          }`;
+        }
+
+        return `${mins}m`;
       }
 
       return "Full Day";
     }
 
+    // =====================================================
     // ROOM BOOKING
+    // =====================================================
+
     const start = booking.startTime;
     const end = booking.endTime;
 
-    if (!start || !end) return "-";
+    if (!start || !end) {
+      return "-";
+    }
 
     const startTimeStr =
       formatDisplayTime(start);
@@ -333,8 +466,8 @@ export default function MyBookings() {
       endTimeStr.split(":").map(Number);
 
     if (
-      isNaN(startH) ||
-      isNaN(endH)
+      Number.isNaN(startH) ||
+      Number.isNaN(endH)
     ) {
       return "-";
     }
@@ -354,7 +487,10 @@ export default function MyBookings() {
 
     const minutes = diffMins % 60;
 
-    if (hours > 0 && minutes > 0) {
+    if (
+      hours > 0 &&
+      minutes > 0
+    ) {
       return `${hours}h ${minutes}m`;
     }
 
@@ -397,7 +533,7 @@ export default function MyBookings() {
   };
 
   // =====================================================
-  // MODAL ACTIONS
+  // VIEW
   // =====================================================
 
   const handleView = (booking) => {
@@ -409,17 +545,11 @@ export default function MyBookings() {
     setMode("view");
   };
 
+  // =====================================================
+  // EDIT
+  // =====================================================
+
   const handleEdit = (booking) => {
-    if (booking?.isHotseat) {
-      toast.addToast({
-        type: "error",
-        title:
-          "Hotseat bookings cannot be edited here.",
-      });
-
-      return;
-    }
-
     setSelected({
       ...booking,
       roomId: getRoomId(booking),
@@ -427,6 +557,10 @@ export default function MyBookings() {
 
     setMode("edit");
   };
+
+  // =====================================================
+  // CLOSE MODAL
+  // =====================================================
 
   const closeModal = () => {
     setMode(null);
@@ -438,7 +572,9 @@ export default function MyBookings() {
   // =====================================================
 
   async function cancel() {
-    if (!selected?.bookingId) return;
+    if (!selected?.bookingId) {
+      return;
+    }
 
     try {
       if (selected.isHotseat) {
@@ -465,6 +601,10 @@ export default function MyBookings() {
 
       closeModal();
 
+      window.dispatchEvent(
+        new Event("booking-updated")
+      );
+
       await load();
     } catch (err) {
       console.error(
@@ -484,49 +624,7 @@ export default function MyBookings() {
   }
 
   // =====================================================
-  // FORMAT DISPLAY TIME
-  // =====================================================
-
-  const formatDisplayTime = (time) => {
-    if (!time) return "";
-
-    const value = String(time);
-
-    if (value.includes("T")) {
-      const timePart =
-        value.split("T")[1] || "";
-
-      return timePart.substring(0, 5);
-    }
-
-    return value.substring(0, 5);
-  };
-
-  // =====================================================
-  // FORMAT API TIME
-  // =====================================================
-
-  const formatApiTime = (time) => {
-    if (!time) return "";
-
-    const value = String(time);
-
-    if (value.includes("T")) {
-      const timePart =
-        value.split("T")[1] || "";
-
-      return timePart.length === 5
-        ? `${timePart}:00`
-        : timePart;
-    }
-
-    return value.length === 5
-      ? `${value}:00`
-      : value;
-  };
-
-  // =====================================================
-  // VALIDATE EDIT DATE
+  // VALIDATE DATE
   // =====================================================
 
   const validateBookingDate = (date) => {
@@ -570,8 +668,8 @@ export default function MyBookings() {
   };
 
   // =====================================================
-  // VALIDATE EDIT TIME
-  // OFFICE HOURS = 10:00 AM TO 7:00 PM
+  // VALIDATE ROOM TIME
+  // OFFICE HOURS = 10 AM TO 7 PM
   // =====================================================
 
   const validateBookingTime = (
@@ -592,7 +690,6 @@ export default function MyBookings() {
     const OFFICE_START = "10:00";
     const OFFICE_END = "19:00";
 
-    // Start cannot be before 10 AM
     if (startTime < OFFICE_START) {
       toast.addToast({
         type: "error",
@@ -603,7 +700,6 @@ export default function MyBookings() {
       return false;
     }
 
-    // End cannot be after 7 PM
     if (endTime > OFFICE_END) {
       toast.addToast({
         type: "error",
@@ -614,7 +710,6 @@ export default function MyBookings() {
       return false;
     }
 
-    // End must be after start
     if (startTime >= endTime) {
       toast.addToast({
         type: "error",
@@ -625,23 +720,19 @@ export default function MyBookings() {
       return false;
     }
 
-    // If booking is for today,
-    // start time must be in the future.
     if (date === todayString) {
       const now = new Date();
 
-      const currentHours =
-        now.getHours();
-
       const currentMinutes =
+        now.getHours() * 60 +
         now.getMinutes();
 
-      const currentTimeMinutes =
-        currentHours * 60 +
-        currentMinutes;
-
-      const [startHour, startMinute] =
-        startTime.split(":").map(Number);
+      const [
+        startHour,
+        startMinute,
+      ] = startTime
+        .split(":")
+        .map(Number);
 
       const startTotalMinutes =
         startHour * 60 +
@@ -649,7 +740,7 @@ export default function MyBookings() {
 
       if (
         startTotalMinutes <=
-        currentTimeMinutes
+        currentMinutes
       ) {
         toast.addToast({
           type: "error",
@@ -665,104 +756,308 @@ export default function MyBookings() {
   };
 
   // =====================================================
-  // SAVE / UPDATE BOOKING
+  // GET HOTSEAT ID
   // =====================================================
 
-  async function save(e) {
-    e.preventDefault();
-
-    if (!selected) return;
-
-    const roomId =
-      getRoomId(selected);
-
-    if (!selected.bookingId) {
-      toast.addToast({
-        type: "error",
-        title:
-          "Booking ID is missing.",
-      });
-
-      return;
-    }
+  const getHotseatSeatId = (booking) => {
+    if (!booking) return null;
 
     if (
-      roomId === null ||
-      roomId === undefined ||
-      roomId === ""
+      booking.seatId !== undefined &&
+      booking.seatId !== null &&
+      booking.seatId !== ""
     ) {
-      toast.addToast({
-        type: "error",
-        title:
-          "Room ID is missing from this booking.",
-      });
+      const id = Number(
+        booking.seatId
+      );
 
-      return;
+      if (!Number.isNaN(id)) {
+        return id;
+      }
     }
 
-    // =====================================================
-    // DATE VALIDATION
-    // =====================================================
+    if (booking.seatNumber) {
+      const digits = String(
+        booking.seatNumber
+      ).replace(/[^0-9]/g, "");
+
+      if (digits) {
+        const id = Number(digits);
+
+        if (!Number.isNaN(id)) {
+          return id;
+        }
+      }
+    }
+
+    return null;
+  };
+
+  // =====================================================
+  // UPDATE HOTSEAT
+  // =====================================================
+
+  const updateHotseat = async () => {
+    if (!selected?.bookingId) {
+      throw new Error(
+        "Hotseat booking ID is missing."
+      );
+    }
+
+    const seatId =
+      getHotseatSeatId(selected);
+
+    if (
+      seatId === null ||
+      seatId === undefined ||
+      Number.isNaN(seatId)
+    ) {
+      throw new Error(
+        "Hotseat Seat ID is missing."
+      );
+    }
 
     if (
       !validateBookingDate(
         selected.bookingDate
       )
     ) {
-      return;
+      return false;
     }
 
-    // =====================================================
-    // TIME VALIDATION
-    // =====================================================
+    const rawTime =
+      selected.expectedCheckIn ||
+      selected.startTime ||
+      "";
 
-    const startTime =
-      formatDisplayTime(
-        selected.startTime
+    const formattedTime =
+      formatApiTime(
+        formatDisplayTime(rawTime)
       );
 
-    const endTime =
-      formatDisplayTime(
-        selected.endTime
-      );
+    if (!formattedTime) {
+      toast.addToast({
+        type: "error",
+        title:
+          "Expected check-in time is required.",
+      });
 
-    if (
-      !validateBookingTime(
-        selected.bookingDate,
-        startTime,
-        endTime
-      )
-    ) {
-      return;
+      return false;
     }
-
-    // =====================================================
-    // API PAYLOAD
-    // =====================================================
 
     const payload = {
-      roomId: Number(roomId),
+      seatId: Number(seatId),
 
       bookingDate:
         selected.bookingDate,
 
-      startTime:
-        formatApiTime(startTime),
-
-      endTime:
-        formatApiTime(endTime),
-
-      purpose:
-        selected.purpose?.trim() ||
-        "Meeting",
-
-      participantCount:
-        Number(
-          selected.participantCount || 1
-        ),
+      expectedCheckInTime:
+        formattedTime,
     };
 
+    console.log(
+      "Updating Hotseat:",
+      selected.bookingId
+    );
+
+    console.log(
+      "Hotseat Update Payload:",
+      payload
+    );
+
+    const token =
+      localStorage.getItem(
+        "spacebook_token"
+      ) || "";
+
+    const baseUrl =
+      import.meta.env.VITE_API_BASE_URL ||
+      "https://spacebook-505h.onrender.com";
+
+    const response = await fetch(
+      `${baseUrl}/api/Hotseat/${selected.bookingId}`,
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+
+          Authorization:
+            `Bearer ${token}`,
+        },
+
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      let message =
+        "Failed to update hotseat booking.";
+
+      try {
+        const errorData =
+          await response.json();
+
+        message =
+          errorData?.message ||
+          errorData?.title ||
+          errorData?.detail ||
+          message;
+      } catch {
+        // Ignore JSON parsing error
+      }
+
+      throw new Error(message);
+    }
+
+    return true;
+  };
+
+  // =====================================================
+  // SAVE / UPDATE BOOKING
+  // =====================================================
+
+  async function save(e) {
+    e.preventDefault();
+
+    if (!selected) {
+      return;
+    }
+
     try {
+      // ===================================================
+      // HOTSEAT UPDATE
+      // ===================================================
+
+      if (selected.isHotseat) {
+        const updated =
+          await updateHotseat();
+
+        if (!updated) {
+          return;
+        }
+
+        toast.addToast({
+          type: "success",
+          title:
+            "Hotseat booking updated successfully.",
+        });
+
+        closeModal();
+
+        window.dispatchEvent(
+          new Event("booking-updated")
+        );
+
+        await load();
+
+        return;
+      }
+
+      // ===================================================
+      // ROOM UPDATE
+      // ===================================================
+
+      const roomId =
+        getRoomId(selected);
+
+      if (!selected.bookingId) {
+        toast.addToast({
+          type: "error",
+          title:
+            "Booking ID is missing.",
+        });
+
+        return;
+      }
+
+      if (
+        roomId === null ||
+        roomId === undefined ||
+        roomId === ""
+      ) {
+        toast.addToast({
+          type: "error",
+          title:
+            "Room ID is missing from this booking.",
+        });
+
+        return;
+      }
+
+      // ===================================================
+      // DATE
+      // ===================================================
+
+      if (
+        !validateBookingDate(
+          selected.bookingDate
+        )
+      ) {
+        return;
+      }
+
+      // ===================================================
+      // TIME
+      // ===================================================
+
+      const startTime =
+        formatDisplayTime(
+          selected.startTime
+        );
+
+      const endTime =
+        formatDisplayTime(
+          selected.endTime
+        );
+
+      if (
+        !validateBookingTime(
+          selected.bookingDate,
+          startTime,
+          endTime
+        )
+      ) {
+        return;
+      }
+
+      // ===================================================
+      // ROOM PAYLOAD
+      // ===================================================
+
+      const payload = {
+        roomId: Number(roomId),
+
+        bookingDate:
+          selected.bookingDate,
+
+        startTime:
+          formatApiTime(startTime),
+
+        endTime:
+          formatApiTime(endTime),
+
+        purpose:
+          selected.purpose?.trim() ||
+          "Meeting",
+
+        participantCount:
+          Number(
+            selected.participantCount || 1
+          ),
+      };
+
+      console.log(
+        "Updating Room Booking:",
+        selected.bookingId
+      );
+
+      console.log(
+        "Room Update Payload:",
+        payload
+      );
+
       await updateBooking(
         selected.bookingId,
         payload
@@ -775,6 +1070,10 @@ export default function MyBookings() {
       });
 
       closeModal();
+
+      window.dispatchEvent(
+        new Event("booking-updated")
+      );
 
       await load();
     } catch (err) {
@@ -890,18 +1189,23 @@ export default function MyBookings() {
               bookings.map((b) => (
 
                 <tr
-                  key={`${b.isHotseat ? "hotseat" : "room"}-${b.bookingId}`}
+                  key={`${
+                    b.isHotseat
+                      ? "hotseat"
+                      : "room"
+                  }-${b.bookingId}`}
                   className="border-b border-line last:border-0"
                 >
 
                   {/* BOOKING ID */}
-                  {/* Displays 111, NOT #111 */}
 
                   <td className="px-3 py-4 font-mono whitespace-nowrap">
                     {String(
                       b.bookingId ?? ""
                     ).replace(/^#/, "")}
                   </td>
+
+                  {/* ROOM / HOTSEAT */}
 
                   <td className="px-3 py-4 whitespace-nowrap font-semibold">
 
@@ -915,9 +1219,13 @@ export default function MyBookings() {
 
                   </td>
 
+                  {/* MODULE */}
+
                   <td className="px-3 py-4 whitespace-nowrap text-slate-600">
                     {getBookingModule(b)}
                   </td>
+
+                  {/* PURPOSE */}
 
                   <td className="max-w-[140px] truncate px-3 py-4">
                     {b.purpose &&
@@ -926,14 +1234,19 @@ export default function MyBookings() {
                       : "Reserved Workspace"}
                   </td>
 
+                  {/* DATE */}
+
                   <td className="px-3 py-4 whitespace-nowrap">
                     {b.bookingDate}
                   </td>
+
+                  {/* TIME */}
 
                   <td className="px-3 py-4 whitespace-nowrap text-slate-600">
 
                     {b.isHotseat
                       ? formatDisplayTime(
+                          b.expectedCheckIn ||
                           b.startTime
                         )
                       : `${formatDisplayTime(
@@ -944,9 +1257,13 @@ export default function MyBookings() {
 
                   </td>
 
+                  {/* DURATION */}
+
                   <td className="px-3 py-4 whitespace-nowrap">
                     {getDuration(b)}
                   </td>
+
+                  {/* STATUS */}
 
                   <td className="px-3 py-4 text-center whitespace-nowrap">
 
@@ -959,6 +1276,8 @@ export default function MyBookings() {
                     </span>
 
                   </td>
+
+                  {/* ACTIONS */}
 
                   <td className="px-3 py-4 text-center whitespace-nowrap">
 
@@ -973,16 +1292,18 @@ export default function MyBookings() {
 
                     {canModifyBooking(b) && (
                       <>
-                        {!b.isHotseat && (
-                          <button
-                            className="mr-2.5 text-sm font-bold text-emerald-600 hover:text-emerald-800 hover:underline"
-                            onClick={() =>
-                              handleEdit(b)
-                            }
-                          >
-                            Edit
-                          </button>
-                        )}
+                        {/* EDIT */}
+
+                        <button
+                          className="mr-2.5 text-sm font-bold text-emerald-600 hover:text-emerald-800 hover:underline"
+                          onClick={() =>
+                            handleEdit(b)
+                          }
+                        >
+                          Edit
+                        </button>
+
+                        {/* CANCEL */}
 
                         <button
                           className="text-sm font-bold text-red-600 hover:text-red-800 hover:underline"
@@ -1015,7 +1336,9 @@ export default function MyBookings() {
 
       </Card>
 
-      {/* VIEW BOOKING MODAL */}
+      {/* =================================================
+          VIEW BOOKING MODAL
+      ================================================= */}
 
       <Modal
         open={mode === "view"}
@@ -1032,6 +1355,8 @@ export default function MyBookings() {
 
           <dl className="grid grid-cols-2 gap-4 text-sm">
 
+            {/* BOOKING ID */}
+
             <dt className="font-medium">
               Booking ID
             </dt>
@@ -1041,6 +1366,8 @@ export default function MyBookings() {
                 selected.bookingId ?? ""
               ).replace(/^#/, "")}
             </dd>
+
+            {/* ROOM / SEAT */}
 
             <dt className="font-medium">
               {selected.isHotseat
@@ -1060,6 +1387,8 @@ export default function MyBookings() {
                   }`}
             </dd>
 
+            {/* MODULE */}
+
             <dt className="font-medium">
               Module
             </dt>
@@ -1067,6 +1396,8 @@ export default function MyBookings() {
             <dd>
               {getBookingModule(selected)}
             </dd>
+
+            {/* HOTSEAT SEAT NUMBER */}
 
             {selected.isHotseat && (
               <>
@@ -1097,6 +1428,8 @@ export default function MyBookings() {
               </>
             )}
 
+            {/* PURPOSE */}
+
             <dt className="font-medium">
               Purpose
             </dt>
@@ -1106,6 +1439,8 @@ export default function MyBookings() {
                 "Reserved Workspace"}
             </dd>
 
+            {/* DATE */}
+
             <dt className="font-medium">
               Date
             </dt>
@@ -1114,6 +1449,8 @@ export default function MyBookings() {
               {selected.bookingDate}
             </dd>
 
+            {/* TIME */}
+
             <dt className="font-medium">
               Time
             </dt>
@@ -1121,6 +1458,7 @@ export default function MyBookings() {
             <dd>
               {selected.isHotseat
                 ? formatDisplayTime(
+                    selected.expectedCheckIn ||
                     selected.startTime
                   )
                 : `${formatDisplayTime(
@@ -1130,6 +1468,8 @@ export default function MyBookings() {
                   )}`}
             </dd>
 
+            {/* DURATION */}
+
             <dt className="font-medium">
               Duration
             </dt>
@@ -1137,6 +1477,8 @@ export default function MyBookings() {
             <dd>
               {getDuration(selected)}
             </dd>
+
+            {/* STATUS */}
 
             <dt className="font-medium">
               Status
@@ -1158,7 +1500,9 @@ export default function MyBookings() {
 
       </Modal>
 
-      {/* CANCEL BOOKING MODAL */}
+      {/* =================================================
+          CANCEL MODAL
+      ================================================= */}
 
       <Modal
         open={mode === "cancel"}
@@ -1186,87 +1530,96 @@ export default function MyBookings() {
 
       </Modal>
 
-      {/* EDIT BOOKING MODAL */}
+      {/* =================================================
+          EDIT MODAL
+      ================================================= */}
 
       <Modal
         open={mode === "edit"}
-        title="Edit Booking"
+        title={
+          selected?.isHotseat
+            ? "Edit Hotseat Booking"
+            : "Edit Room Booking"
+        }
         footer={null}
         className="max-w-xl h-fit"
       >
 
-        {selected &&
-          !selected.isHotseat && (
+        {selected && (
 
-            <form
-              onSubmit={save}
-              className="space-y-4"
-            >
+          <form
+            onSubmit={save}
+            className="space-y-4"
+          >
 
-              <p className="text-xs text-slate-500">
-                Booking{" "}
-                {String(
-                  selected.bookingId ?? ""
-                ).replace(/^#/, "")}
-              </p>
+            {/* BOOKING ID */}
 
-              {/* DATE */}
+            <p className="text-xs text-slate-500">
+              Booking{" "}
+              {String(
+                selected.bookingId ?? ""
+              ).replace(/^#/, "")}
+            </p>
 
-              <Field label="Date">
+            {/* DATE */}
 
-                <Input
-                  type="date"
-                  min={todayString}
-                  value={
-                    selected.bookingDate || ""
-                  }
-                  onChange={(e) =>
-                    setSelected({
-                      ...selected,
-                      bookingDate:
-                        e.target.value,
-                    })
-                  }
-                />
+            <Field label="Date">
 
-              </Field>
+              <Input
+                type="date"
+                min={todayString}
+                value={
+                  selected.bookingDate || ""
+                }
+                onChange={(e) =>
+                  setSelected({
+                    ...selected,
+                    bookingDate:
+                      e.target.value,
+                  })
+                }
+              />
 
-              {/* TIME */}
+            </Field>
 
-              <div className="grid grid-cols-2 gap-3">
+            {/* =================================================
+                HOTSEAT EDIT
+            ================================================= */}
 
-                <Field label="Start Time">
+            {selected.isHotseat ? (
+
+              <>
+                <Field label="Seat">
+
+                  <Input
+                    value={
+                      selected.seatNumber ||
+                      selected.roomName ||
+                      "Hot Seat"
+                    }
+                    disabled
+                  />
+
+                </Field>
+
+                <Field label="Expected Check-in Time">
 
                   <Input
                     type="time"
-                    min="10:00"
-                    max="19:00"
                     value={formatDisplayTime(
+                      selected.expectedCheckIn ||
                       selected.startTime
                     )}
                     onChange={(e) =>
                       setSelected({
                         ...selected,
+
+                        expectedCheckIn:
+                          e.target.value,
+
                         startTime:
                           e.target.value,
-                      })
-                    }
-                  />
 
-                </Field>
-
-                <Field label="End Time">
-
-                  <Input
-                    type="time"
-                    min="10:00"
-                    max="19:00"
-                    value={formatDisplayTime(
-                      selected.endTime
-                    )}
-                    onChange={(e) =>
-                      setSelected({
-                        ...selected,
                         endTime:
                           e.target.value,
                       })
@@ -1275,57 +1628,111 @@ export default function MyBookings() {
 
                 </Field>
 
-              </div>
+                <p className="text-xs text-slate-500">
+                  Change the date or expected check-in
+                  time for this hotseat booking.
+                </p>
+              </>
 
-              {/* OFFICE HOURS MESSAGE */}
+            ) : (
 
-              <p className="text-xs text-slate-500">
-                Booking hours:{" "}
-                <span className="font-semibold">
-                  10:00 AM - 7:00 PM
-                </span>
-              </p>
+              /* =================================================
+                 ROOM EDIT
+              ================================================= */
 
-              {/* PURPOSE */}
+              <>
+                <div className="grid grid-cols-2 gap-3">
 
-              <Field label="Purpose">
+                  <Field label="Start Time">
 
-                <Input
-                  value={
-                    selected.purpose || ""
-                  }
-                  onChange={(e) =>
-                    setSelected({
-                      ...selected,
-                      purpose:
-                        e.target.value,
-                    })
-                  }
-                />
+                    <Input
+                      type="time"
+                      min="10:00"
+                      max="19:00"
+                      value={formatDisplayTime(
+                        selected.startTime
+                      )}
+                      onChange={(e) =>
+                        setSelected({
+                          ...selected,
+                          startTime:
+                            e.target.value,
+                        })
+                      }
+                    />
 
-              </Field>
+                  </Field>
 
-              {/* BUTTONS */}
+                  <Field label="End Time">
 
-              <div className="flex justify-end gap-2 pt-2">
+                    <Input
+                      type="time"
+                      min="10:00"
+                      max="19:00"
+                      value={formatDisplayTime(
+                        selected.endTime
+                      )}
+                      onChange={(e) =>
+                        setSelected({
+                          ...selected,
+                          endTime:
+                            e.target.value,
+                        })
+                      }
+                    />
 
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={closeModal}
-                >
-                  Cancel
-                </Button>
+                  </Field>
 
-                <Button type="submit">
-                  Save Changes
-                </Button>
+                </div>
 
-              </div>
+                <p className="text-xs text-slate-500">
+                  Booking hours:{" "}
+                  <span className="font-semibold">
+                    10:00 AM - 7:00 PM
+                  </span>
+                </p>
 
-            </form>
+                <Field label="Purpose">
 
-          )}
+                  <Input
+                    value={
+                      selected.purpose || ""
+                    }
+                    onChange={(e) =>
+                      setSelected({
+                        ...selected,
+                        purpose:
+                          e.target.value,
+                      })
+                    }
+                  />
+
+                </Field>
+              </>
+
+            )}
+
+            {/* BUTTONS */}
+
+            <div className="flex justify-end gap-2 pt-2">
+
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={closeModal}
+              >
+                Cancel
+              </Button>
+
+              <Button type="submit">
+                Save Changes
+              </Button>
+
+            </div>
+
+          </form>
+
+        )}
 
       </Modal>
 

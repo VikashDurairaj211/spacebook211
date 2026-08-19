@@ -31,15 +31,37 @@ function Seat({ seat, selected, onClick }) {
     return <div className="m1-seat-gap" />;
   }
 
-  // Available seats and the user's own booking can be clicked.
+  // Normalize status to handle both parent variations ("available") and internal variations ("vacant")
+  const rawStatus = (seat.status || "").toLowerCase();
+  const isAvailable = rawStatus === "vacant" || rawStatus === "available";
+  const isMyBooked = rawStatus === "my-booked";
+  const isOccupied = rawStatus === "occupied" || rawStatus === "booked";
+  const isReserved = rawStatus === "reserved";
+
+  // Map status class correctly for CSS styling
+  let statusClass = "m1-vacant";
+  if (selected || rawStatus === "selected") {
+    statusClass = "m1-selected";
+  } else if (isOccupied) {
+    statusClass = "m1-occupied";
+  } else if (isReserved) {
+    statusClass = "m1-reserved";
+  } else if (isMyBooked) {
+    statusClass = "m1-my-booked";
+  } else if (isAvailable) {
+    statusClass = "m1-vacant";
+  }
+
+  // Available seats, user's own booking, or vacant slots can be clicked.
   const isBookable =
-    seat.status === "vacant" ||
-    seat.status === "my-booked";
+    isAvailable ||
+    isMyBooked ||
+    (!isOccupied && !isReserved);
 
   return (
     <button
       type="button"
-      className={`m1-seat m1-${seat.status} ${
+      className={`m1-seat ${statusClass} ${
         selected ? "m1-selected" : ""
       } ${!isBookable ? "m1-disabled" : ""}`}
       onClick={() => {
@@ -48,20 +70,20 @@ function Seat({ seat, selected, onClick }) {
         }
       }}
       disabled={!isBookable}
-      title={`${seat.label} · ${
-        selected
+      title={`${seat.label || `Seat ${seat.number}`} · ${
+        selected || rawStatus === "selected"
           ? "SELECTED"
-          : seat.status === "my-booked"
+          : isMyBooked
           ? "MY BOOKING"
-          : seat.status === "vacant"
+          : isAvailable
           ? "AVAILABLE"
-          : seat.status === "occupied"
+          : isOccupied
           ? "BOOKED"
-          : seat.status === "reserved"
+          : isReserved
           ? "PENDING CHECK-IN"
           : "UNAVAILABLE"
       }${!isBookable ? " (Unavailable)" : ""}`}
-      aria-label={`${seat.label}, ${seat.status}`}
+      aria-label={`${seat.label || `Seat ${seat.number}`}, ${seat.status}`}
     >
       {seat.number}
     </button>
@@ -95,7 +117,7 @@ function Section({
             <b key={index}>{index + 1}</b>
           )
         )}
-      </div>
+    </div>
 
       <div className="m1-rows">
         {rows.map((row, rowIndex) => (
@@ -137,7 +159,7 @@ function Section({
                         seat={seat}
                         selected={
                           seat.id === activeSeatId
-                        }
+                      }
                         onClick={onSelect}
                       />
                     )}

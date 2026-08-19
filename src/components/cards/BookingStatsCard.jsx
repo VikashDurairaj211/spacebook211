@@ -15,7 +15,6 @@ export function BookingStatsCard() {
       const token = localStorage.getItem("spacebook_token") || "";
       const headers = { Authorization: `Bearer ${token}` };
 
-      // Fetch seats and all hotseat bookings
       const [seatsRes, bookingsRes] = await Promise.all([
         fetch(API_BASE, { headers }),
         fetch(`${API_BASE}/my-bookings`, { headers }),
@@ -37,48 +36,35 @@ export function BookingStatsCard() {
       const total = seatList.length || 229;
       setTotalSpaces(total);
 
-      // Local today date string: YYYY-MM-DD
       const todayStr = new Date().toLocaleDateString("en-CA");
 
-      // Filter bookings relevant for TODAY
-      const todayBookings = bookingList.filter((b) => {
-        const bDate = (b.date || b.bookingDate || b.expectedCheckIn || "").split("T")[0];
+      const activeBookings = bookingList.filter((b) => {
         const status = b.status?.toLowerCase();
-        return bDate === todayStr && status !== "cancelled" && status !== "rejected";
+        return status !== "cancelled" && status !== "rejected" && status !== "expired";
+      });
+
+      const todayBookings = activeBookings.filter((b) => {
+        const bDate = (b.date || b.bookingDate || b.expectedCheckIn || "").split("T")[0];
+        return bDate === todayStr;
       });
 
       setBookingsToday(todayBookings.length);
 
-      // Count checked-in vs pending check-in for today
-      let activeOccupied = 0;
+      const totalActiveBookings = activeBookings.length;
+      const calculatedAvailable = Math.max(0, total - totalActiveBookings);
+
+      let checkedInCount = 0;
       let pendingCheckIn = 0;
 
-      todayBookings.forEach((b) => {
-        const status = b.status?.toLowerCase();
+      activeBookings.forEach((b) => {
         if (b.checkInTime && !b.releasedOn) {
-          // User has actively checked in
-          activeOccupied += 1;
-        } else if (status === "confirmed" || status === "reserved" || status === "pending" || !b.checkInTime) {
-          // Confirmed/Reserved for today but not checked in yet
+          checkedInCount += 1;
+        } else {
           pendingCheckIn += 1;
         }
       });
 
-      // Also check if any raw seat object has an explicit status from the API
-      seatList.forEach((s) => {
-        const status = s.status?.toLowerCase();
-        if (status === "occupied" || status === "checked-in") {
-          activeOccupied += 1;
-        } else if (status === "reserved" || status === "pending") {
-          pendingCheckIn += 1;
-        }
-      });
-
-      // Ensure counts don't double-count or exceed total
-      const totalReservedToday = Math.min(total, activeOccupied + pendingCheckIn);
-      const calculatedAvailable = Math.max(0, total - totalReservedToday);
-
-      setBookedCount(activeOccupied);
+      setBookedCount(totalActiveBookings);
       setPendingCheckInCount(pendingCheckIn);
       setAvailableCount(calculatedAvailable);
 
