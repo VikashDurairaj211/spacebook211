@@ -33,15 +33,36 @@ function Seat({ seat, selected, onClick }) {
     return <div className="m2-seat-gap" />;
   }
 
+  // Normalize status to support both parent and internal variations
+  const rawStatus = (seat.status || "").toLowerCase();
+  const isAvailable = rawStatus === "vacant" || rawStatus === "available";
+  const isMyBooked = rawStatus === "my-booked";
+  const isOccupied = rawStatus === "occupied" || rawStatus === "booked";
+  const isReserved = rawStatus === "reserved";
+
+  let statusClass = "m2-vacant";
+  if (selected || rawStatus === "selected") {
+    statusClass = "m2-selected";
+  } else if (isOccupied) {
+    statusClass = "m2-occupied";
+  } else if (isReserved) {
+    statusClass = "m2-reserved";
+  } else if (isMyBooked) {
+    statusClass = "m2-my-booked";
+  } else if (isAvailable) {
+    statusClass = "m2-vacant";
+  }
+
   // Available seats and your own booked seat are clickable.
   const isBookable =
-    seat.status === "vacant" ||
-    seat.status === "my-booked";
+    isAvailable ||
+    isMyBooked ||
+    (!isOccupied && !isReserved);
 
   return (
     <button
       type="button"
-      className={`m2-seat m2-${seat.status} ${
+      className={`m2-seat ${statusClass} ${
         selected ? "m2-selected" : ""
       } ${!isBookable ? "m2-disabled" : ""}`}
       onClick={() => {
@@ -50,20 +71,20 @@ function Seat({ seat, selected, onClick }) {
         }
       }}
       disabled={!isBookable}
-      title={`${seat.label} · ${
-        selected
+      title={`${seat.label || `Seat ${seat.number}`} · ${
+        selected || rawStatus === "selected"
           ? "SELECTED"
-          : seat.status === "my-booked"
+          : isMyBooked
           ? "MY BOOKING"
-          : seat.status === "vacant"
+          : isAvailable
           ? "AVAILABLE"
-          : seat.status === "occupied"
+          : isOccupied
           ? "BOOKED"
-          : seat.status === "reserved"
+          : isReserved
           ? "PENDING CHECK-IN"
           : "UNAVAILABLE"
       }${!isBookable ? " (Unavailable)" : ""}`}
-      aria-label={`${seat.label}, ${seat.status}`}
+      aria-label={`${seat.label || `Seat ${seat.number}`}, ${seat.status}`}
     >
       {seat.number}
     </button>
@@ -150,18 +171,18 @@ function Section({
                           selected={
                             seat.id ===
                             activeSeatId
-                          }
+                        }
                           onClick={onSelect}
                         />
                       )}
-                    </div>
-                  );
-                }
-              )}
-            </div>
-          )
-        )}
-      </div>
+                  </div>
+                );
+              }
+            )}
+          </div>
+        )
+      )}
+    </div>
     </section>
   );
 }

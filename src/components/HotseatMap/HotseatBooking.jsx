@@ -6,7 +6,22 @@ import {
   CheckCircle2,
   X,
   ChevronDown,
+  AlertTriangle,
 } from "lucide-react";
+import Card from "../../components/common/Card";
+import Button from "../../components/common/Button";
+import Modal from "../../components/common/Modal";
+import { Field, Input } from "../../components/common/Input";
+import { useToast } from "../../components/common/ToastProvider";
+import {
+  getMyBookings,
+  cancelBooking,
+  updateBooking,
+} from "../../api/bookings";
+import {
+  getMyHotseatBookings,
+  cancelHotseatBooking,
+} from "../../api/hotseat";
 
 // ---------------------------------------------------------------------------
 // Helpers & Dates
@@ -39,10 +54,6 @@ function getTomorrowKey() {
   return toDateKey(tomorrow);
 }
 
-// Normalize backend dates such as:
-// 2026-08-19
-// 2026-08-19T00:00:00
-// 2026-08-19T00:00:00.000Z
 function normalizeDateKey(value) {
   if (!value) return "";
 
@@ -120,9 +131,16 @@ function CustomTimePicker({ value, onChange, selectedDate }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 
-  const [selectedHour, selectedMin] = value
+  const now = new Date();
+  const todayKey = getTodayKey();
+  const isToday = selectedDate === todayKey;
+
+  const currentHour = now.getHours();
+  const currentMin = now.getMinutes();
+
+  const [selectedHour, selectedMin] = value && value.includes(":")
     ? value.split(":")
-    : ["10", "00"];
+    : ["", ""];
 
   const hours = Array.from(
     { length: 11 },
@@ -133,13 +151,6 @@ function CustomTimePicker({ value, onChange, selectedDate }) {
     { length: 60 },
     (_, i) => String(i).padStart(2, "0")
   );
-
-  const now = new Date();
-  const todayKey = getTodayKey();
-  const isToday = selectedDate === todayKey;
-
-  const currentHour = now.getHours();
-  const currentMin = now.getMinutes();
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -162,7 +173,7 @@ function CustomTimePicker({ value, onChange, selectedDate }) {
       return;
     }
 
-    onChange(`${hr}:${selectedMin}`);
+    onChange(`${hr}:${selectedMin || "00"}`);
   };
 
   const handleMinSelect = (mn) => {
@@ -174,15 +185,15 @@ function CustomTimePicker({ value, onChange, selectedDate }) {
       return;
     }
 
-    onChange(`${selectedHour}:${mn}`);
+    onChange(`${selectedHour || "10"}:${mn}`);
   };
 
   const displayTime = () => {
-    if (!value) {
+    if (!value || !value.includes(":")) {
       return "Select time";
     }
 
-    return `${selectedHour}:${selectedMin}`;
+    return value;
   };
 
   return (
@@ -225,7 +236,7 @@ function CustomTimePicker({ value, onChange, selectedDate }) {
                         isSelected
                           ? "bg-[#2F6FE0] text-white"
                           : isPast
-                          ? "text-slate-300 cursor-not-allowed"
+                          ? "text-slate-300 bg-slate-50 cursor-not-allowed opacity-50"
                           : "text-slate-700 hover:bg-slate-100"
                       }`}
                     >
@@ -261,7 +272,7 @@ function CustomTimePicker({ value, onChange, selectedDate }) {
                         isSelected
                           ? "bg-[#2F6FE0] text-white"
                           : isPast
-                          ? "text-slate-300 cursor-not-allowed"
+                          ? "text-slate-300 bg-slate-50 cursor-not-allowed opacity-50"
                           : "text-slate-700 hover:bg-slate-100"
                       }`}
                     >
@@ -323,21 +334,93 @@ function Toast({ message, details, onClose }) {
 }
 
 // ---------------------------------------------------------------------------
+// Conflict Modal
+// ---------------------------------------------------------------------------
+
+function ConflictModal({ conflictData, onClose }) {
+  if (!conflictData) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
+        <div className="flex items-center gap-3 text-amber-600">
+          <div className="rounded-full bg-amber-100 p-2">
+            <AlertTriangle size={20} />
+          </div>
+          <h2 className="text-lg font-bold text-slate-900">Booking Conflict</h2>
+        </div>
+
+        <div className="rounded-lg bg-amber-50 border border-amber-200 p-3.5 text-xs text-amber-900 leading-relaxed font-medium">
+          {conflictData.message || "You already have an active hotseat booking for this date."}
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-2 text-xs">
+          {conflictData.existingBookingId && (
+            <div className="flex justify-between">
+              <span className="text-slate-500 font-medium">Existing Booking ID:</span>
+              <span className="font-mono font-semibold text-slate-800">
+                #{conflictData.existingBookingId}
+              </span>
+            </div>
+          )}
+
+          {conflictData.seatId && (
+            <div className="flex justify-between">
+              <span className="text-slate-500 font-medium">Reserved Seat ID:</span>
+              <span className="font-semibold text-slate-800">
+                Seat #{conflictData.seatId}
+              </span>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center">
+            <span className="text-slate-500 font-medium">Status:</span>
+            <span className="bg-[#658362] text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
+              {conflictData.bookingStatus || "Confirmed"}
+            </span>
+          </div>
+        </div>
+
+        <p className="text-xs text-slate-500 leading-normal">
+          You can only hold one hotseat reservation per day. Please cancel your existing reservation if you wish to choose another seat.
+        </p>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Close
+          </button>
+          <a
+            href="/my-bookings"
+            className="rounded-lg bg-[#2F6FE0] px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 text-center"
+          >
+            View My Bookings
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main Hotseat Booking Component
 // ---------------------------------------------------------------------------
 
-const API_BASE =
-  "https://spacebook-505h.onrender.com/api/Hotseat";
+const API_BASE = "https://spacebook-505h.onrender.com/api/Hotseat";
 
 export default function HotseatBookingApp() {
   const [bookings, setBookings] = useState([]);
   const [modules, setModules] = useState([]);
-  const [toast, setToast] = useState(null);
+  const [toastState, setToastState] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [conflictData, setConflictData] = useState(null);
+  const toast = useToast();
 
   const getAuthHeaders = () => {
-    const token =
-      localStorage.getItem("spacebook_token") || "";
+    const token = localStorage.getItem("spacebook_token") || "";
 
     return {
       "Content-Type": "application/json",
@@ -345,109 +428,54 @@ export default function HotseatBookingApp() {
     };
   };
 
-  // -------------------------------------------------------------------------
-  // Fetch seats + my bookings
-  // -------------------------------------------------------------------------
-
   const fetchOfficeData = async () => {
     try {
       setLoading(true);
 
       const [seatsRes, bookingsRes] = await Promise.all([
-        fetch(API_BASE, {
-          headers: getAuthHeaders(),
-        }),
-
-        fetch(`${API_BASE}/my-bookings`, {
-          headers: getAuthHeaders(),
-        }),
+        fetch(API_BASE, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE}/my-bookings`, { headers: getAuthHeaders() }),
       ]);
-
-      // ---------------------------------------------------------------------
-      // Seats
-      // ---------------------------------------------------------------------
 
       if (seatsRes.ok) {
         const rawSeats = await seatsRes.json();
+        const seatArray = Array.isArray(rawSeats) ? rawSeats : rawSeats?.seats || [];
 
-        console.log("SEATS FROM BACKEND:", rawSeats);
-
-        const module1Seats = rawSeats
-          .filter((s) =>
-            s.seatNumber?.includes("EO1")
-          )
+        const module1Seats = seatArray
+          .filter((s) => s.seatNumber?.includes("EO1"))
           .map((s) => ({
             id: s.seatNumber,
             label: `Seat ${s.seatNumber.split("-").pop()}`,
-            number: parseInt(
-              s.seatNumber.split("-").pop(),
-              10
-            ),
+            number: parseInt(s.seatNumber.split("-").pop(), 10),
             type: "hotseat",
             status: String(s.status || "available").toLowerCase(),
+            bookedByUserId: s.bookedByUserId || s.userId || null,
           }));
 
-        const module2Seats = rawSeats
-          .filter((s) =>
-            s.seatNumber?.includes("EO2")
-          )
+        const module2Seats = seatArray
+          .filter((s) => s.seatNumber?.includes("EO2"))
           .map((s) => ({
             id: s.seatNumber,
             label: `Seat ${s.seatNumber.split("-").pop()}`,
-            number: parseInt(
-              s.seatNumber.split("-").pop(),
-              10
-            ),
+            number: parseInt(s.seatNumber.split("-").pop(), 10),
             type: "hotseat",
             status: String(s.status || "available").toLowerCase(),
+            bookedByUserId: s.bookedByUserId || s.userId || null,
           }));
 
         setModules([
-          {
-            id: "module1",
-            label: "Module 1",
-            seats: module1Seats,
-            rooms: [],
-          },
-          {
-            id: "module2",
-            label: "Module 2",
-            seats: module2Seats,
-            rooms: [],
-          },
+          { id: "module1", label: "Module 1", seats: module1Seats, rooms: [] },
+          { id: "module2", label: "Module 2", seats: module2Seats, rooms: [] },
         ]);
       }
 
-      // ---------------------------------------------------------------------
-      // My bookings
-      // ---------------------------------------------------------------------
-
       if (bookingsRes.ok) {
-        const myBookingsData =
-          await bookingsRes.json();
-
-        console.log(
-          "MY BOOKINGS FROM BACKEND:",
-          myBookingsData
-        );
-
-        setBookings(myBookingsData);
-      } else {
-        console.error(
-          "Failed to fetch my bookings:",
-          bookingsRes.status
-        );
+        const myBookingsData = await bookingsRes.json();
+        setBookings(Array.isArray(myBookingsData) ? myBookingsData : myBookingsData?.bookings || []);
       }
     } catch (err) {
-      console.error(
-        "Failed to sync with backend:",
-        err
-      );
-
-      showToast(
-        "Connection Error",
-        "Could not reach the server."
-      );
+      console.error("Failed to sync with backend:", err);
+      showCustomToast("Connection Error", "Could not reach the server.");
     } finally {
       setLoading(false);
     }
@@ -457,57 +485,17 @@ export default function HotseatBookingApp() {
     fetchOfficeData();
   }, []);
 
-  const showToast = useCallback(
-    (message, details) => {
-      setToast({
-        message,
-        details,
-      });
-    },
-    []
-  );
+  const showCustomToast = useCallback((message, details) => {
+    setToastState({ message, details });
+  }, []);
 
-  // -------------------------------------------------------------------------
-  // CREATE BOOKING
-  // -------------------------------------------------------------------------
-
-  async function reserveItem({
-    item,
-    targetDate,
-    expectedCheckIn,
-  }) {
+  async function reserveItem({ item, targetDate, expectedCheckIn }) {
     try {
-      const numericSeatId = parseInt(
-        item.id
-          .replace(/[^0-9]/g, "")
-          .slice(-3),
-        10
-      );
-
-      console.log(
-        "BOOKING SEAT ID:",
-        numericSeatId
-      );
-
-      console.log(
-        "BOOKING DATE:",
-        targetDate
-      );
-
-      console.log(
-        "CHECK-IN TIME:",
-        expectedCheckIn
-      );
-
+      const numericSeatId = parseInt(item.id.replace(/[^0-9]/g, "").slice(-3), 10);
       const payload = {
         seatId: numericSeatId,
         bookingDate: targetDate,
       };
-
-      console.log(
-        "BOOKING PAYLOAD:",
-        payload
-      );
 
       const response = await fetch(API_BASE, {
         method: "POST",
@@ -516,203 +504,101 @@ export default function HotseatBookingApp() {
       });
 
       let responseData = null;
-
       try {
         responseData = await response.json();
       } catch {
         responseData = null;
       }
 
-      console.log(
-        "BOOKING RESPONSE:",
-        response.status,
-        responseData
-      );
-
       if (!response.ok) {
-        let errorMessage =
-          "Failed to reserve hotseat.";
-
-        if (responseData?.errors) {
-          const errors = Object.entries(
-            responseData.errors
-          )
-            .map(([field, messages]) => {
-              return `${field}: ${
-                Array.isArray(messages)
-                  ? messages.join(", ")
-                  : messages
-              }`;
-            })
-            .join(" | ");
-
-          if (errors) {
-            errorMessage = errors;
-          }
-        } else if (responseData?.title) {
-          errorMessage = responseData.title;
+        if (
+          responseData?.existingBookingId ||
+          responseData?.message?.includes("already have a hotseat booking")
+        ) {
+          setConflictData(responseData);
+          return { ok: false, message: responseData.message };
         }
 
-        return {
-          ok: false,
-          message: errorMessage,
-        };
+        let errorMessage = "Failed to reserve hotseat.";
+        if (responseData?.errors) {
+          errorMessage = Object.entries(responseData.errors)
+            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(", ") : messages}`)
+            .join(" | ");
+        } else if (responseData?.title || responseData?.message) {
+          errorMessage = responseData.title || responseData.message;
+        }
+
+        return { ok: false, message: errorMessage };
       }
 
-      showToast(
-        "Booking Confirmed!",
-        `Successfully booked ${item.label} for ${targetDate}`
-      );
-
-      // Refresh seats + bookings.
-      // This is what makes the seat change color
-      // using the latest backend data.
+      showCustomToast("Booking Confirmed!", `Successfully booked ${item.label} for ${targetDate}`);
+      window.dispatchEvent(new Event("booking-updated"));
       await fetchOfficeData();
 
-      return {
-        ok: true,
-      };
+      return { ok: true };
     } catch (err) {
-      console.error(
-        "BOOKING ERROR:",
-        err
-      );
-
-      return {
-        ok: false,
-        message:
-          "Network error during reservation.",
-      };
+      console.error("BOOKING ERROR:", err);
+      return { ok: false, message: "Network error during reservation." };
     }
   }
 
-  // -------------------------------------------------------------------------
-  // EDIT BOOKING
-  // -------------------------------------------------------------------------
-
-  async function editBooking(
-    bookingId,
-    changes
-  ) {
+  async function editBookingTime(bookingId, changes) {
     try {
-      const numericSeatId = parseInt(
-        changes.seatId
-          .replace(/[^0-9]/g, "")
-          .slice(-3),
-        10
-      );
+      const numericSeatId = parseInt(changes.seatId.replace(/[^0-9]/g, "").slice(-3), 10);
+      const rawTime = String(changes.expectedCheckIn || "10:00");
+      const formattedTime = rawTime.length === 5 ? `${rawTime}:00` : rawTime.slice(0, 8);
 
       const payload = {
         seatId: numericSeatId,
         bookingDate: changes.date,
-
-        // IMPORTANT:
-        // Send HH:mm instead of HH:mm:ss
-        expectedCheckInTime:
-          changes.expectedCheckIn,
-
-        request: {},
+        expectedCheckInTime: formattedTime,
       };
 
-      console.log(
-        "UPDATE BOOKING PAYLOAD:",
-        payload
-      );
-
-      const response = await fetch(
-        `${API_BASE}/${bookingId}`,
-        {
-          method: "PUT",
-          headers: getAuthHeaders(),
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch(`${API_BASE}/${bookingId}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
 
       let responseData = null;
-
       try {
         responseData = await response.json();
       } catch {
         responseData = null;
       }
 
-      console.log(
-        "UPDATE RESPONSE:",
-        response.status,
-        responseData
-      );
-
       if (!response.ok) {
-        let errorMessage =
-          "Failed to update booking.";
-
+        let errorMessage = "Failed to update booking.";
         if (responseData?.errors) {
-          const errors = Object.entries(
-            responseData.errors
-          )
-            .map(([field, messages]) => {
-              return `${field}: ${
-                Array.isArray(messages)
-                  ? messages.join(", ")
-                  : messages
-              }`;
-            })
+          errorMessage = Object.entries(responseData.errors)
+            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(", ") : messages}`)
             .join(" | ");
-
-          if (errors) {
-            errorMessage = errors;
-          }
-        } else if (responseData?.title) {
-          errorMessage = responseData.title;
+        } else if (responseData?.title || responseData?.message) {
+          errorMessage = responseData.title || responseData.message;
         }
 
-        return {
-          ok: false,
-          message: errorMessage,
-        };
+        return { ok: false, message: errorMessage };
       }
 
-      showToast(
-        "Booking Updated",
-        "Your reservation has been modified."
-      );
-
+      showCustomToast("Booking Updated", "Your reservation has been modified.");
+      window.dispatchEvent(new Event("booking-updated"));
       await fetchOfficeData();
 
-      return {
-        ok: true,
-        message: "Booking updated.",
-      };
+      return { ok: true, message: "Booking updated." };
     } catch (err) {
-      console.error(
-        "UPDATE ERROR:",
-        err
-      );
-
-      return {
-        ok: false,
-        message:
-          "Network error during update.",
-      };
+      console.error("UPDATE ERROR:", err);
+      return { ok: false, message: "Network error during update." };
     }
   }
 
-  // -------------------------------------------------------------------------
-  // CANCEL BOOKING
-  // -------------------------------------------------------------------------
-
-  async function cancelBooking(bookingId) {
+  async function cancelHotseat(bookingId) {
     try {
-      const response = await fetch(
-        `${API_BASE}/${bookingId}`,
-        {
-          method: "DELETE",
-          headers: getAuthHeaders(),
-        }
-      );
+      const response = await fetch(`${API_BASE}/${bookingId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
 
       let responseData = null;
-
       try {
         responseData = await response.json();
       } catch {
@@ -722,40 +608,20 @@ export default function HotseatBookingApp() {
       if (!response.ok) {
         return {
           ok: false,
-          message:
-            responseData?.title ||
-            "Failed to cancel booking.",
+          message: responseData?.title || "Failed to cancel booking.",
         };
       }
 
-      showToast(
-        "Booking Cancelled",
-        "The hotseat is now released."
-      );
-
+      showCustomToast("Booking Cancelled", "The hotseat is now released.");
+      window.dispatchEvent(new Event("booking-updated"));
       await fetchOfficeData();
 
-      return {
-        ok: true,
-        message: "Cancelled successfully.",
-      };
+      return { ok: true, message: "Cancelled successfully." };
     } catch (err) {
-      console.error(
-        "CANCEL ERROR:",
-        err
-      );
-
-      return {
-        ok: false,
-        message:
-          "Network error while cancelling.",
-      };
+      console.error("CANCEL ERROR:", err);
+      return { ok: false, message: "Network error while cancelling." };
     }
   }
-
-  // -------------------------------------------------------------------------
-  // Loading
-  // -------------------------------------------------------------------------
 
   if (loading) {
     return (
@@ -767,20 +633,25 @@ export default function HotseatBookingApp() {
 
   return (
     <div className="w-full pb-10 relative">
-      {toast && (
+      {toastState && (
         <Toast
-          message={toast.message}
-          details={toast.details}
-          onClose={() => setToast(null)}
+          message={toastState.message}
+          details={toastState.details}
+          onClose={() => setToastState(null)}
         />
       )}
+
+      <ConflictModal
+        conflictData={conflictData}
+        onClose={() => setConflictData(null)}
+      />
 
       <OfficeMapTab
         modules={modules}
         bookings={bookings}
         onReserve={reserveItem}
-        onEdit={editBooking}
-        onCancel={cancelBooking}
+        onEdit={editBookingTime}
+        onCancel={cancelHotseat}
       />
     </div>
   );
@@ -797,108 +668,76 @@ function OfficeMapTab({
   onEdit,
   onCancel,
 }) {
-  const [location, setLocation] = useState("");
-  const [zone, setZone] = useState("");
-  const [moduleId, setModuleId] = useState("");
+  const [location, setLocation] = useState("Coimbatore");
+  const [zone, setZone] = useState("Elcot Park");
+  const [moduleId, setModuleId] = useState("module1");
   const [active, setActive] = useState(null);
-  const [bookingResult, setBookingResult] =
-    useState(null);
+  const [bookingResult, setBookingResult] = useState(null);
 
   const today = getTodayKey();
   const tomorrow = getTomorrowKey();
-
-  const [targetDate, setTargetDate] =
-    useState(tomorrow);
+  const [targetDate, setTargetDate] = useState(tomorrow);
 
   const LOCATIONS = ["Coimbatore"];
+  const ZONES = ["Elcot Park", "Tidel Park"];
 
-  const ZONES = [
-    "Elcot Park",
-    "Tidel Park",
-  ];
+  const currentModule = modules.find((m) => m.id === moduleId);
+  const readyForModule = location && zone;
 
-  const currentModule = modules.find(
-    (m) => m.id === moduleId
-  );
-
-  const readyForModule =
-    location && zone;
-
-  // -------------------------------------------------------------------------
-  // Find my booking for selected date
-  // -------------------------------------------------------------------------
-
-  const myBookingForDate =
-    bookings.find(
-      (b) =>
-        normalizeDateKey(b.bookingDate) ===
-        targetDate
+  const myBookingForDate = bookings.find((b) => {
+    const bookingDateStr = normalizeDateKey(b.bookingDate || b.date || b.expectedCheckIn);
+    const status = b.status?.toLowerCase();
+    return (
+      bookingDateStr === targetDate &&
+      status !== "cancelled" &&
+      status !== "rejected" &&
+      status !== "expired"
     );
-
-  const myBookedSeatId =
-    myBookingForDate?.seatNumber;
-
-  // -------------------------------------------------------------------------
-  // Apply visual seat status
-  // -------------------------------------------------------------------------
-
-  const currentSeats = (
-    currentModule?.seats || []
-  ).map((seat) => {
-
-    // Currently selected seat
-    if (seat.id === active?.id) {
-      return {
-        ...seat,
-        status: "selected",
-      };
-    }
-
-    // My booking for the selected date
-    // Mark it as occupied so the floor-map
-    // uses the existing BOOKED/RED styling.
-    if (
-      myBookedSeatId &&
-      seat.id === myBookedSeatId
-    ) {
-      return {
-        ...seat,
-        status: "occupied",
-      };
-    }
-
-    return seat;
   });
 
-  // -------------------------------------------------------------------------
-  // Seat selection
-  // -------------------------------------------------------------------------
+  const myBookedSeatNumber = myBookingForDate?.seatNumber;
+  const myBookedSeatId = myBookingForDate?.seatId;
+
+  const currentSeats = (currentModule?.seats || []).map((seat) => {
+    const isMine = Boolean(
+      myBookingForDate &&
+      (
+        (myBookedSeatNumber && seat.id === myBookedSeatNumber) ||
+        (myBookedSeatId && seat.number === Number(myBookedSeatId)) ||
+        (myBookedSeatNumber && myBookedSeatNumber.endsWith(String(seat.number).padStart(3, "0")))
+      )
+    );
+
+    if (seat.id === active?.id) {
+      return { ...seat, status: "selected", isMyBooking: isMine };
+    }
+
+    if (isMine) {
+      return { ...seat, status: "selected", isMyBooking: true };
+    }
+
+    const isOccupied =
+      seat.status === "occupied" ||
+      seat.status === "booked" ||
+      seat.status === "reserved";
+
+    if (isOccupied) {
+      return { ...seat, status: "occupied", isMyBooking: false };
+    }
+
+    return { ...seat, status: "available", isMyBooking: false };
+  });
 
   function handleSelectSeat(seat) {
-
-    // Don't allow clicking occupied/booked seats
-    // unless it is the user's own booking.
-    if (
-      seat.status === "occupied" &&
-      seat.id !== myBookedSeatId
-    ) {
+    if (seat.status === "occupied" && !seat.isMyBooking) {
       return;
     }
 
     setBookingResult(null);
-
     setActive(seat);
   }
 
-  // -------------------------------------------------------------------------
-  // Reserve
-  // -------------------------------------------------------------------------
-
-  async function handleReserve(
-    item,
-    expectedCheckIn,
-    date
-  ) {
+  async function handleReserve(item, expectedCheckIn, date) {
     const result = await onReserve({
       item,
       targetDate: date || targetDate,
@@ -906,33 +745,22 @@ function OfficeMapTab({
     });
 
     setBookingResult(result);
-
-    if (result.ok) {
-      setActive(null);
-    }
+    if (result.ok) setActive(null);
   }
 
   return (
     <div className="office-map-tab">
-
       <h1 className="text-xl font-bold text-slate-900 mb-1">
         Hotseat Reservation
       </h1>
 
       <p className="text-sm text-slate-500 mb-5">
-        Book one hotseat for today or tomorrow,
-        then check in during your expected
-        arrival window.
+        Book one hotseat for today or tomorrow, then check in during your expected arrival window.
       </p>
 
-      {/* ------------------------------------------------------------------ */}
       {/* FILTERS */}
-      {/* ------------------------------------------------------------------ */}
-
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mb-6">
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-
           <Select
             step="1"
             label="SELECT LOCATION"
@@ -978,11 +806,7 @@ function OfficeMapTab({
                   }))
                 : []
             }
-            placeholder={
-              readyForModule
-                ? "Select Module"
-                : "Choose Office First"
-            }
+            placeholder={readyForModule ? "Select Module" : "Choose Office First"}
           />
 
           <Select
@@ -995,35 +819,19 @@ function OfficeMapTab({
               setBookingResult(null);
             }}
             options={[
-              {
-                value: today,
-                label: formatDate(today),
-              },
-              {
-                value: tomorrow,
-                label: formatDate(tomorrow),
-              },
+              { value: today, label: formatDate(today) },
+              { value: tomorrow, label: formatDate(tomorrow) },
             ]}
             placeholder="Select date"
           />
-
         </div>
       </div>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* NO LOCATION */}
-      {/* ------------------------------------------------------------------ */}
-
       {!readyForModule && (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center text-sm text-slate-400">
-          Select a location and zone to load the
-          Hotseat reservation.
+          Select a location and zone to load the Hotseat reservation.
         </div>
       )}
-
-      {/* ------------------------------------------------------------------ */}
-      {/* NO MODULE */}
-      {/* ------------------------------------------------------------------ */}
 
       {readyForModule && !currentModule && (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center text-sm text-slate-400">
@@ -1031,13 +839,9 @@ function OfficeMapTab({
         </div>
       )}
 
-      {/* ------------------------------------------------------------------ */}
       {/* FLOOR MAP */}
-      {/* ------------------------------------------------------------------ */}
-
       {currentModule && (
         <div className="office-map-active">
-
           {moduleId === "module1" && (
             <FloorMapModule1
               seats={currentSeats}
@@ -1054,61 +858,40 @@ function OfficeMapTab({
             />
           )}
 
-          {/* ---------------------------------------------------------------- */}
           {/* BOOKING DIALOG */}
-          {/* ---------------------------------------------------------------- */}
-
           {active && (
             <BookingDialog
               item={active}
               booking={bookings.find(
                 (b) =>
                   b.seatNumber === active.id &&
-                  normalizeDateKey(
-                    b.bookingDate
-                  ) === targetDate
+                  normalizeDateKey(b.bookingDate || b.date) === targetDate &&
+                  b.status?.toLowerCase() !== "cancelled"
               )}
-              currentModuleLabel={
-                currentModule.label
-              }
+              currentModuleLabel={currentModule.label}
               targetDate={targetDate}
               onClose={() => setActive(null)}
               onCreate={(details) =>
-                handleReserve(
-                  details.item,
-                  details.expectedCheckIn,
-                  details.date
-                )
+                handleReserve(details.item, details.expectedCheckIn, details.date)
               }
               onUpdate={onEdit}
               onCancel={onCancel}
               onResult={(result) => {
                 setBookingResult(result);
-
-                if (result.ok) {
-                  setActive(null);
-                }
+                if (result.ok) setActive(null);
               }}
             />
           )}
 
-          {/* ---------------------------------------------------------------- */}
-          {/* ERROR */}
-          {/* ---------------------------------------------------------------- */}
+          {/* ERROR DISPLAY */}
+          {bookingResult && !bookingResult.ok && (
+            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              {bookingResult.message}
+            </div>
+          )}
 
-          {bookingResult &&
-            !bookingResult.ok && (
-              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-                {bookingResult.message}
-              </div>
-            )}
-
-          {/* ---------------------------------------------------------------- */}
-          {/* COLOR LEGEND */}
-          {/* ---------------------------------------------------------------- */}
-
+          {/* SIMPLIFIED LEGEND */}
           <div className="flex flex-wrap items-center gap-6 mt-4 text-[11px] font-semibold text-slate-600">
-
             <span className="flex items-center gap-2">
               <span
                 style={{
@@ -1125,6 +908,19 @@ function OfficeMapTab({
             <span className="flex items-center gap-2">
               <span
                 style={{
+                  background: "#2563eb",
+                  width: "12px",
+                  height: "12px",
+                  borderRadius: "3px",
+                  display: "inline-block",
+                }}
+              />
+              SELECTED
+            </span>
+
+            <span className="flex items-center gap-2">
+              <span
+                style={{
                   background: "#ef4444",
                   width: "12px",
                   height: "12px",
@@ -1135,23 +931,9 @@ function OfficeMapTab({
               BOOKED
             </span>
 
-            <span className="flex items-center gap-2">
-              <span
-                style={{
-                  background: "#3b82f6",
-                  width: "12px",
-                  height: "12px",
-                  borderRadius: "3px",
-                  display: "inline-block",
-                }}
-              />
-              SELECTED
-            </span>
-
             <span className="ml-auto text-slate-400 font-normal">
-              Click a green available seat to reserve
+              Click an available seat to reserve
             </span>
-
           </div>
         </div>
       )}
@@ -1176,50 +958,41 @@ function BookingDialog({
 }) {
   const isEditing = Boolean(booking);
 
-  const [date, setDate] = useState(
-    booking?.bookingDate || targetDate
+  const [date, setDate] = useState(booking?.bookingDate || targetDate);
+
+  // Helper to safely extract "HH:MM" whether it's an ISO string or plain string
+  const getTimeString = (val) => {
+    if (!val) return "";
+    const str = String(val);
+    if (str.includes("T")) {
+      return str.split("T")[1].substring(0, 5);
+    }
+    return str.substring(0, 5);
+  };
+
+  const rawExistingTime = 
+    booking?.expectedCheckInTime || 
+    booking?.expectedCheckIn || 
+    booking?.startTime || 
+    booking?.time || 
+    "";
+
+  const [expectedCheckIn, setExpectedCheckIn] = useState(
+    getTimeString(rawExistingTime)
   );
 
-  const [expectedCheckIn, setExpectedCheckIn] =
-    useState(
-      booking?.expectedCheckInTime
-        ? String(
-            booking.expectedCheckInTime
-          ).substring(0, 5)
-        : "10:00"
-    );
-
-  const [confirmation, setConfirmation] =
-    useState(null);
-
+  const [confirmation, setConfirmation] = useState(null);
   const [error, setError] = useState("");
-
   const [saving, setSaving] = useState(false);
-
-  // -------------------------------------------------------------------------
-  // Request save
-  // -------------------------------------------------------------------------
 
   function requestSave(event) {
     event.preventDefault();
-
     setError("");
-
-    setConfirmation(
-      isEditing
-        ? "update"
-        : "create"
-    );
+    setConfirmation(isEditing ? "update" : "create");
   }
 
-  // -------------------------------------------------------------------------
-  // Confirm
-  // -------------------------------------------------------------------------
-
   async function confirm() {
-    if (saving) {
-      return;
-    }
+    if (saving) return;
 
     setSaving(true);
     setError("");
@@ -1227,56 +1000,27 @@ function BookingDialog({
     try {
       let result;
 
-      // CREATE
       if (confirmation === "create") {
-        result = await onCreate({
-          item,
-          expectedCheckIn,
+        result = await onCreate({ item, expectedCheckIn, date });
+      } else if (confirmation === "update") {
+        result = await onUpdate(booking.bookingId || booking.id, {
           date,
+          expectedCheckIn,
+          seatId: item.id,
         });
-      }
-
-      // UPDATE
-      else if (
-        confirmation === "update"
-      ) {
-        result = await onUpdate(
-          booking.id,
-          {
-            date,
-            expectedCheckIn,
-            seatId: item.id,
-          }
-        );
-      }
-
-      // CANCEL
-      else {
-        result = await onCancel(
-          booking.id
-        );
+      } else {
+        result = await onCancel(booking.bookingId || booking.id);
       }
 
       onResult?.(result);
 
       if (!result.ok) {
-        setError(
-          result.message ||
-            "Something went wrong."
-        );
-
+        setError(result.message || "Something went wrong.");
         setConfirmation(null);
       }
     } catch (err) {
-      console.error(
-        "CONFIRM ERROR:",
-        err
-      );
-
-      setError(
-        "Something went wrong. Please try again."
-      );
-
+      console.error("CONFIRM ERROR:", err);
+      setError("Something went wrong. Please try again.");
       setConfirmation(null);
     } finally {
       setSaving(false);
@@ -1285,33 +1029,20 @@ function BookingDialog({
 
   return (
     <Dialog
-      title={
-        isEditing
-          ? "Edit booking"
-          : "Book Hotseat"
-      }
+      title={isEditing ? "Edit booking time" : "Book Hotseat"}
       onClose={onClose}
     >
-
-      {/* ------------------------------------------------------------------ */}
-      {/* CONFIRMATION */}
-      {/* ------------------------------------------------------------------ */}
-
       {confirmation ? (
         <div>
-
           <p className="text-sm text-slate-600">
             Are you sure you want to proceed?
           </p>
 
           <div className="mt-6 flex justify-end gap-3">
-
             <button
               type="button"
               disabled={saving}
-              onClick={() =>
-                setConfirmation(null)
-              }
+              onClick={() => setConfirmation(null)}
               className="rounded-lg px-4 py-2 text-sm text-slate-600 disabled:opacity-50"
             >
               Back
@@ -1323,103 +1054,58 @@ function BookingDialog({
               onClick={confirm}
               className="rounded-lg bg-[#2F6FE0] px-4 py-2 text-sm text-white disabled:opacity-50"
             >
-              {saving
-                ? "Processing..."
-                : "Confirm"}
+              {saving ? "Processing..." : "Confirm"}
             </button>
-
           </div>
-
         </div>
       ) : (
-
-        /* ---------------------------------------------------------------- */
-        /* BOOKING FORM */
-        /* ---------------------------------------------------------------- */
-
         <form onSubmit={requestSave}>
-
           <div className="mb-4">
-
             <label className="block text-xs font-semibold text-slate-600 mb-1.5">
               Selected Hotseat
             </label>
 
             <div className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-medium text-slate-700">
-              {currentModuleLabel} ·{" "}
-              {item.label}
+              {currentModuleLabel} · {item.label}
             </div>
-
           </div>
 
-          {/* DATE */}
-
           <div className="mb-4">
-
             <label className="block text-xs font-semibold text-slate-600 mb-1.5">
               Booking Date
             </label>
 
             <select
               value={date}
-              onChange={(e) =>
-                setDate(e.target.value)
-              }
+              onChange={(e) => setDate(e.target.value)}
               className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 focus:border-[#2F6FE0] focus:outline-none"
             >
-              <option value={getTodayKey()}>
-                {formatDate(
-                  getTodayKey()
-                )}
-              </option>
-
-              <option value={getTomorrowKey()}>
-                {formatDate(
-                  getTomorrowKey()
-                )}
-              </option>
+              <option value={getTodayKey()}>{formatDate(getTodayKey())}</option>
+              <option value={getTomorrowKey()}>{formatDate(getTomorrowKey())}</option>
             </select>
-
           </div>
 
-          {/* CHECK-IN */}
-
           <div className="mb-2">
-
             <label className="block text-xs font-semibold text-slate-600 mb-1.5">
               Expected check-in time
             </label>
 
             <CustomTimePicker
               value={expectedCheckIn}
-              onChange={
-                setExpectedCheckIn
-              }
+              onChange={setExpectedCheckIn}
               selectedDate={date}
             />
-
           </div>
 
-          {/* ERROR */}
-
           {error && (
-            <p className="mt-3 text-sm text-red-600">
-              {error}
-            </p>
+            <p className="mt-3 text-sm text-red-600">{error}</p>
           )}
 
-          {/* BUTTONS */}
-
           <div className="mt-6 flex items-center justify-between gap-3">
-
             {isEditing ? (
               <button
                 type="button"
-                onClick={() =>
-                  setConfirmation(
-                    "cancel"
-                  )
-                }
+                onClick={() => setConfirmation("cancel")}
                 className="text-sm font-semibold text-red-600"
               >
                 Cancel Booking
@@ -1438,13 +1124,9 @@ function BookingDialog({
               type="submit"
               className="rounded-lg bg-[#2F6FE0] px-5 py-2 text-sm text-white"
             >
-              {isEditing
-                ? "Update"
-                : "Book"}
+              {isEditing ? "Update Time" : "Book"}
             </button>
-
           </div>
-
         </form>
       )}
     </Dialog>
@@ -1455,36 +1137,20 @@ function BookingDialog({
 // Dialog
 // ---------------------------------------------------------------------------
 
-function Dialog({
-  title,
-  children,
-  onClose,
-}) {
+function Dialog({ title, children, onClose }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4"
       role="dialog"
     >
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-
         <div className="mb-5 flex items-start justify-between gap-4">
-
-          <h2 className="text-lg font-bold text-slate-900">
-            {title}
-          </h2>
-
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close dialog"
-          >
+          <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+          <button type="button" onClick={onClose} aria-label="Close dialog">
             <X size={20} />
           </button>
-
         </div>
-
         {children}
-
       </div>
     </div>
   );
