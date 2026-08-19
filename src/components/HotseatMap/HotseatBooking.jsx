@@ -124,7 +124,7 @@ function Select({
 }
 
 // ---------------------------------------------------------------------------
-// Dual Column Time Picker
+// Dual Column Time Picker (Starts at 10:00 AM)
 // ---------------------------------------------------------------------------
 
 function CustomTimePicker({ value, onChange, selectedDate }) {
@@ -143,8 +143,8 @@ function CustomTimePicker({ value, onChange, selectedDate }) {
     : ["", ""];
 
   const hours = Array.from(
-    { length: 11 },
-    (_, i) => String(i + 9).padStart(2, "0")
+    { length: 10 },
+    (_, i) => String(i + 10).padStart(2, "0")
   );
 
   const minutes = Array.from(
@@ -492,9 +492,14 @@ export default function HotseatBookingApp() {
   async function reserveItem({ item, targetDate, expectedCheckIn }) {
     try {
       const numericSeatId = parseInt(item.id.replace(/[^0-9]/g, "").slice(-3), 10);
+      
+      const rawTime = String(expectedCheckIn || "10:00");
+      const formattedTime = rawTime.length === 5 ? `${rawTime}:00` : rawTime.slice(0, 8);
+
       const payload = {
         seatId: numericSeatId,
         bookingDate: targetDate,
+        expectedCheckInTime: formattedTime,
       };
 
       const response = await fetch(API_BASE, {
@@ -652,6 +657,7 @@ export default function HotseatBookingApp() {
         onReserve={reserveItem}
         onEdit={editBookingTime}
         onCancel={cancelHotseat}
+        setConflictData={setConflictData}
       />
     </div>
   );
@@ -667,6 +673,7 @@ function OfficeMapTab({
   onReserve,
   onEdit,
   onCancel,
+  setConflictData,
 }) {
   const [location, setLocation] = useState("Coimbatore");
   const [zone, setZone] = useState("Elcot Park");
@@ -730,6 +737,30 @@ function OfficeMapTab({
 
   function handleSelectSeat(seat) {
     if (seat.status === "occupied" && !seat.isMyBooking) {
+      return;
+    }
+
+    // Instantly check if user already has an active booking for this date on a DIFFERENT seat
+    const existingUserBooking = bookings.find((b) => {
+      const bookingDateStr = normalizeDateKey(b.bookingDate || b.date || b.expectedCheckIn);
+      const status = b.status?.toLowerCase();
+      const seatNum = b.seatNumber || (b.seatId ? `Seat #${b.seatId}` : "");
+      return (
+        bookingDateStr === targetDate &&
+        status !== "cancelled" &&
+        status !== "rejected" &&
+        status !== "expired" &&
+        seatNum !== seat.id
+      );
+    });
+
+    if (existingUserBooking) {
+      setConflictData({
+        message: "You already have a hotseat booking for this date.",
+        existingBookingId: existingUserBooking.bookingId || existingUserBooking.id,
+        seatId: existingUserBooking.seatId || existingUserBooking.seatNumber,
+        bookingStatus: existingUserBooking.status || "Confirmed"
+      });
       return;
     }
 
@@ -960,7 +991,6 @@ function BookingDialog({
 
   const [date, setDate] = useState(booking?.bookingDate || targetDate);
 
-  // Helper to safely extract "HH:MM" whether it's an ISO string or plain string
   const getTimeString = (val) => {
     if (!val) return "";
     const str = String(val);
@@ -1010,6 +1040,11 @@ function BookingDialog({
         });
       } else {
         result = await onCancel(booking.bookingId || booking.id);
+      }
+
+      // Safe fallback if the backend call returns undefined on a 500 server crash
+      if (!result) {
+        result = { ok: false, message: "No response received from server." };
       }
 
       onResult?.(result);
