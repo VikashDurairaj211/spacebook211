@@ -16,68 +16,45 @@ export default function SpaceBookCopilot({ onClose }) {
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
         display: 'flex',
         flexDirection: 'column',
-        isolation: 'isolate', // Isolates layering so the iframe can't steal header mouse clicks
       }}
     >
-      {/* Copilot Header */}
-      <div
+      {/* Custom Close Button overlayed precisely on top of the iframe's header */}
+      <button
+        type="button"
+        onClick={() => {
+          if (onClose) onClose();
+        }}
+        aria-label="Close Copilot"
         style={{
-          height: '62px',
-          minHeight: '62px',
-          background: '#0f6074',
+          position: 'absolute',
+          top: '12px',
+          right: '16px',
+          width: '32px',
+          height: '32px',
+          border: 'none',
+          background: 'rgba(255, 255, 255, 0.2)',
           color: '#fff',
+          fontSize: '20px',
+          lineHeight: '1',
+          cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 16px',
-          boxSizing: 'border-box',
-          position: 'relative',
-          zIndex: 50, // Ensures header sits safely above the iframe
+          justifyContent: 'center',
+          borderRadius: '50%',
+          zIndex: 100, // Keeps it on top of the iframe
+          transition: 'background 0.2s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.4)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
         }}
       >
-        <span
-          style={{
-            fontSize: '20px',
-            fontWeight: '700',
-          }}
-        >
-          SpaceBook Copilot
-        </span>
+        ×
+      </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            console.log("Close button clicked successfully!");
-            if (onClose) onClose();
-          }}
-          aria-label="Close Copilot"
-          style={{
-            width: '34px',
-            height: '34px',
-            border: 'none',
-            background: 'transparent',
-            color: '#fff',
-            fontSize: '28px',
-            lineHeight: '1',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '6px',
-            pointerEvents: 'auto',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-          }}
-        >
-          ×
-        </button>
-      </div>
-
-      {/* Microsoft Copilot */}
+      {/* Microsoft Copilot Iframe */}
       <iframe
         src="https://copilotstudio.microsoft.com/environments/Default-13085c86-4bcb-460a-a6f0-b373421c6323/bots/crc1d_spacebookcopilot_ZlMFY3/webchat?__version__=2&enableFileAttachment=false&cliAgent=true"
         title="SpaceBook Copilot"
