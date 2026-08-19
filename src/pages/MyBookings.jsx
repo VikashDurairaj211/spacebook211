@@ -5,6 +5,7 @@ import {
   cancelBooking,
   updateBooking,
 } from "../api/bookings";
+import { getMyHotseatBookings, cancelHotseatBooking } from "../api/hotseat";
 
 import Card from "../components/common/Card";
 import Button from "../components/common/Button";
@@ -64,26 +65,129 @@ export default function MyBookings() {
     try {
       setLoading(true);
 
-      const data = await getMyBookings();
+      // Load normal room bookings and Hotseat bookings separately.
+      const [roomResult, hotseatResult] = await Promise.allSettled([
+        getMyBookings(),
+        getMyHotseatBookings(),
+      ]);
 
-      console.log("My Bookings API Response:", data);
+      let roomBookings = [];
+      let hotseatBookings = [];
 
-      const bookingList = Array.isArray(data)
-        ? data
-        : data?.bookings || [];
+      if (roomResult.status === "fulfilled") {
+        const data = roomResult.value;
 
-      const normalizedBookings = bookingList.map((booking) => ({
-        ...booking,
-        roomId: getRoomId(booking),
-      }));
+        console.log("My Room Bookings API Response:", data);
 
-      const sorted = [...normalizedBookings].sort(
+        const bookingList = Array.isArray(data)
+          ? data
+          : data?.bookings || [];
+
+        roomBookings = bookingList.map((booking) => ({
+          ...booking,
+          roomId: getRoomId(booking),
+          isHotseat: false,
+        }));
+      } else {
+        console.error("Room bookings error:", roomResult.reason);
+      }
+
+      if (hotseatResult.status === "fulfilled") {
+        const data = hotseatResult.value;
+
+        console.log("My Hotseat Bookings API Response:", data);
+
+        const bookingList = Array.isArray(data)
+          ? data
+          : data?.bookings || [];
+
+        hotseatBookings = bookingList.map((booking) => ({
+          ...booking,
+
+          // Keep the original Hotseat ID.
+          bookingId:
+            booking.bookingId ??
+            booking.id ??
+            booking.Id,
+
+          // Mark this row so room-booking APIs are never used for it.
+          isHotseat: true,
+
+          // Hotseat uses "date" instead of "bookingDate".
+          bookingDate:
+            booking.bookingDate ??
+            booking.date ??
+            "",
+
+          // Hotseat has an expected check-in time instead of a
+          // room booking start/end range.
+          startTime:
+            booking.startTime ??
+            booking.expectedCheckIn ??
+            "",
+
+          endTime:
+            booking.endTime ??
+            booking.expectedCheckIn ??
+            "",
+
+          // Display the seat as the workspace/room column.
+          roomName:
+            booking.roomName ||
+            (booking.seatNumber
+              ? `Hot Seat ${booking.seatNumber}`
+              : "Hot Seat"),
+
+          // Hotseat API already returns module.
+          module:
+            booking.module ??
+            booking.Module ??
+            "-",
+
+          // Give Hotseat bookings a clear purpose.
+          purpose:
+            booking.purpose ||
+            "Hotseat Booking",
+
+          // Hotseat has no room ID.
+          roomId: null,
+
+          // Preserve the useful Hotseat fields.
+          seatId: booking.seatId,
+          seatNumber: booking.seatNumber,
+          expectedCheckIn:
+            booking.expectedCheckIn ??
+            booking.expectedCheckInTime ??
+            "",
+          checkInTime: booking.checkInTime ?? null,
+          releasedOn: booking.releasedOn ?? null,
+        }));
+      } else {
+        console.error("Hotseat bookings error:", hotseatResult.reason);
+      }
+
+      const combinedBookings = [
+        ...roomBookings,
+        ...hotseatBookings,
+      ];
+
+      const sorted = [...combinedBookings].sort(
         (a, b) =>
           Number(b.bookingId || 0) -
           Number(a.bookingId || 0)
       );
 
       setBookings(sorted);
+
+      if (
+        roomResult.status === "rejected" &&
+        hotseatResult.status === "rejected"
+      ) {
+        toast.addToast({
+          type: "error",
+          title: "Unable to load bookings.",
+        });
+      }
     } catch (err) {
       console.error("Error loading bookings:", err);
       setBookings([]);
@@ -126,17 +230,50 @@ export default function MyBookings() {
   // GET DURATION
   // =====================================================
 
-  const getDuration = (start, end) => {
+  const getDuration = (booking) => {
+    if (!booking) return "-";
+
+    // Case A: Hot Seat session completed (checkInTime & releasedOn available)
+    if (booking.isHotseat) {
+      if (booking.checkInTime && booking.releasedOn) {
+        const start = new Date(booking.checkInTime);
+        const end = new Date(booking.releasedOn);
+        const diffMins = Math.round((end - start) / (1000 * 60));
+
+        if (diffMins <= 0) return "-";
+        const hrs = Math.floor(diffMins / 60);
+        const mins = diffMins % 60;
+        return hrs > 0 ? `${hrs}h${mins > 0 ? ` ${mins}m` : ""}` : `${mins}m`;
+      }
+      return "Full Day";
+    }
+
+    // Case B: Room Bookings with Start & End Time
+    const start = booking.startTime;
+    const end = booking.endTime;
+
     if (!start || !end) return "-";
 
-    const startDate = new Date(`2000-01-01T${start}`);
-    const endDate = new Date(`2000-01-01T${end}`);
+    const cleanTime = (t) =>
+      String(t).includes("T") ? String(t).split("T")[1].substring(0, 5) : String(t).substring(0, 5);
 
-    const milliseconds = endDate - startDate;
-    if (milliseconds < 0) return "-";
+    const startTimeStr = cleanTime(start);
+    const endTimeStr = cleanTime(end);
 
-    const hours = milliseconds / 3600000;
-    return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(2)}h`;
+    const [startH, startM] = startTimeStr.split(":").map(Number);
+    const [endH, endM] = endTimeStr.split(":").map(Number);
+
+    if (isNaN(startH) || isNaN(endH)) return "-";
+
+    let diffMins = endH * 60 + (endM || 0) - (startH * 60 + (startM || 0));
+    if (diffMins < 0) diffMins += 24 * 60;
+
+    const hours = Math.floor(diffMins / 60);
+    const minutes = diffMins % 60;
+
+    if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h`;
+    return `${minutes}m`;
   };
 
   // =====================================================
@@ -154,7 +291,7 @@ export default function MyBookings() {
       return "bg-[#E09F3E] text-white";
     }
 
-    if (s === "rejected" || s === "cancelled") {
+    if (s === "rejected" || s === "cancelled" || s === "expired") {
       return "bg-[#B85450] text-white";
     }
 
@@ -174,6 +311,16 @@ export default function MyBookings() {
   };
 
   const handleEdit = (booking) => {
+    // Hotseat bookings use their own API and are not editable
+    // through the normal room-booking update endpoint.
+    if (booking?.isHotseat) {
+      toast.addToast({
+        type: "error",
+        title: "Hotseat bookings cannot be edited here.",
+      });
+      return;
+    }
+
     setSelected({
       ...booking,
       roomId: getRoomId(booking),
@@ -194,12 +341,21 @@ export default function MyBookings() {
     if (!selected?.bookingId) return;
 
     try {
-      await cancelBooking(selected.bookingId);
+      if (selected.isHotseat) {
+        await cancelHotseatBooking(selected.bookingId);
 
-      toast.addToast({
-        type: "success",
-        title: "Booking cancelled successfully.",
-      });
+        toast.addToast({
+          type: "success",
+          title: "Hotseat booking cancelled successfully.",
+        });
+      } else {
+        await cancelBooking(selected.bookingId);
+
+        toast.addToast({
+          type: "success",
+          title: "Booking cancelled successfully.",
+        });
+      }
 
       closeModal();
       await load();
@@ -209,6 +365,7 @@ export default function MyBookings() {
         type: "error",
         title:
           err.response?.data?.message ||
+          err.response?.data?.title ||
           err.message ||
           "Unable to cancel booking.",
       });
@@ -219,9 +376,38 @@ export default function MyBookings() {
   // FORMAT TIME
   // =====================================================
 
-  const formatTime = (time) => {
+  // Hotseat can return a normal time such as 10:00:00
+  // or an ISO DateTime such as 2026-08-20T10:00:00.
+  // Always display only HH:mm in the UI.
+  const formatDisplayTime = (time) => {
     if (!time) return "";
-    return time.length === 5 ? `${time}:00` : time;
+
+    const value = String(time);
+
+    if (value.includes("T")) {
+      const timePart = value.split("T")[1] || "";
+      return timePart.substring(0, 5);
+    }
+
+    return value.substring(0, 5);
+  };
+
+  // Used only when sending normal room-booking updates.
+  const formatApiTime = (time) => {
+    if (!time) return "";
+
+    const value = String(time);
+
+    if (value.includes("T")) {
+      const timePart = value.split("T")[1] || "";
+      return timePart.length === 5
+        ? `${timePart}:00`
+        : timePart;
+    }
+
+    return value.length === 5
+      ? `${value}:00`
+      : value;
   };
 
   // =====================================================
@@ -266,8 +452,8 @@ export default function MyBookings() {
       return;
     }
 
-    const startTime = formatTime(selected.startTime);
-    const endTime = formatTime(selected.endTime);
+    const startTime = formatApiTime(selected.startTime);
+    const endTime = formatApiTime(selected.endTime);
 
     if (startTime >= endTime) {
       toast.addToast({
@@ -359,7 +545,9 @@ export default function MyBookings() {
                     {b.bookingId}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap font-semibold">
-                    {b.roomName || `Room ${getRoomId(b) || ""}`}
+                    {b.isHotseat
+                      ? b.roomName || "Hot Seat"
+                      : b.roomName || `Room ${getRoomId(b) || ""}`}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-slate-600">
                     {getBookingModule(b)}
@@ -373,11 +561,14 @@ export default function MyBookings() {
                     {b.bookingDate}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-slate-600">
-                    {b.startTime ? b.startTime.substring(0, 5) : ""} -{" "}
-                    {b.endTime ? b.endTime.substring(0, 5) : ""}
+                    {b.isHotseat
+                      ? formatDisplayTime(b.startTime)
+                      : `${formatDisplayTime(b.startTime)} - ${formatDisplayTime(
+                          b.endTime
+                        )}`}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap">
-                    {getDuration(b.startTime, b.endTime)}
+                    {getDuration(b)}
                   </td>
                   <td className="px-3 py-4 text-center whitespace-nowrap">
                     <span
@@ -398,12 +589,14 @@ export default function MyBookings() {
 
                     {canModifyBooking(b) && (
                       <>
-                        <button
-                          className="mr-2.5 text-sm font-bold text-emerald-600 hover:text-emerald-800 hover:underline"
-                          onClick={() => handleEdit(b)}
-                        >
-                          Edit
-                        </button>
+                        {!b.isHotseat && (
+                          <button
+                            className="mr-2.5 text-sm font-bold text-emerald-600 hover:text-emerald-800 hover:underline"
+                            onClick={() => handleEdit(b)}
+                          >
+                            Edit
+                          </button>
+                        )}
                         <button
                           className="text-sm font-bold text-red-600 hover:text-red-800 hover:underline"
                           onClick={() => {
@@ -438,11 +631,33 @@ export default function MyBookings() {
             <dt className="font-medium">Booking ID</dt>
             <dd>{selected.bookingId}</dd>
 
-            <dt className="font-medium">Room</dt>
-            <dd>{selected.roomName || `Room ${getRoomId(selected) || ""}`}</dd>
+            <dt className="font-medium">
+              {selected.isHotseat ? "Seat" : "Room"}
+            </dt>
+            <dd>
+              {selected.isHotseat
+                ? selected.seatNumber || selected.roomName || "Hot Seat"
+                : selected.roomName || `Room ${getRoomId(selected) || ""}`}
+            </dd>
 
             <dt className="font-medium">Module</dt>
             <dd>{getBookingModule(selected)}</dd>
+
+            {selected.isHotseat && (
+              <>
+                <dt className="font-medium">Seat Number</dt>
+                <dd>{selected.seatNumber || "-"}</dd>
+
+                <dt className="font-medium">Check-in Time</dt>
+                <dd>
+                  {selected.expectedCheckIn
+                    ? formatDisplayTime(selected.expectedCheckIn)
+                    : selected.startTime
+                    ? formatDisplayTime(selected.startTime)
+                    : "-"}
+                </dd>
+              </>
+            )}
 
             <dt className="font-medium">Purpose</dt>
             <dd>{selected.purpose || "Reserved Workspace"}</dd>
@@ -452,9 +667,15 @@ export default function MyBookings() {
 
             <dt className="font-medium">Time</dt>
             <dd>
-              {selected.startTime ? selected.startTime.substring(0, 5) : ""} -{" "}
-              {selected.endTime ? selected.endTime.substring(0, 5) : ""}
+              {selected.isHotseat
+                ? formatDisplayTime(selected.startTime)
+                : `${formatDisplayTime(selected.startTime)} - ${formatDisplayTime(
+                    selected.endTime
+                  )}`}
             </dd>
+
+            <dt className="font-medium">Duration</dt>
+            <dd>{getDuration(selected)}</dd>
 
             <dt className="font-medium">Status</dt>
             <dd>
@@ -494,7 +715,7 @@ export default function MyBookings() {
         footer={null}
         className="max-w-xl h-fit"
       >
-        {selected && (
+        {selected && !selected.isHotseat && (
           <form onSubmit={save} className="space-y-4">
             <p className="text-xs text-slate-500">
               Booking #{selected.bookingId}
@@ -518,9 +739,7 @@ export default function MyBookings() {
                 <Input
                   type="time"
                   value={
-                    selected.startTime
-                      ? selected.startTime.substring(0, 5)
-                      : ""
+                    formatDisplayTime(selected.startTime)
                   }
                   onChange={(e) =>
                     setSelected({
@@ -535,9 +754,7 @@ export default function MyBookings() {
                 <Input
                   type="time"
                   value={
-                    selected.endTime
-                      ? selected.endTime.substring(0, 5)
-                      : ""
+                    formatDisplayTime(selected.endTime)
                   }
                   onChange={(e) =>
                     setSelected({

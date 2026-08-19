@@ -1,63 +1,107 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { BarChart3 } from "lucide-react";
 
 const API_BASE = "https://spacebook-505h.onrender.com/api/Hotseat";
 
 export function BookingStatsCard() {
-  const [modules, setModules] = useState([]);
-  const [bookings, setBookings] = useState([]);
+  const [totalSpaces, setTotalSpaces] = useState(229);
+  const [availableCount, setAvailableCount] = useState(229);
+  const [bookedCount, setBookedCount] = useState(0);
+  const [pendingCheckInCount, setPendingCheckInCount] = useState(0);
+  const [bookingsToday, setBookingsToday] = useState(0);
 
-  useEffect(() => {
-    async function fetchStatsData() {
-      try {
-        const token = localStorage.getItem("spacebook_token") || "";
-        const headers = { Authorization: `Bearer ${token}` };
+  const fetchStatsData = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("spacebook_token") || "";
+      const headers = { Authorization: `Bearer ${token}` };
 
-        const [seatsRes, bookingsRes] = await Promise.all([
-          fetch(API_BASE, { headers }),
-          fetch(`${API_BASE}/my-bookings`, { headers }),
-        ]);
+      // Fetch seats and all hotseat bookings
+      const [seatsRes, bookingsRes] = await Promise.all([
+        fetch(API_BASE, { headers }),
+        fetch(`${API_BASE}/my-bookings`, { headers }),
+      ]);
 
-        if (seatsRes.ok) {
-          const rawSeats = await seatsRes.json();
-          const module1Seats = rawSeats
-            .filter((s) => s.seatNumber.includes("EO1"))
-            .map((s) => ({ status: s.status }));
-          const module2Seats = rawSeats
-            .filter((s) => s.seatNumber.includes("EO2"))
-            .map((s) => ({ status: s.status }));
+      let seatList = [];
+      let bookingList = [];
 
-          setModules([
-            { id: "module1", seats: module1Seats },
-            { id: "module2", seats: module2Seats },
-          ]);
-        }
-
-        if (bookingsRes.ok) {
-          const myBookings = await bookingsRes.json();
-          setBookings(myBookings);
-        }
-      } catch (err) {
-        console.error("Failed to load sidebar stats:", err);
+      if (seatsRes.ok) {
+        const rawSeats = await seatsRes.json();
+        seatList = Array.isArray(rawSeats) ? rawSeats : rawSeats?.seats || [];
       }
-    }
 
-    fetchStatsData();
+      if (bookingsRes.ok) {
+        const rawBookings = await bookingsRes.json();
+        bookingList = Array.isArray(rawBookings) ? rawBookings : rawBookings?.bookings || [];
+      }
+
+      const total = seatList.length || 229;
+      setTotalSpaces(total);
+
+      // Local today date string: YYYY-MM-DD
+      const todayStr = new Date().toLocaleDateString("en-CA");
+
+      // Filter bookings relevant for TODAY
+      const todayBookings = bookingList.filter((b) => {
+        const bDate = (b.date || b.bookingDate || b.expectedCheckIn || "").split("T")[0];
+        const status = b.status?.toLowerCase();
+        return bDate === todayStr && status !== "cancelled" && status !== "rejected";
+      });
+
+      setBookingsToday(todayBookings.length);
+
+      // Count checked-in vs pending check-in for today
+      let activeOccupied = 0;
+      let pendingCheckIn = 0;
+
+      todayBookings.forEach((b) => {
+        const status = b.status?.toLowerCase();
+        if (b.checkInTime && !b.releasedOn) {
+          // User has actively checked in
+          activeOccupied += 1;
+        } else if (status === "confirmed" || status === "reserved" || status === "pending" || !b.checkInTime) {
+          // Confirmed/Reserved for today but not checked in yet
+          pendingCheckIn += 1;
+        }
+      });
+
+      // Also check if any raw seat object has an explicit status from the API
+      seatList.forEach((s) => {
+        const status = s.status?.toLowerCase();
+        if (status === "occupied" || status === "checked-in") {
+          activeOccupied += 1;
+        } else if (status === "reserved" || status === "pending") {
+          pendingCheckIn += 1;
+        }
+      });
+
+      // Ensure counts don't double-count or exceed total
+      const totalReservedToday = Math.min(total, activeOccupied + pendingCheckIn);
+      const calculatedAvailable = Math.max(0, total - totalReservedToday);
+
+      setBookedCount(activeOccupied);
+      setPendingCheckInCount(pendingCheckIn);
+      setAvailableCount(calculatedAvailable);
+
+    } catch (err) {
+      console.error("Failed to load sidebar stats:", err);
+    }
   }, []);
 
-  const allSeats = modules.flatMap((module) => module.seats || []);
+  useEffect(() => {
+    fetchStatsData();
 
-  const totalSpaces = allSeats.length;
-  const availableCount = allSeats.filter((seat) => seat.status?.toLowerCase() === "vacant").length;
-  const bookedCount = allSeats.filter((seat) => seat.status?.toLowerCase() === "occupied" || seat.status?.toLowerCase() === "booked").length;
-  const pendingCheckInCount = allSeats.filter(
-    (seat) => seat.status?.toLowerCase() === "reserved" || seat.status === "my-booked"
-  ).length;
+    const interval = setInterval(fetchStatsData, 15000);
+    const handleFocus = () => fetchStatsData();
 
-  const todayKey = new Date().toISOString().split("T")[0];
-  const bookingsToday = bookings.filter(
-    (b) => (b.bookingDate === todayKey || b.date === todayKey)
-  ).length;
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("booking-updated", handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("booking-updated", handleFocus);
+    };
+  }, [fetchStatsData]);
 
   return (
     <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-3">
