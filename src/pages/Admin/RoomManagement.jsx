@@ -805,7 +805,7 @@ async function deleteAdminRoom(
 // =====================================================
 
 export default function RoomManagement() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   // ===================================================
   // ROOM STATE
   // ===================================================
@@ -851,7 +851,7 @@ export default function RoomManagement() {
   // ===================================================
   // TOP NAV SEARCH
   // Reads the search value from:
-  // /admin/rooms?search=Conference%20Room
+  // /admin/room-management?search=Conference%20Room
   // ===================================================
 
   useEffect(() => {
@@ -860,6 +860,17 @@ export default function RoomManagement() {
 
     setSearch(searchFromUrl)
   }, [searchParams])
+
+  const handleSearchChange = (val) => {
+    setSearch(val)
+    const newParams = new URLSearchParams(searchParams)
+    if (val && val.trim()) {
+      newParams.set('search', val)
+    } else {
+      newParams.delete('search')
+    }
+    setSearchParams(newParams, { replace: true })
+  }
 
   const [
     statusFilter,
@@ -1313,14 +1324,20 @@ export default function RoomManagement() {
               room.facilities
             ).join(' ')
 
+          const roomNumber =
+            getDisplayRoomNumber(room)
+
           const searchableText =
             [
               room.name,
               room.code,
+              roomNumber,
               room.type,
               room.module,
+              room.status,
               facilitiesText,
             ]
+              .filter(Boolean)
               .join(' ')
               .toLowerCase()
 
@@ -2644,18 +2661,30 @@ export default function RoomManagement() {
               Add Room
             </Button> */}
 
-            <input
-              value={search}
-              onChange={(
-                event
-              ) =>
-                setSearch(
-                  event.target.value
-                )
-              }
-              placeholder="Search rooms, codes, types..."
-              className="min-w-[220px] flex-1 rounded-xl border border-line bg-portal-bg px-3 py-2 text-sm text-ink outline-none focus:border-portal-accent"
-            />
+            <div className="relative min-w-[220px] flex-1">
+              <input
+                value={search}
+                onChange={(
+                  event
+                ) =>
+                  handleSearchChange(
+                    event.target.value
+                  )
+                }
+                placeholder="Search rooms, codes, types..."
+                className="w-full rounded-xl border border-line bg-portal-bg px-3 py-2 pr-8 text-sm text-ink outline-none focus:border-portal-accent"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => handleSearchChange('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate hover:bg-slate-200 hover:text-ink text-xs font-bold transition-colors"
+                  aria-label="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
 
             <select
               value={
@@ -2795,9 +2824,25 @@ export default function RoomManagement() {
               <tr>
                 <td
                   colSpan={8}
-                  className="px-4 py-6 text-center text-slate"
+                  className="px-4 py-8 text-center text-slate"
                 >
-                  No rooms match your filters.
+                  <div>
+                    <p className="font-medium text-ink">
+                      No rooms match your filters.
+                    </p>
+                    {search && (
+                      <p className="mt-1 text-xs text-slate">
+                        No rooms found matching "{search}".
+                        <button
+                          type="button"
+                          onClick={() => handleSearchChange('')}
+                          className="ml-2 font-bold text-sky-600 hover:text-sky-800 underline"
+                        >
+                          Clear search
+                        </button>
+                      </p>
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : (

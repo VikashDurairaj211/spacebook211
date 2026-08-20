@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import {
   getMyBookings,
@@ -18,10 +19,32 @@ import { Field, Input } from "../components/common/Input";
 import { useToast } from "../components/common/ToastProvider";
 
 export default function MyBookings() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [mode, setMode] = useState(null);
+
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const searchFromUrl =
+      searchParams.get("search") ||
+      searchParams.get("q") ||
+      "";
+    setSearch(searchFromUrl);
+  }, [searchParams]);
+
+  const handleSearchChange = (val) => {
+    setSearch(val);
+    const newParams = new URLSearchParams(searchParams);
+    if (val && val.trim()) {
+      newParams.set("search", val);
+    } else {
+      newParams.delete("search");
+    }
+    setSearchParams(newParams, { replace: true });
+  };
 
   const toast = useToast();
 
@@ -1094,22 +1117,69 @@ export default function MyBookings() {
   }
 
   // =====================================================
+  // FILTER BOOKINGS BY SEARCH
+  // =====================================================
+
+  const filteredBookings = useMemo(() => {
+    const query = search.toLowerCase().trim();
+    if (!query) return bookings;
+
+    return bookings.filter((b) => {
+      const text = [
+        String(b.bookingId ?? ""),
+        b.roomName,
+        b.module,
+        b.purpose,
+        b.bookingDate,
+        b.status,
+        b.seatNumber ? `Hot Seat ${b.seatNumber}` : "",
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return text.includes(query);
+    });
+  }, [bookings, search]);
+
+  // =====================================================
   // RENDER
   // =====================================================
 
   return (
     <div className="space-y-6">
 
-      {/* PAGE HEADER */}
+      {/* PAGE HEADER & SEARCH */}
 
-      <div>
-        <h1 className="text-4xl font-semibold">
-          My Bookings
-        </h1>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-4xl font-semibold">
+            My Bookings
+          </h1>
 
-        <p className="mt-2 text-slate-500">
-          View, edit or cancel your workspace reservations.
-        </p>
+          <p className="mt-2 text-slate-500">
+            View, edit or cancel your workspace reservations.
+          </p>
+        </div>
+
+        <div className="relative w-full sm:w-72">
+          <input
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Search by ID, room, module, purpose..."
+            className="w-full rounded-xl border border-line bg-portal-bg px-3 py-2 pr-7 text-xs text-ink outline-none focus:border-portal-accent"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => handleSearchChange("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate hover:bg-slate-200 hover:text-ink text-xs font-bold transition-colors"
+              aria-label="Clear search"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       {/* BOOKINGS TABLE */}
@@ -1173,20 +1243,36 @@ export default function MyBookings() {
                 </td>
               </tr>
 
-            ) : bookings.length === 0 ? (
+            ) : filteredBookings.length === 0 ? (
 
               <tr>
                 <td
                   colSpan={9}
                   className="py-8 text-center text-slate-500"
                 >
-                  No bookings found.
+                  <div>
+                    <p className="font-medium text-ink">
+                      No bookings found.
+                    </p>
+                    {search && (
+                      <p className="mt-1 text-xs text-slate">
+                        No bookings match "{search}".
+                        <button
+                          type="button"
+                          onClick={() => handleSearchChange("")}
+                          className="ml-2 font-bold text-sky-600 hover:text-sky-800 underline"
+                        >
+                          Clear search
+                        </button>
+                      </p>
+                    )}
+                  </div>
                 </td>
               </tr>
 
             ) : (
 
-              bookings.map((b) => (
+              filteredBookings.map((b) => (
 
                 <tr
                   key={`${

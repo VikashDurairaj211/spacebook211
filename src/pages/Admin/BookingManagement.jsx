@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import client from '../../api/client'
 
 import Card from '../../components/common/Card'
@@ -37,13 +38,32 @@ function CustomStatusTag({ status }) {
 // =====================================================
 
 export default function BookingManagement() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState('')
 
   const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    const searchFromUrl = searchParams.get('search') || ''
+    setSearch(searchFromUrl)
+  }, [searchParams])
+
+  const handleSearchChange = (val) => {
+    setSearch(val)
+    const newParams = new URLSearchParams(searchParams)
+    if (val && val.trim()) {
+      newParams.set('search', val)
+    } else {
+      newParams.delete('search')
+    }
+    setSearchParams(newParams, { replace: true })
+  }
+
   const [statusFilter, setStatusFilter] = useState('All')
+  const [dateFilter, setDateFilter] = useState('All')
 
   const [selectedBooking, setSelectedBooking] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -271,6 +291,7 @@ export default function BookingManagement() {
 
   const filteredBookings = useMemo(() => {
     const searchValue = search.toLowerCase().trim()
+    const todayStr = new Date().toISOString().split('T')[0] // YYYY-MM-DD comparison format
 
     return bookings.filter((booking) => {
       const creator =
@@ -300,9 +321,24 @@ export default function BookingManagement() {
         booking.status?.toLowerCase() ===
           statusFilter.toLowerCase()
 
-      return matchesSearch && matchesStatus
+      // Date Filtering Logic
+      let matchesDate = true
+      if (booking.date) {
+        const bookingDateOnly = booking.date.split('T')[0]
+        if (dateFilter === 'Today') {
+          matchesDate = bookingDateOnly === todayStr
+        } else if (dateFilter === 'Upcoming') {
+          matchesDate = bookingDateOnly > todayStr
+        } else if (dateFilter === 'Past') {
+          matchesDate = bookingDateOnly < todayStr
+        }
+      } else if (dateFilter !== 'All') {
+        matchesDate = false
+      }
+
+      return matchesSearch && matchesStatus && matchesDate
     })
-  }, [bookings, search, statusFilter])
+  }, [bookings, search, statusFilter, dateFilter])
 
   // =====================================================
   // Open View Modal
@@ -562,15 +598,29 @@ export default function BookingManagement() {
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
 
-            <input
-              value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
-              placeholder="Search ID, title, room, module, creator..."
-              className="w-full sm:w-80 rounded-xl border border-line bg-portal-bg px-3 py-1.5 text-xs text-ink outline-none focus:border-portal-accent"
-            />
+            {/* Search Input */}
+            <div className="relative w-full sm:w-64">
+              <input
+                value={search}
+                onChange={(event) =>
+                  handleSearchChange(event.target.value)
+                }
+                placeholder="Search ID, title, room, module, creator..."
+                className="w-full rounded-xl border border-line bg-portal-bg px-3 py-1.5 pr-7 text-xs text-ink outline-none focus:border-portal-accent"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => handleSearchChange('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate hover:bg-slate-200 hover:text-ink text-xs font-bold transition-colors"
+                  aria-label="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
 
+            {/* Status Filter Dropdown */}
             <select
               value={statusFilter}
               onChange={(event) =>
@@ -585,6 +635,20 @@ export default function BookingManagement() {
               ))}
             </select>
 
+            {/* Date Filter Dropdown (Moved to the end) */}
+            <select
+              value={dateFilter}
+              onChange={(event) =>
+                setDateFilter(event.target.value)
+              }
+              className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs text-ink outline-none"
+            >
+              <option value="All">All Dates</option>
+              <option value="Today">Today</option>
+              <option value="Upcoming">Upcoming</option>
+              <option value="Past">Past</option>
+            </select>
+
           </div>
 
         </div>
@@ -596,21 +660,7 @@ export default function BookingManagement() {
 
       <Card className="overflow-x-auto p-4">
 
-        {/*
-          IMPORTANT:
-          No min-w-[1200px]
-          No min-w-full
-          No table-fixed
-
-          w-max makes the table use only the width
-          required by the content.
-        */}
-
         <table className="w-max text-left text-xs">
-
-          {/* =================================================
-              Table Header
-          ================================================= */}
 
           <thead>
             <tr className="border-b border-line font-mono text-[11px] font-extrabold uppercase tracking-wider text-black">
@@ -654,16 +704,9 @@ export default function BookingManagement() {
             </tr>
           </thead>
 
-          {/* =================================================
-              Table Body
-          ================================================= */}
-
           <tbody className="divide-y divide-line">
 
-            {/* Loading */}
-
             {loading ? (
-
               <tr>
                 <td
                   colSpan={9}
@@ -672,11 +715,7 @@ export default function BookingManagement() {
                   Loading booking requests...
                 </td>
               </tr>
-
             ) : error ? (
-
-              /* Error */
-
               <tr>
                 <td
                   colSpan={9}
@@ -685,75 +724,56 @@ export default function BookingManagement() {
                   {error}
                 </td>
               </tr>
-
             ) : filteredBookings.length === 0 ? (
-
-              /* Empty */
-
               <tr>
                 <td
                   colSpan={9}
                   className="px-2 py-6 text-center text-slate"
                 >
-                  No booking requests match the
-                  current filters.
+                  <div>
+                    <p className="font-medium text-ink">
+                      No booking requests match the current filters.
+                    </p>
+                    {search && (
+                      <p className="mt-1 text-xs text-slate">
+                        No bookings found matching "{search}".
+                        <button
+                          type="button"
+                          onClick={() => handleSearchChange('')}
+                          className="ml-2 font-bold text-sky-600 hover:text-sky-800 underline"
+                        >
+                          Clear search
+                        </button>
+                      </p>
+                    )}
+                  </div>
                 </td>
               </tr>
-
             ) : (
-
-              /* Booking Rows */
-
               filteredBookings.map((booking) => (
-
                 <tr
                   key={booking.bookingId}
                   className="transition-colors duration-200 hover:bg-portal-bg/70"
                 >
-
-                  {/* =================================================
-                      Booking ID
-                  ================================================= */}
-
                   <td className="px-2 py-3 font-semibold text-ink whitespace-nowrap">
                     {booking.bookingId}
                   </td>
-
-                  {/* =================================================
-                      Meeting Title
-                  ================================================= */}
 
                   <td className="px-2 py-3 font-medium text-ink whitespace-nowrap">
                     {booking.title}
                   </td>
 
-                  {/* =================================================
-                      Room
-                  ================================================= */}
-
                   <td className="px-2 py-3 text-slate whitespace-nowrap">
                     {booking.roomName}
                   </td>
-
-                  {/* =================================================
-                      Module
-                  ================================================= */}
 
                   <td className="px-2 py-3 text-slate whitespace-nowrap">
                     {booking.module}
                   </td>
 
-                  {/* =================================================
-                      Date
-                  ================================================= */}
-
                   <td className="px-2 py-3 text-slate whitespace-nowrap">
                     {booking.date}
                   </td>
-
-                  {/* =================================================
-                      Time
-                  ================================================= */}
 
                   <td className="px-2 py-3 text-slate whitespace-nowrap">
                     {booking.startTime}
@@ -761,17 +781,9 @@ export default function BookingManagement() {
                     {booking.endTime}
                   </td>
 
-                  {/* =================================================
-                      Created By
-                  ================================================= */}
-
                   <td className="px-2 py-3 text-slate whitespace-nowrap">
                     {booking.createdBy}
                   </td>
-
-                  {/* =================================================
-                      Status
-                  ================================================= */}
 
                   <td className="px-2 py-3 text-center whitespace-nowrap">
                     <CustomStatusTag
@@ -779,16 +791,8 @@ export default function BookingManagement() {
                     />
                   </td>
 
-                  {/* =================================================
-                      Actions
-                  ================================================= */}
-
                   <td className="px-2 py-3 text-center whitespace-nowrap">
-
                     <div className="inline-flex items-center gap-2 font-sans text-sm">
-
-                      {/* View */}
-
                       <button
                         onClick={() =>
                           openViewModal(booking)
@@ -798,14 +802,9 @@ export default function BookingManagement() {
                         View
                       </button>
 
-                      {/* Approve / Reject */}
-
                       {booking.status?.toLowerCase() ===
-                      'pending' && (
+                        'pending' && (
                         <>
-
-                          {/* Approve */}
-
                           <button
                             disabled={actionLoading}
                             onClick={() =>
@@ -819,8 +818,6 @@ export default function BookingManagement() {
                             Approve
                           </button>
 
-                          {/* Reject */}
-
                           <button
                             disabled={actionLoading}
                             onClick={() =>
@@ -833,18 +830,12 @@ export default function BookingManagement() {
                           >
                             Reject
                           </button>
-
                         </>
                       )}
-
                     </div>
-
                   </td>
-
                 </tr>
-
               ))
-
             )}
 
           </tbody>
@@ -858,16 +849,12 @@ export default function BookingManagement() {
       ===================================================== */}
 
       {selectedBooking && (
-
         <Modal
           open={isModalOpen}
           onClose={closeModal}
           title="Booking Details"
           footer={
             <div className="flex flex-wrap gap-2">
-
-              {/* Close */}
-
               <Button
                 size="sm"
                 variant="secondary"
@@ -877,14 +864,9 @@ export default function BookingManagement() {
                 Close
               </Button>
 
-              {/* Pending Actions */}
-
               {selectedBooking.status?.toLowerCase() ===
                 'pending' && (
                 <>
-
-                  {/* Approve */}
-
                   <Button
                     size="sm"
                     onClick={() =>
@@ -897,8 +879,6 @@ export default function BookingManagement() {
                   >
                     Approve
                   </Button>
-
-                  {/* Reject */}
 
                   <Button
                     size="sm"
@@ -913,99 +893,71 @@ export default function BookingManagement() {
                   >
                     Reject
                   </Button>
-
                 </>
               )}
-
             </div>
           }
         >
-
           <div className="space-y-3 text-sm text-slate">
-
-            {/* Booking ID */}
-
             <div>
               <p className="font-medium text-ink">
                 {selectedBooking.bookingId}
               </p>
-
               <p className="text-xs uppercase tracking-[0.2em] text-slate">
                 Booking ID
               </p>
             </div>
 
-            {/* Meeting Title */}
-
             <div>
               <h3 className="font-medium text-ink">
                 {selectedBooking.title}
               </h3>
-
               <p className="text-xs uppercase tracking-[0.2em] text-slate">
                 Meeting Title
               </p>
             </div>
 
-            {/* Booking Information */}
-
             <div className="grid gap-3 sm:grid-cols-2">
-
-              {/* Room */}
-
               <div>
                 <p className="font-medium text-ink">
                   Room
                 </p>
-
                 <p>
                   {selectedBooking.roomName}
                 </p>
               </div>
 
-              {/* Module */}
-
               <div>
                 <p className="font-medium text-ink">
                   Module
                 </p>
-
                 <p>
                   {selectedBooking.module}
                 </p>
               </div>
 
-              {/* Created By */}
-
               <div>
                 <p className="font-medium text-ink">
                   Created By
                 </p>
-
                 <p>
                   {selectedBooking.createdBy}
                 </p>
               </div>
 
-              {/* Date */}
-
               <div>
                 <p className="font-medium text-ink">
                   Date
                 </p>
-
                 <p>
                   {selectedBooking.date}
                 </p>
               </div>
 
-              {/* Time */}
-
               <div>
                 <p className="font-medium text-ink">
                   Time
                 </p>
-
                 <p>
                   {selectedBooking.startTime}
                   {' – '}
@@ -1013,24 +965,17 @@ export default function BookingManagement() {
                 </p>
               </div>
 
-              {/* Status */}
-
               <div>
                 <p className="font-medium text-ink">
                   Status
                 </p>
-
                 <CustomStatusTag
                   status={selectedBooking.status}
                 />
               </div>
-
             </div>
-
           </div>
-
         </Modal>
-
       )}
 
       {/* =====================================================
@@ -1038,7 +983,6 @@ export default function BookingManagement() {
       ===================================================== */}
 
       {confirmAction && (
-
         <Modal
           open={true}
           onClose={closeConfirmation}
@@ -1049,9 +993,6 @@ export default function BookingManagement() {
           }
           footer={
             <div className="flex justify-end gap-2">
-
-              {/* No */}
-
               <Button
                 size="sm"
                 variant="secondary"
@@ -1060,8 +1001,6 @@ export default function BookingManagement() {
               >
                 No
               </Button>
-
-              {/* Yes */}
 
               <Button
                 size="sm"
@@ -1077,15 +1016,10 @@ export default function BookingManagement() {
                   ? 'Processing...'
                   : 'Yes'}
               </Button>
-
             </div>
           }
         >
-
           <div className="space-y-4 py-2">
-
-            {/* Confirmation Message */}
-
             <p className="text-sm text-slate">
               Are you sure you want to{' '}
               <span className="font-semibold text-ink">
@@ -1096,94 +1030,67 @@ export default function BookingManagement() {
               this booking?
             </p>
 
-            {/* Booking Information */}
-
             <div className="rounded-xl bg-portal-bg p-3">
-
               <div className="grid gap-2 text-sm">
-
-                {/* Booking ID */}
-
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-slate">
                     Booking ID
                   </span>
-
                   <span className="font-semibold text-ink">
                     {confirmAction.booking.bookingId}
                   </span>
                 </div>
 
-                {/* Meeting */}
-
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-slate">
                     Meeting
                   </span>
-
                   <span className="font-semibold text-ink text-right">
                     {confirmAction.booking.title}
                   </span>
                 </div>
 
-                {/* Room */}
-
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-slate">
                     Room
                   </span>
-
                   <span className="font-semibold text-ink text-right">
                     {confirmAction.booking.roomName}
                   </span>
                 </div>
 
-                {/* Module */}
-
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-slate">
                     Module
                   </span>
-
                   <span className="font-semibold text-ink text-right">
                     {confirmAction.booking.module}
                   </span>
                 </div>
 
-                {/* Date */}
-
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-slate">
                     Date
                   </span>
-
                   <span className="font-semibold text-ink">
                     {confirmAction.booking.date}
                   </span>
                 </div>
 
-                {/* Time */}
-
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-slate">
                     Time
                   </span>
-
                   <span className="font-semibold text-ink">
                     {confirmAction.booking.startTime}
                     {' – '}
                     {confirmAction.booking.endTime}
                   </span>
                 </div>
-
               </div>
-
             </div>
-
           </div>
-
         </Modal>
-
       )}
 
     </div>

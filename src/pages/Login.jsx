@@ -49,13 +49,13 @@ export default function Login() {
         <div className="flex items-center gap-3">
           <img
             src="/Logo.png"
-            alt="SpaceBook"
+            alt="SPACEBOOK"
             className="h-7 w-auto object-contain"
           />
 
           <div className="flex items-center">
             <span className="text-base font-bold tracking-normal text-sky-950">
-              Spacebook
+              SPACEBOOK
             </span>
           </div>
         </div>

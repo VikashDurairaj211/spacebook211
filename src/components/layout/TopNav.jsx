@@ -5,10 +5,11 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Home,
+  X,
 } from 'lucide-react'
 
 import { useAuth } from '../../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useState, useMemo, useRef, useEffect } from 'react'
 
 import client from '../../api/client'
@@ -27,18 +28,21 @@ export default function TopNav({
 }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [searchInput, setSearchInput] = useState('')
-  const [showSearchResults, setShowSearchResults] =
-    useState(false)
+  const [showSearchResults, setShowSearchResults] = useState(false)
+
+  const [liveRooms, setLiveRooms] = useState([])
+  const [liveBookings, setLiveBookings] = useState([])
 
   const [notifications, setNotifications] = useState([])
-  const [loadingNotifications, setLoadingNotifications] =
-    useState(false)
+  const [loadingNotifications, setLoadingNotifications] = useState(false)
 
   const notificationButtonRef = useRef(null)
+  const searchContainerRef = useRef(null)
 
   // =====================================================
   // Determine whether logged-in user is Admin
@@ -50,6 +54,108 @@ export default function TopNav({
     user?.isAdmin === true
 
   // =====================================================
+  // Synchronize search input with URL search parameters
+  // =====================================================
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const urlSearch = params.get('search') || params.get('q') || ''
+
+    if (
+      location.pathname === '/admin/room-management' ||
+      location.pathname === '/admin/booking-management' ||
+      location.pathname === '/search-rooms' ||
+      location.pathname === '/my-bookings'
+    ) {
+      setSearchInput(urlSearch)
+    } else {
+      setSearchInput('')
+    }
+  }, [location.pathname, location.search])
+
+  // =====================================================
+  // Close search dropdown on click outside
+  // =====================================================
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target)
+      ) {
+        setShowSearchResults(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // =====================================================
+  // Fetch Live Rooms and Bookings for Autocomplete
+  // =====================================================
+
+  useEffect(() => {
+    if (publicOnly || !user) {
+      return
+    }
+
+    async function loadSearchData() {
+      try {
+        if (isAdmin) {
+          const [roomsRes, bookingsRes] = await Promise.allSettled([
+            client.get('/admin/rooms'),
+            client.get('/admin/bookings'),
+          ])
+
+          if (roomsRes.status === 'fulfilled' && roomsRes.value.data) {
+            const raw = roomsRes.value.data
+            const list = Array.isArray(raw)
+              ? raw
+              : raw.data || raw.rooms || []
+            setLiveRooms(list)
+          }
+
+          if (bookingsRes.status === 'fulfilled' && bookingsRes.value.data) {
+            const raw = bookingsRes.value.data
+            const list = Array.isArray(raw)
+              ? raw
+              : raw.data || raw.bookings || []
+            setLiveBookings(list)
+          }
+        } else {
+          const [availRes, myBookingsRes] = await Promise.allSettled([
+            client.get('/employee/availability'),
+            client.get('/employee/my-bookings'),
+          ])
+
+          if (availRes.status === 'fulfilled' && availRes.value.data) {
+            const raw = availRes.value.data
+            const list = Array.isArray(raw)
+              ? raw
+              : raw.rooms || raw.data || []
+            setLiveRooms(list)
+          }
+
+          if (myBookingsRes.status === 'fulfilled' && myBookingsRes.value.data) {
+            const raw = myBookingsRes.value.data
+            const list = Array.isArray(raw)
+              ? raw
+              : raw.data || raw.bookings || []
+            setLiveBookings(list)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to pre-fetch search autocomplete data:', error)
+      }
+    }
+
+    loadSearchData()
+  }, [publicOnly, user, isAdmin])
+
+  // =====================================================
   // Fetch Notifications
   // =====================================================
 
@@ -57,9 +163,7 @@ export default function TopNav({
     try {
       setLoadingNotifications(true)
 
-      const token = localStorage.getItem(
-        'spacebook_token'
-      )
+      const token = localStorage.getItem('spacebook_token')
 
       if (!token || !user) {
         setNotifications([])
@@ -74,10 +178,7 @@ export default function TopNav({
 
       setNotifications(response.data || [])
     } catch (error) {
-      console.error(
-        'Failed to fetch notifications in TopNav:',
-        error
-      )
+      console.error('Failed to fetch notifications in TopNav:', error)
 
       setNotifications([])
     } finally {
@@ -91,9 +192,7 @@ export default function TopNav({
 
   const handleMarkAllRead = async () => {
     try {
-      const token = localStorage.getItem(
-        'spacebook_token'
-      )
+      const token = localStorage.getItem('spacebook_token')
 
       if (!token) {
         return
@@ -112,14 +211,9 @@ export default function TopNav({
         }))
       )
 
-      window.dispatchEvent(
-        new Event('notificationsRead')
-      )
+      window.dispatchEvent(new Event('notificationsRead'))
     } catch (error) {
-      console.error(
-        'Failed to mark notifications as read:',
-        error
-      )
+      console.error('Failed to mark notifications as read:', error)
     }
   }
 
@@ -138,16 +232,10 @@ export default function TopNav({
       fetchNotifications()
     }
 
-    window.addEventListener(
-      'notificationsRead',
-      handleNotificationRefresh
-    )
+    window.addEventListener('notificationsRead', handleNotificationRefresh)
 
     return () => {
-      window.removeEventListener(
-        'notificationsRead',
-        handleNotificationRefresh
-      )
+      window.removeEventListener('notificationsRead', handleNotificationRefresh)
     }
   }, [publicOnly, user, isAdmin])
 
@@ -156,9 +244,7 @@ export default function TopNav({
   // =====================================================
 
   const unreadCount = useMemo(() => {
-    return notifications.filter(
-      (notification) => !notification.isRead
-    ).length
+    return notifications.filter((notification) => !notification.isRead).length
   }, [notifications])
 
   // =====================================================
@@ -173,69 +259,127 @@ export default function TopNav({
       }
     }
 
-    const query = searchInput
-      .trim()
-      .toLowerCase()
+    const query = searchInput.trim().toLowerCase()
 
-    const matchedRooms = ROOMS.filter((room) => {
-      return (
-        room.name?.toLowerCase().includes(query) ||
-        room.code?.toLowerCase().includes(query) ||
-        room.module?.toLowerCase().includes(query)
-      )
-    }).slice(0, 5)
+    const roomDataSource = liveRooms.length > 0 ? liveRooms : ROOMS
+    const bookingDataSource = liveBookings.length > 0 ? liveBookings : BOOKINGS
 
-    const matchedBookings = BOOKINGS.filter(
-      (booking) => {
-        return (
-          booking.roomName
-            ?.toLowerCase()
-            .includes(query) ||
-          booking.title
-            ?.toLowerCase()
-            .includes(query)
+    const matchedRooms = roomDataSource
+      .filter((room) => {
+        const name = String(room.roomName || room.name || room.RoomName || '')
+        const code = String(room.roomCode || room.code || room.Code || '')
+        const moduleName = String(room.module || room.Module || '')
+        const type = String(
+          room.roomTypeName || room.type || room.roomType?.name || ''
         )
-      }
-    ).slice(0, 5)
+
+        return (
+          name.toLowerCase().includes(query) ||
+          code.toLowerCase().includes(query) ||
+          moduleName.toLowerCase().includes(query) ||
+          type.toLowerCase().includes(query)
+        )
+      })
+      .map((room) => ({
+        id: room.roomId ?? room.id ?? room.RoomId,
+        name: room.roomName ?? room.name ?? room.RoomName ?? 'Room',
+        module: room.module ?? room.Module ?? '',
+        type: room.roomTypeName ?? room.type ?? room.roomType?.name ?? '',
+        code: room.roomCode ?? room.code ?? room.Code ?? '',
+      }))
+      .slice(0, 5)
+
+    const matchedBookings = bookingDataSource
+      .filter((booking) => {
+        const roomName = String(
+          booking.roomName || booking.RoomName || booking.room?.name || ''
+        )
+        const title = String(
+          booking.title ||
+            booking.meetingTitle ||
+            booking.purpose ||
+            booking.Title ||
+            ''
+        )
+        const creator = String(
+          booking.userName ||
+            booking.bookedBy ||
+            booking.employeeName ||
+            booking.requestedBy ||
+            ''
+        )
+
+        return (
+          roomName.toLowerCase().includes(query) ||
+          title.toLowerCase().includes(query) ||
+          creator.toLowerCase().includes(query)
+        )
+      })
+      .map((booking) => ({
+        id: booking.bookingId ?? booking.id ?? booking.BookingId,
+        roomName:
+          booking.roomName ??
+          booking.RoomName ??
+          booking.room?.name ??
+          'Room',
+        title:
+          booking.title ??
+          booking.meetingTitle ??
+          booking.purpose ??
+          booking.Title ??
+          'Booking',
+        date: booking.bookingDate ?? booking.date ?? '',
+      }))
+      .slice(0, 5)
 
     return {
       rooms: matchedRooms,
       bookings: matchedBookings,
     }
-  }, [searchInput])
+  }, [searchInput, liveRooms, liveBookings])
 
   // =====================================================
   // Search Submit
   // =====================================================
 
   function handleSearchSubmit(event) {
-    event.preventDefault()
+    if (event) {
+      event.preventDefault()
+    }
 
     const query = searchInput.trim()
 
     if (!query) {
+      if (location.pathname === '/admin/room-management') {
+        navigate('/admin/room-management')
+      } else if (location.pathname === '/admin/booking-management') {
+        navigate('/admin/booking-management')
+      } else if (location.pathname === '/search-rooms') {
+        navigate('/search-rooms')
+      } else if (location.pathname === '/my-bookings') {
+        navigate('/my-bookings')
+      }
+      setShowSearchResults(false)
       return
     }
 
     // ADMIN SEARCH
     if (isAdmin) {
-      navigate(
-        `/admin/room-management?search=${encodeURIComponent(
-          query
-        )}`
-      )
+      if (location.pathname.includes('/admin/booking-management')) {
+        navigate(`/admin/booking-management?search=${encodeURIComponent(query)}`)
+      } else {
+        navigate(`/admin/room-management?search=${encodeURIComponent(query)}`)
+      }
     }
-
     // EMPLOYEE SEARCH
     else {
-      navigate(
-        `/search-rooms?q=${encodeURIComponent(
-          query
-        )}`
-      )
+      if (location.pathname.includes('/my-bookings')) {
+        navigate(`/my-bookings?search=${encodeURIComponent(query)}`)
+      } else {
+        navigate(`/search-rooms?q=${encodeURIComponent(query)}`)
+      }
     }
 
-    setSearchInput('')
     setShowSearchResults(false)
   }
 
@@ -243,39 +387,25 @@ export default function TopNav({
   // Select Search Result
   // =====================================================
 
-  function handleSelectResult(
-    queryTerm,
-    type = 'room'
-  ) {
-    const query = String(
-      queryTerm || ''
-    ).trim()
+  function handleSelectResult(queryTerm, type = 'room') {
+    const query = String(queryTerm || '').trim()
 
     if (!query) {
       return
     }
+
+    setSearchInput(query)
+    setShowSearchResults(false)
 
     // =================================================
     // ADMIN NAVIGATION
     // =================================================
 
     if (isAdmin) {
-      // Booking search result
       if (type === 'booking') {
-        navigate(
-          `/admin/booking-management?search=${encodeURIComponent(
-            query
-          )}`
-        )
-      }
-
-      // Room search result
-      else {
-        navigate(
-          `/admin/room-management?search=${encodeURIComponent(
-            query
-          )}`
-        )
+        navigate(`/admin/booking-management?search=${encodeURIComponent(query)}`)
+      } else {
+        navigate(`/admin/room-management?search=${encodeURIComponent(query)}`)
       }
     }
 
@@ -284,15 +414,31 @@ export default function TopNav({
     // =================================================
 
     else {
-      navigate(
-        `/search-rooms?q=${encodeURIComponent(
-          query
-        )}`
-      )
+      if (type === 'booking') {
+        navigate(`/my-bookings?search=${encodeURIComponent(query)}`)
+      } else {
+        navigate(`/search-rooms?q=${encodeURIComponent(query)}`)
+      }
     }
+  }
 
+  // =====================================================
+  // Clear Search
+  // =====================================================
+
+  function handleClearSearch() {
     setSearchInput('')
     setShowSearchResults(false)
+
+    if (location.pathname === '/admin/room-management') {
+      navigate('/admin/room-management')
+    } else if (location.pathname === '/admin/booking-management') {
+      navigate('/admin/booking-management')
+    } else if (location.pathname === '/search-rooms') {
+      navigate('/search-rooms')
+    } else if (location.pathname === '/my-bookings') {
+      navigate('/my-bookings')
+    }
   }
 
   // =====================================================
@@ -363,6 +509,7 @@ export default function TopNav({
 
       {!publicOnly && (
         <form
+          ref={searchContainerRef}
           onSubmit={handleSearchSubmit}
           className="relative mx-6 hidden max-w-sm flex-1 md:flex"
         >
@@ -396,6 +543,17 @@ export default function TopNav({
               }}
               className="w-full bg-transparent text-xs font-sans text-sky-950 outline-none placeholder:text-sky-700/60"
             />
+
+            {searchInput && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="rounded-full p-0.5 text-sky-700/60 transition hover:bg-sky-200 hover:text-sky-950"
+                aria-label="Clear search"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
 
           {/* Search Dropdown */}

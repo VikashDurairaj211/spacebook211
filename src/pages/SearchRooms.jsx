@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { searchRooms } from "../api/rooms";
 import { getMyBookings } from "../api/bookings";
@@ -471,8 +471,55 @@ function ScrollableTimePicker({
 // =====================================================
 
 export default function SearchRooms() {
+  const [searchParams] = useSearchParams();
+
   const [filters, setFilters] =
     useState(INITIAL_FILTERS);
+
+  // ===================================================
+  // TOP NAV SEARCH PARAMETER SYNC
+  // ===================================================
+
+  useEffect(() => {
+    const query = String(
+      searchParams.get("q") ||
+      searchParams.get("search") ||
+      ""
+    ).toLowerCase().trim();
+
+    if (!query) return;
+
+    setFilters((prev) => {
+      let nextModule = prev.module;
+      let nextRoomTypeId = prev.roomTypeId;
+
+      if (query.includes("module 1") || query.includes("m1")) {
+        nextModule = "Module 1 - Elcot Park - CMB";
+      } else if (query.includes("module 2") || query.includes("m2")) {
+        nextModule = "Module 2 - Elcot Park - CMB";
+      }
+
+      if (query.includes("conference")) {
+        nextRoomTypeId = "1";
+        if (!nextModule) {
+          nextModule = "Module 1 - Elcot Park - CMB";
+        }
+      } else if (query.includes("training")) {
+        nextRoomTypeId = "2";
+        if (!nextModule) {
+          nextModule = "Module 2 - Elcot Park - CMB";
+        }
+      } else if (query.includes("discussion")) {
+        nextRoomTypeId = "3";
+      }
+
+      return {
+        ...prev,
+        module: nextModule || prev.module,
+        roomTypeId: nextRoomTypeId || prev.roomTypeId,
+      };
+    });
+  }, [searchParams]);
 
   const [results, setResults] =
     useState([]);
