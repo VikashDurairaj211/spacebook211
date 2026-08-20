@@ -26,6 +26,7 @@ export default function MyBookings() {
   const [mode, setMode] = useState(null);
 
   const [search, setSearch] = useState("");
+  const [dateFilter, setDateFilter] = useState("All");
 
   useEffect(() => {
     const searchFromUrl =
@@ -1117,14 +1118,14 @@ export default function MyBookings() {
   }
 
   // =====================================================
-  // FILTER BOOKINGS BY SEARCH
+  // FILTER BOOKINGS BY SEARCH & DATE
   // =====================================================
 
   const filteredBookings = useMemo(() => {
     const query = search.toLowerCase().trim();
-    if (!query) return bookings;
 
     return bookings.filter((b) => {
+      // 1. Search text filter
       const text = [
         String(b.bookingId ?? ""),
         b.roomName,
@@ -1138,9 +1139,26 @@ export default function MyBookings() {
         .join(" ")
         .toLowerCase();
 
-      return text.includes(query);
+      const matchesSearch = !query || text.includes(query);
+
+      // 2. Date filter
+      let matchesDate = true;
+      if (b.bookingDate) {
+        const bookingDateOnly = String(b.bookingDate).split("T")[0];
+        if (dateFilter === "Today") {
+          matchesDate = bookingDateOnly === todayString;
+        } else if (dateFilter === "Upcoming") {
+          matchesDate = bookingDateOnly > todayString;
+        } else if (dateFilter === "Past") {
+          matchesDate = bookingDateOnly < todayString;
+        }
+      } else if (dateFilter !== "All") {
+        matchesDate = false;
+      }
+
+      return matchesSearch && matchesDate;
     });
-  }, [bookings, search]);
+  }, [bookings, search, dateFilter, todayString]);
 
   // =====================================================
   // RENDER
@@ -1149,7 +1167,7 @@ export default function MyBookings() {
   return (
     <div className="space-y-6">
 
-      {/* PAGE HEADER & SEARCH */}
+      {/* PAGE HEADER & DATE FILTER */}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -1162,24 +1180,16 @@ export default function MyBookings() {
           </p>
         </div>
 
-        <div className="relative w-full sm:w-72">
-          <input
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search by ID, room, module, purpose..."
-            className="w-full rounded-xl border border-line bg-portal-bg px-3 py-2 pr-7 text-xs text-ink outline-none focus:border-portal-accent"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => handleSearchChange("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate hover:bg-slate-200 hover:text-ink text-xs font-bold transition-colors"
-              aria-label="Clear search"
-            >
-              ✕
-            </button>
-          )}
-        </div>
+        <select
+          value={dateFilter}
+          onChange={(e) => setDateFilter(e.target.value)}
+          className="rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-ink outline-none shadow-sm"
+        >
+          <option value="All">All Dates</option>
+          <option value="Today">Today</option>
+          <option value="Upcoming">Upcoming</option>
+          <option value="Past">Past</option>
+        </select>
       </div>
 
       {/* BOOKINGS TABLE */}
@@ -1254,15 +1264,15 @@ export default function MyBookings() {
                     <p className="font-medium text-ink">
                       No bookings found.
                     </p>
-                    {search && (
+                    {dateFilter !== "All" && (
                       <p className="mt-1 text-xs text-slate">
-                        No bookings match "{search}".
+                        No bookings found for the selected date filter.
                         <button
                           type="button"
-                          onClick={() => handleSearchChange("")}
+                          onClick={() => setDateFilter("All")}
                           className="ml-2 font-bold text-sky-600 hover:text-sky-800 underline"
                         >
-                          Clear search
+                          Show all dates
                         </button>
                       </p>
                     )}
