@@ -56,7 +56,7 @@ export default function SpaceBookCopilot({ onClose }) {
 
       {/* Microsoft Copilot Iframe */}
       <iframe
-        src="https://copilotstudio.microsoft.com/environments/Default-13085c86-4bcb-460a-a6f0-b373421c6323/bots/crc1d_spacebookcopilot_ZlMFY3/webchat?__version__=2&enableFileAttachment=false&cliAgent=true"
+        src="https://copilotstudio.microsoft.com/environments/Default-13085c86-4bcb-460a-a6f0-b373421c6323/bots/crc1d_officeroomassistant_gSlTyn/webchat?__version__=2&enableFileAttachment=false&cliAgent=true"
         title="SpaceBook Copilot"
         frameBorder="0"
         style={{
