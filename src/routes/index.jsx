@@ -1,5 +1,4 @@
 import {
-  BrowserRouter,
   Navigate,
   Route,
   Routes,
@@ -31,137 +30,135 @@ import AdminReportsPage from '../pages/Admin/Reports'
 export default function AppRoutes() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
+      <Routes>
 
-          {/* ================================================
-              PUBLIC ROUTES
-          ================================================= */}
+        {/* ================================================
+            PUBLIC ROUTES (No Copilot will appear here)
+        ================================================= */}
+
+        <Route
+          path="/login"
+          element={<LoginPage />}
+        />
+
+        {/* ================================================
+            PROTECTED APPLICATION ROUTES
+        ================================================= */}
+
+        <Route
+          element={
+            <RequireAuth>
+              <AppShell />
+            </RequireAuth>
+          }
+        >
+
+          {/* ============================================
+              EMPLOYEE ROUTES
+          ============================================= */}
 
           <Route
-            path="/login"
-            element={<LoginPage />}
+            path="/"
+            element={<DashboardPage />}
           />
 
-          {/* ================================================
-              PROTECTED APPLICATION ROUTES
-          ================================================= */}
+          <Route
+            path="/dashboard"
+            element={<DashboardPage />}
+          />
 
           <Route
+            path="/search-rooms"
+            element={<SearchRoomsPage />}
+          />
+
+          <Route
+            path="/room-details"
+            element={<RoomDetailsPage />}
+          />
+
+          <Route
+            path="/availability-calendar"
+            element={<AvailabilityCalendarPage />}
+          />
+
+          <Route
+            path="/office-map"
+            element={<HotseatBookingPage />}
+          />
+
+          <Route
+            path="/book-room"
+            element={<BookRoomPage />}
+          />
+
+          <Route
+            path="/my-bookings"
+            element={<MyBookingsPage />}
+          />
+
+          <Route
+            path="/notifications"
+            element={<NotificationsPage />}
+          />
+
+          <Route
+            path="/profile"
+            element={<ProfilePage />}
+          />
+
+          {/* ============================================
+              ADMIN ROUTES
+          ============================================= */}
+
+          <Route
+            path="/admin/dashboard"
             element={
-              <RequireAuth>
-                <AppShell />
+              <RequireAuth allowedRoles={['Admin']}>
+                <AdminDashboardPage />
               </RequireAuth>
             }
-          >
-
-            {/* ============================================
-                EMPLOYEE ROUTES
-            ============================================= */}
-
-            <Route
-              path="/"
-              element={<DashboardPage />}
-            />
-
-            <Route
-              path="/dashboard"
-              element={<DashboardPage />}
-            />
-
-            <Route
-              path="/search-rooms"
-              element={<SearchRoomsPage />}
-            />
-
-            <Route
-              path="/room-details"
-              element={<RoomDetailsPage />}
-            />
-
-            <Route
-              path="/availability-calendar"
-              element={<AvailabilityCalendarPage />}
-            />
-
-            <Route
-              path="/office-map"
-              element={<HotseatBookingPage />}
-            />
-
-            <Route
-              path="/book-room"
-              element={<BookRoomPage />}
-            />
-
-            <Route
-              path="/my-bookings"
-              element={<MyBookingsPage />}
-            />
-
-            <Route
-              path="/notifications"
-              element={<NotificationsPage />}
-            />
-
-            <Route
-              path="/profile"
-              element={<ProfilePage />}
-            />
-
-            {/* ============================================
-                ADMIN ROUTES
-            ============================================= */}
-
-            <Route
-              path="/admin/dashboard"
-              element={
-                <RequireAuth allowedRoles={['Admin']}>
-                  <AdminDashboardPage />
-                </RequireAuth>
-              }
-            />
-
-            <Route
-              path="/admin/room-management"
-              element={
-                <RequireAuth allowedRoles={['Admin']}>
-                  <AdminRoomManagementPage />
-                </RequireAuth>
-              }
-            />
-
-            <Route
-              path="/admin/booking-management"
-              element={
-                <RequireAuth allowedRoles={['Admin']}>
-                  <AdminBookingManagementPage />
-                </RequireAuth>
-              }
-            />
-
-            <Route
-              path="/admin/reports"
-              element={
-                <RequireAuth allowedRoles={['Admin']}>
-                  <AdminReportsPage />
-                </RequireAuth>
-              }
-            />
-
-          </Route>
-
-          {/* ================================================
-              FALLBACK ROUTE
-          ================================================= */}
-
-          <Route
-            path="*"
-            element={<Navigate to="/" replace />}
           />
 
-        </Routes>
-      </BrowserRouter>
+          <Route
+            path="/admin/room-management"
+            element={
+              <RequireAuth allowedRoles={['Admin']}>
+                <AdminRoomManagementPage />
+              </RequireAuth>
+            }
+          />
+
+          <Route
+            path="/admin/booking-management"
+            element={
+              <RequireAuth allowedRoles={['Admin']}>
+                <AdminBookingManagementPage />
+              </RequireAuth>
+            }
+          />
+
+          <Route
+            path="/admin/reports"
+            element={
+              <RequireAuth allowedRoles={['Admin']}>
+                <AdminReportsPage />
+              </RequireAuth>
+            }
+          />
+
+        </Route>
+
+        {/* ================================================
+            FALLBACK ROUTE
+        ================================================= */}
+
+        <Route
+          path="*"
+          element={<Navigate to="/" replace />}
+        />
+
+      </Routes>
     </AuthProvider>
   )
 }

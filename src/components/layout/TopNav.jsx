@@ -352,7 +352,7 @@ export default function TopNav({
           />
 
           <span className="hidden font-display text-base font-bold text-sky-950 sm:block">
-            Spacebook
+            SPACEBOOK
           </span>
         </div>
       </div>

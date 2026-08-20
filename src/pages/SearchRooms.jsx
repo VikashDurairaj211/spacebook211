@@ -558,6 +558,26 @@ export default function SearchRooms() {
     Boolean(filters.module);
 
   // ===================================================
+  // DYNAMICALLY FILTER ROOM TYPES BASED ON MODULE
+  // ===================================================
+
+  const availableRoomTypes = ROOM_TYPES.filter((type) => {
+    if (
+      filters.module === "Module 2 - Elcot Park - CMB" &&
+      type.name === "Conference"
+    ) {
+      return false;
+    }
+    if (
+      filters.module === "Module 1 - Elcot Park - CMB" &&
+      type.name === "Training"
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  // ===================================================
   // UPDATE FILTER
   // ===================================================
 
@@ -1364,7 +1384,7 @@ export default function SearchRooms() {
                     : "Choose Module First"}
                 </option>
 
-                {ROOM_TYPES.map(
+                {availableRoomTypes.map(
                   (type) => (
                     <option
                       key={type.id}
