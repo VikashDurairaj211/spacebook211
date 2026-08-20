@@ -171,18 +171,18 @@ function Section({
                           selected={
                             seat.id ===
                             activeSeatId
-                        }
+                          }
                           onClick={onSelect}
                         />
                       )}
-                  </div>
-                );
-              }
-            )}
-          </div>
-        )
-      )}
-    </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          )
+        )}
+      </div>
     </section>
   );
 }
@@ -205,13 +205,12 @@ export default function FloorMapModule2({
   onSelect,
   activeSeatId,
 }) {
-  const seatsByNumber =
-    Object.fromEntries(
-      seats.map((seat) => [
-        seat.number,
-        seat,
-      ])
-    );
+  // Strictly filter seats for Module 2 (EO2) so they never cross-contaminate with Module 1
+  const seatsByNumber = Object.fromEntries(
+    seats
+      .filter((seat) => !seat.id || seat.id.includes("EO2"))
+      .map((seat) => [seat.number, seat])
+  );
 
   return (
     <div className="m2-map-wrapper">
