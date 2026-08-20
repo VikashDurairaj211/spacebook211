@@ -419,6 +419,9 @@ export default function HotseatBookingApp() {
   const [conflictData, setConflictData] = useState(null);
   const toast = useToast();
 
+  const tomorrow = getTomorrowKey();
+  const [targetDate, setTargetDate] = useState(tomorrow);
+
   const getAuthHeaders = () => {
     const token = localStorage.getItem("spacebook_token") || "";
 
@@ -433,7 +436,7 @@ export default function HotseatBookingApp() {
       setLoading(true);
 
       const [seatsRes, bookingsRes] = await Promise.all([
-        fetch(API_BASE, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE}?date=${targetDate}`, { headers: getAuthHeaders() }),
         fetch(`${API_BASE}/my-bookings`, { headers: getAuthHeaders() }),
       ]);
 
@@ -441,12 +444,24 @@ export default function HotseatBookingApp() {
         const rawSeats = await seatsRes.json();
         const seatArray = Array.isArray(rawSeats) ? rawSeats : rawSeats?.seats || [];
 
+        const targetSeat = seatArray.find(
+          (seat) => seat.seatNumber === "WS-05-EO2-121"
+        );
+
+        const targetIndex = seatArray.findIndex(
+          (seat) => seat.seatNumber === "WS-05-EO2-121"
+        );
+
+        console.log("TARGET SEAT:", targetSeat);
+        console.log("TARGET SEAT INDEX:", targetIndex);
+
         const module1Seats = seatArray
           .filter((s) => s.seatNumber?.includes("EO1"))
           .map((s) => ({
             id: s.seatNumber,
             label: `Seat ${s.seatNumber.split("-").pop()}`,
             number: parseInt(s.seatNumber.split("-").pop(), 10),
+            modulePrefix: "EO1",
             type: "hotseat",
             status: String(s.status || "available").toLowerCase(),
             bookedByUserId: s.bookedByUserId || s.userId || null,
@@ -458,6 +473,7 @@ export default function HotseatBookingApp() {
             id: s.seatNumber,
             label: `Seat ${s.seatNumber.split("-").pop()}`,
             number: parseInt(s.seatNumber.split("-").pop(), 10),
+            modulePrefix: "EO2",
             type: "hotseat",
             status: String(s.status || "available").toLowerCase(),
             bookedByUserId: s.bookedByUserId || s.userId || null,
@@ -483,7 +499,7 @@ export default function HotseatBookingApp() {
 
   useEffect(() => {
     fetchOfficeData();
-  }, []);
+  }, [targetDate]);
 
   const showCustomToast = useCallback((message, details) => {
     setToastState({ message, details });
@@ -496,11 +512,57 @@ export default function HotseatBookingApp() {
       const rawTime = String(expectedCheckIn || "10:00");
       const formattedTime = rawTime.length === 5 ? `${rawTime}:00` : rawTime.slice(0, 8);
 
+      const actualSeatId =
+        item.modulePrefix === "EO2"
+          ? numericSeatId + 98
+          : numericSeatId;
+
       const payload = {
-        seatId: numericSeatId,
+        seatId: actualSeatId,
+        seatNumber: item.id,
         bookingDate: targetDate,
         expectedCheckInTime: formattedTime,
       };
+
+      console.log("BOOKING PAYLOAD:", payload);
+
+      // Re-check the latest seat status immediately before POST.
+      // This improves the UX when another user has just booked the seat.
+      const latestSeatsResponse = await fetch(
+        `${API_BASE}?date=${targetDate}`,
+        { headers: getAuthHeaders() }
+      );
+
+      if (latestSeatsResponse.ok) {
+        const latestSeatsData = await latestSeatsResponse.json();
+        const latestSeats = Array.isArray(latestSeatsData)
+          ? latestSeatsData
+          : latestSeatsData?.seats || [];
+
+        const latestSeat = latestSeats.find(
+          (seat) =>
+            String(seat.seatNumber || "").toLowerCase() ===
+            String(item.id || "").toLowerCase()
+        );
+
+        const latestStatus = String(
+          latestSeat?.status || ""
+        ).toLowerCase();
+
+        if (
+          latestStatus === "booked" ||
+          latestStatus === "occupied" ||
+          latestStatus === "reserved"
+        ) {
+          await fetchOfficeData();
+
+          return {
+            ok: false,
+            message:
+              "This seat was just booked by another user. Please choose another seat.",
+          };
+        }
+      }
 
       const response = await fetch(API_BASE, {
         method: "POST",
@@ -516,6 +578,36 @@ export default function HotseatBookingApp() {
       }
 
       if (!response.ok) {
+        if (response.status === 409) {
+          await fetchOfficeData();
+
+          const conflictMessage =
+            responseData?.message ||
+            "This seat was just booked by another user. Please choose another seat.";
+
+          if (
+            responseData?.existingBookingId ||
+            conflictMessage
+              .toLowerCase()
+              .includes("already have a hotseat booking")
+          ) {
+            setConflictData({
+              ...responseData,
+              message: conflictMessage,
+            });
+
+            return {
+              ok: false,
+              message: conflictMessage,
+            };
+          }
+
+          return {
+            ok: false,
+            message: conflictMessage,
+          };
+        }
+
         if (
           responseData?.existingBookingId ||
           responseData?.message?.includes("already have a hotseat booking")
@@ -536,9 +628,33 @@ export default function HotseatBookingApp() {
         return { ok: false, message: errorMessage };
       }
 
-      showCustomToast("Booking Confirmed!", `Successfully booked ${item.label} for ${targetDate}`);
+      showCustomToast(
+        "Booking Confirmed!",
+        `Successfully booked ${item.label} for ${targetDate}`
+      );
+
       window.dispatchEvent(new Event("booking-updated"));
+
+      // Refresh from both backend endpoints.
       await fetchOfficeData();
+
+      // Some API responses expose the booking immediately in /my-bookings
+      // while the seat endpoint can briefly return its old status. Reconcile
+      // the just-booked seat locally so the map becomes RED immediately.
+      setModules((currentModules) =>
+        currentModules.map((module) => ({
+          ...module,
+          seats: (module.seats || []).map((seat) =>
+            seat.id === item.id
+              ? {
+                  ...seat,
+                  status: "occupied",
+                  isMyBooking: true,
+                }
+              : seat
+          ),
+        }))
+      );
 
       return { ok: true };
     } catch (err) {
@@ -553,8 +669,13 @@ export default function HotseatBookingApp() {
       const rawTime = String(changes.expectedCheckIn || "10:00");
       const formattedTime = rawTime.length === 5 ? `${rawTime}:00` : rawTime.slice(0, 8);
 
+      const actualSeatId = changes.seatId.includes("EO2")
+        ? numericSeatId + 98
+        : numericSeatId;
+
       const payload = {
-        seatId: numericSeatId,
+        seatId: actualSeatId,
+        seatNumber: changes.seatId,
         bookingDate: changes.date,
         expectedCheckInTime: formattedTime,
       };
@@ -573,6 +694,19 @@ export default function HotseatBookingApp() {
       }
 
       if (!response.ok) {
+        if (response.status === 409) {
+          await fetchOfficeData();
+
+          const conflictMessage =
+            responseData?.message ||
+            "This booking conflicts with another reservation.";
+
+          return {
+            ok: false,
+            message: conflictMessage,
+          };
+        }
+
         let errorMessage = "Failed to update booking.";
         if (responseData?.errors) {
           errorMessage = Object.entries(responseData.errors)
@@ -658,6 +792,8 @@ export default function HotseatBookingApp() {
         onEdit={editBookingTime}
         onCancel={cancelHotseat}
         setConflictData={setConflictData}
+        targetDate={targetDate}
+        setTargetDate={setTargetDate}
       />
     </div>
   );
@@ -674,6 +810,8 @@ function OfficeMapTab({
   onEdit,
   onCancel,
   setConflictData,
+  targetDate,
+  setTargetDate,
 }) {
   const [location, setLocation] = useState("Coimbatore");
   const [zone, setZone] = useState("Elcot Park");
@@ -683,7 +821,6 @@ function OfficeMapTab({
 
   const today = getTodayKey();
   const tomorrow = getTomorrowKey();
-  const [targetDate, setTargetDate] = useState(tomorrow);
 
   const LOCATIONS = ["Coimbatore"];
   const ZONES = ["Elcot Park", "Tidel Park"];
@@ -703,16 +840,13 @@ function OfficeMapTab({
   });
 
   const myBookedSeatNumber = myBookingForDate?.seatNumber;
-  const myBookedSeatId = myBookingForDate?.seatId;
 
   const currentSeats = (currentModule?.seats || []).map((seat) => {
     const isMine = Boolean(
       myBookingForDate &&
-      (
-        (myBookedSeatNumber && seat.id === myBookedSeatNumber) ||
-        (myBookedSeatId && seat.number === Number(myBookedSeatId)) ||
-        (myBookedSeatNumber && myBookedSeatNumber.endsWith(String(seat.number).padStart(3, "0")))
-      )
+      myBookedSeatNumber &&
+      seat.id &&
+      myBookedSeatNumber.toLowerCase() === seat.id.toLowerCase()
     );
 
     if (seat.id === active?.id) {
@@ -720,37 +854,42 @@ function OfficeMapTab({
     }
 
     if (isMine) {
-      return { ...seat, status: "selected", isMyBooking: true };
+      return { ...seat, status: "occupied", isMyBooking: true };
     }
 
-    const isOccupied =
-      seat.status === "occupied" ||
-      seat.status === "booked" ||
-      seat.status === "reserved";
+    const normalizedStatus = String(seat.status || "").toLowerCase();
 
-    if (isOccupied) {
+    const isBooked =
+      normalizedStatus === "occupied" ||
+      normalizedStatus === "booked" ||
+      normalizedStatus === "confirmed";
+
+    if (isBooked) {
       return { ...seat, status: "occupied", isMyBooking: false };
+    }
+
+    if (normalizedStatus === "reserved") {
+      return { ...seat, status: "reserved", isMyBooking: false };
     }
 
     return { ...seat, status: "available", isMyBooking: false };
   });
 
   function handleSelectSeat(seat) {
-    if (seat.status === "occupied" && !seat.isMyBooking) {
+    if (seat.status === "occupied") {
       return;
     }
 
-    // Instantly check if user already has an active booking for this date on a DIFFERENT seat
     const existingUserBooking = bookings.find((b) => {
       const bookingDateStr = normalizeDateKey(b.bookingDate || b.date || b.expectedCheckIn);
       const status = b.status?.toLowerCase();
-      const seatNum = b.seatNumber || (b.seatId ? `Seat #${b.seatId}` : "");
+      const seatNum = b.seatNumber || "";
       return (
         bookingDateStr === targetDate &&
         status !== "cancelled" &&
         status !== "rejected" &&
         status !== "expired" &&
-        seatNum !== seat.id
+        seatNum.toLowerCase() !== seat.id.toLowerCase()
       );
     });
 
@@ -777,6 +916,8 @@ function OfficeMapTab({
 
     setBookingResult(result);
     if (result.ok) setActive(null);
+
+    return result;
   }
 
   return (
@@ -895,7 +1036,7 @@ function OfficeMapTab({
               item={active}
               booking={bookings.find(
                 (b) =>
-                  b.seatNumber === active.id &&
+                  b.seatNumber?.toLowerCase() === active.id?.toLowerCase() &&
                   normalizeDateKey(b.bookingDate || b.date) === targetDate &&
                   b.status?.toLowerCase() !== "cancelled"
               )}
@@ -1042,7 +1183,6 @@ function BookingDialog({
         result = await onCancel(booking.bookingId || booking.id);
       }
 
-      // Safe fallback if the backend call returns undefined on a 500 server crash
       if (!result) {
         result = { ok: false, message: "No response received from server." };
       }
