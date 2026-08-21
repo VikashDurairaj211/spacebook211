@@ -10,8 +10,9 @@ export async function getMyBookings() {
   return data;
 }
 
-export async function cancelBooking(id) {
-  await client.put(`/employee/bookings/${id}/cancel`);
+export async function cancelBooking(id, payload) {
+  const { data } = await client.put(`/employee/bookings/${id}/cancel`, payload);
+  return data;
 }
 
 export async function updateBooking(id, booking) {

@@ -24,6 +24,7 @@ export default function MyBookings() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [mode, setMode] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
 
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("All");
@@ -195,11 +196,6 @@ export default function MyBookings() {
 
       if (hotseatResult.status === "fulfilled") {
         const data = hotseatResult.value;
-
-        console.log(
-          "My Hotseat Bookings API Response:",
-          data
-        );
 
         const bookingList = Array.isArray(data)
           ? data
@@ -589,6 +585,7 @@ export default function MyBookings() {
   const closeModal = () => {
     setMode(null);
     setSelected(null);
+    setCancelReason("");
   };
 
   // =====================================================
@@ -600,10 +597,19 @@ export default function MyBookings() {
       return;
     }
 
+    if (!cancelReason || !cancelReason.trim()) {
+      toast.addToast({
+        type: "error",
+        title: "Cancellation reason is required.",
+      });
+      return;
+    }
+
     try {
       if (selected.isHotseat) {
         await cancelHotseatBooking(
-          selected.bookingId
+          selected.bookingId,
+          { reason: cancelReason.trim() }
         );
 
         toast.addToast({
@@ -613,7 +619,8 @@ export default function MyBookings() {
         });
       } else {
         await cancelBooking(
-          selected.bookingId
+          selected.bookingId,
+          { reason: cancelReason.trim() }
         );
 
         toast.addToast({
@@ -879,16 +886,6 @@ export default function MyBookings() {
         formattedTime,
     };
 
-    console.log(
-      "Updating Hotseat:",
-      selected.bookingId
-    );
-
-    console.log(
-      "Hotseat Update Payload:",
-      payload
-    );
-
     const token =
       localStorage.getItem(
         "spacebook_token"
@@ -1071,16 +1068,6 @@ export default function MyBookings() {
             selected.participantCount || 1
           ),
       };
-
-      console.log(
-        "Updating Room Booking:",
-        selected.bookingId
-      );
-
-      console.log(
-        "Room Update Payload:",
-        payload
-      );
 
       await updateBooking(
         selected.bookingId,
@@ -1409,7 +1396,7 @@ export default function MyBookings() {
                               roomId:
                                 getRoomId(b),
                             });
-
+                            setCancelReason("");
                             setMode("cancel");
                           }}
                         >
@@ -1614,15 +1601,26 @@ export default function MyBookings() {
             </Button>
 
             <Button onClick={cancel}>
-              Yes
+              Yes, Cancel
             </Button>
           </>
         }
       >
 
-        <p>
-          Are you sure you want to cancel this booking?
-        </p>
+        <div className="space-y-4">
+          <p>
+            Are you sure you want to cancel this booking?
+          </p>
+
+          <Field label="Reason for Cancellation *">
+            <Input
+              type="text"
+              placeholder="Enter reason here..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+            />
+          </Field>
+        </div>
 
       </Modal>
 
@@ -1733,7 +1731,7 @@ export default function MyBookings() {
             ) : (
 
               /* =================================================
-                 ROOM EDIT
+                  ROOM EDIT
               ================================================= */
 
               <>
