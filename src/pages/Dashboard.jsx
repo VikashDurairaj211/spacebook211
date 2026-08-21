@@ -358,30 +358,21 @@ export default function Dashboard() {
   };
 
   // =====================================================
-  // RECENT RESERVATIONS
+  // RECENT RESERVATIONS (TODAY'S BOOKINGS)
   // =====================================================
 
   /*
-   * IMPORTANT:
-   *
-   * Dashboard Recent Reservations should NOT show past
-   * bookings.
-   *
-   * Therefore we use the same upcoming logic here.
-   *
-   * A booking from:
-   *   2026-08-18 -> will NOT appear
-   *
-   * A booking from:
-   *   2026-08-19 at a past time -> will NOT appear
-   *
-   * A booking from:
-   *   2026-08-19 at a future time -> WILL appear
-   *
-   * A booking from:
-   *   2026-08-20 -> WILL appear
+   * Shows all active reservations (rooms and hotseats) scheduled for today.
    */
-  const recentReservations = upcomingBookings
+  const recentReservations = allBookings
+    .filter((booking) => {
+      if (isInactiveStatus(booking.status)) {
+        return false;
+      }
+
+      const bookingDateStr = String(booking.date || "").substring(0, 10);
+      return bookingDateStr === today;
+    })
     .map((booking) => ({
       bookingId: booking.isHotseat
         ? `hotseat-${booking.bookingId}`
@@ -398,23 +389,11 @@ export default function Dashboard() {
       status: booking.status || "Confirmed",
     }))
     .sort((a, b) => {
-      const dateA = parseBookingDateTime({
-        date: a.bookingDate,
-        time: a.startTime,
-      });
-
-      const dateB = parseBookingDateTime({
-        date: b.bookingDate,
-        time: b.startTime,
-      });
-
-      if (!dateA) return 1;
-      if (!dateB) return -1;
-
-      // Nearest upcoming booking first.
-      return dateA - dateB;
+      const timeA = a.startTime || "";
+      const timeB = b.startTime || "";
+      return timeA.localeCompare(timeB);
     })
-    .slice(0, 5);
+    .slice(0, 10);
 
   return (
     <div className="space-y-8">
@@ -494,7 +473,7 @@ export default function Dashboard() {
                     colSpan={4}
                     className="py-6 text-center text-slate-500 text-sm"
                   >
-                    No upcoming reservations found.
+                    No reservations found for today.
                   </td>
                 </tr>
               ) : (

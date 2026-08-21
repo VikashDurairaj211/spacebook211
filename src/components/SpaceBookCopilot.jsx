@@ -5,15 +5,16 @@ export default function SpaceBookCopilot({ onClose }) {
     <div
       style={{
         position: 'fixed',
-        right: '20px',
-        bottom: '20px',
+        right: '24px',
+        top: '68px',
         width: '400px',
-        height: '600px',
+        height: 'calc(100vh - 88px)',
+        maxHeight: '640px',
         zIndex: 9999,
         background: '#fff',
-        borderRadius: '12px',
+        borderRadius: '16px',
         overflow: 'hidden',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.22)',
         display: 'flex',
         flexDirection: 'column',
       }}

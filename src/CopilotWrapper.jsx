@@ -21,12 +21,12 @@ export default function CopilotWrapper() {
       {isCopilotOpen ? (
         <SpaceBookCopilot onClose={() => setIsCopilotOpen(false)} />
       ) : (
-        <div className="fixed bottom-5 right-5 z-[9999] flex flex-col items-end gap-2.5 select-none pointer-events-auto">
+        <div className="fixed top-[68px] right-6 z-[9999] flex items-center gap-3 select-none pointer-events-auto">
           {/* Floating Invitation / Help Bubble */}
           {showCopilotBubble && (
             <div
               onClick={() => setIsCopilotOpen(true)}
-              className="relative group cursor-pointer flex items-start gap-3 bg-white/95 backdrop-blur-md border border-sky-200 text-slate-800 px-4 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 max-w-[270px] hover:border-sky-400 hover:-translate-y-0.5"
+              className="relative group cursor-pointer flex items-start gap-3 bg-white/95 backdrop-blur-md border border-sky-200 text-slate-800 px-4 py-2.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 max-w-[280px] hover:border-sky-400 hover:-translate-x-0.5"
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
@@ -42,7 +42,7 @@ export default function CopilotWrapper() {
                   e.stopPropagation();
                   setShowCopilotBubble(false);
                 }}
-                className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-slate-700 hover:border-slate-400 flex items-center justify-center text-xs shadow-sm transition"
+                className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-slate-700 hover:border-slate-400 flex items-center justify-center text-xs shadow-sm transition"
                 title="Dismiss message"
                 aria-label="Dismiss help message"
               >
@@ -50,7 +50,7 @@ export default function CopilotWrapper() {
               </button>
 
               {/* Animated Sparkle Avatar */}
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-tr from-sky-500 to-cyan-400 flex items-center justify-center text-white shadow-sm ring-2 ring-sky-100">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-tr from-sky-500 to-cyan-400 flex items-center justify-center text-white shadow-sm ring-2 ring-sky-100 mt-0.5">
                 <Sparkles size={16} className="animate-pulse" />
               </div>
 
@@ -64,12 +64,12 @@ export default function CopilotWrapper() {
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600 leading-snug">
-                  Have any questions or doubts? <span className="text-sky-700 font-semibold underline decoration-sky-300">Ask me anything!</span>
+                  How can I help you today? <span className="text-sky-700 font-semibold underline decoration-sky-300">Ask our assistant</span>
                 </p>
               </div>
 
-              {/* Pointer Tail */}
-              <div className="absolute -bottom-1.5 right-6 w-3 h-3 bg-white border-r border-b border-sky-200 rotate-45"></div>
+              {/* Pointer Tail pointing right to the button */}
+              <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-t border-r border-sky-200 rotate-45"></div>
             </div>
           )}
 
@@ -77,12 +77,13 @@ export default function CopilotWrapper() {
           <button
             type="button"
             onClick={() => setIsCopilotOpen(true)}
-            className="relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-tr from-sky-700 via-sky-600 to-sky-500 text-white shadow-lg shadow-sky-600/30 hover:shadow-xl hover:shadow-sky-500/40 hover:scale-105 active:scale-95 transition-all duration-300 border-2 border-white focus:outline-none focus:ring-4 focus:ring-sky-200 group"
+            className="relative flex items-center justify-center w-13 h-13 rounded-full bg-gradient-to-tr from-sky-700 via-sky-600 to-sky-500 text-white shadow-lg shadow-sky-600/30 hover:shadow-xl hover:shadow-sky-500/40 hover:scale-105 active:scale-95 transition-all duration-300 border-2 border-white focus:outline-none focus:ring-4 focus:ring-sky-200 group flex-shrink-0"
+            style={{ width: '52px', height: '52px' }}
             title="SpaceBook AI Assistant - Ask doubts or get help"
             aria-label="Open SpaceBook AI Assistant"
           >
             {/* Inner container with SpaceBook Logo */}
-            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/95 shadow-inner p-1">
+            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/95 shadow-inner p-1">
               <img
                 src="/Logo.png"
                 alt="SpaceBook Assistant"
