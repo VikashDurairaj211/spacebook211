@@ -1354,6 +1354,16 @@ export default function SearchRooms() {
         </p>
       </div>
 
+      {/* CAPACITY & FACILITY GUIDE CARD */}
+      <div className="rounded-xl border border-line bg-white p-4 shadow-sm text-sm text-ink">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-medium">
+          <div> <strong className="text-ink">Discussion Rooms:</strong> 8 to 10 People 
+           (TV, Whiteboard)</div>
+          <div> <strong className="text-ink">Conference Rooms:</strong> Up to 20 People (TV)</div>
+          <div> <strong className="text-ink">Training Rooms:</strong> Up to 50 People (Projector)</div>
+        </div>
+      </div>
+
       {/* SEARCH FORM */}
 
       <Card>

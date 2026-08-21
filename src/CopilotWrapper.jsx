@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { Sparkles, X } from 'lucide-react';
 import SpaceBookCopilot from './components/SpaceBookCopilot';
 
 export default function CopilotWrapper() {
-  const [isCopilotOpen, setIsCopilotOpen] = useState(true);
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [showCopilotBubble, setShowCopilotBubble] = useState(true);
   const location = useLocation();
 
   // Define paths where the copilot should NOT appear
@@ -19,51 +21,81 @@ export default function CopilotWrapper() {
       {isCopilotOpen ? (
         <SpaceBookCopilot onClose={() => setIsCopilotOpen(false)} />
       ) : (
-        <button
-          onClick={() => setIsCopilotOpen(true)}
-          style={{
-            position: 'fixed',
-            right: '20px',
-            bottom: '20px',
-            background: 'transparent',
-            border: 'none',
-            borderRadius: '50%',
-            width: '60px',
-            height: '60px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
-            zIndex: 9999,
-            transition: 'transform 0.2s ease',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-          title="Open Copilot"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 48 48"
-            style={{ width: '32px', height: '32px' }}
+        <div className="fixed bottom-5 right-5 z-[9999] flex flex-col items-end gap-2.5 select-none pointer-events-auto">
+          {/* Floating Invitation / Help Bubble */}
+          {showCopilotBubble && (
+            <div
+              onClick={() => setIsCopilotOpen(true)}
+              className="relative group cursor-pointer flex items-start gap-3 bg-white/95 backdrop-blur-md border border-sky-200 text-slate-800 px-4 py-3 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 max-w-[270px] hover:border-sky-400 hover:-translate-y-0.5"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setIsCopilotOpen(true);
+                }
+              }}
+            >
+              {/* Dismiss button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowCopilotBubble(false);
+                }}
+                className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-slate-700 hover:border-slate-400 flex items-center justify-center text-xs shadow-sm transition"
+                title="Dismiss message"
+                aria-label="Dismiss help message"
+              >
+                <X size={12} />
+              </button>
+
+              {/* Animated Sparkle Avatar */}
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-tr from-sky-500 to-cyan-400 flex items-center justify-center text-white shadow-sm ring-2 ring-sky-100">
+                <Sparkles size={16} className="animate-pulse" />
+              </div>
+
+              {/* Message Content */}
+              <div className="flex flex-col text-left">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="font-semibold text-xs text-sky-950">SpaceBook AI</span>
+                  <span className="flex h-2 w-2 relative" title="Online">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 leading-snug">
+                  Have any questions or doubts? <span className="text-sky-700 font-semibold underline decoration-sky-300">Ask me anything!</span>
+                </p>
+              </div>
+
+              {/* Pointer Tail */}
+              <div className="absolute -bottom-1.5 right-6 w-3 h-3 bg-white border-r border-b border-sky-200 rotate-45"></div>
+            </div>
+          )}
+
+          {/* Branded SpaceBook AI Assistant Button */}
+          <button
+            type="button"
+            onClick={() => setIsCopilotOpen(true)}
+            className="relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-tr from-sky-700 via-sky-600 to-sky-500 text-white shadow-lg shadow-sky-600/30 hover:shadow-xl hover:shadow-sky-500/40 hover:scale-105 active:scale-95 transition-all duration-300 border-2 border-white focus:outline-none focus:ring-4 focus:ring-sky-200 group"
+            title="SpaceBook AI Assistant - Ask doubts or get help"
+            aria-label="Open SpaceBook AI Assistant"
           >
-            <path d="M34.142 7.325A4.63 4.63 0 0029.7 4H28.35a4.63 4.63 0 00-4.554 3.794L21.48 20.407l.575-1.965a4.63 4.63 0 014.444-3.33h7.853l3.294 1.282 3.175-1.283h-.926a4.63 4.63 0 01-4.443-3.325l-1.31-4.461z" fill="url(#prefix__paint0_radial_56201_15503)" />
-            <path d="M14.33 40.656A4.63 4.63 0 0018.779 44h2.87a4.63 4.63 0 004.629-4.51l.312-12.163-.654 2.233a4.63 4.63 0 01-4.443 3.329h-7.919l-2.823-1.532-3.057 1.532h.912a4.63 4.63 0 014.447 3.344l1.279 4.423z" fill="url(#prefix__paint1_radial_56201_15503)" />
-            <path d="M29.5 4H13.46c-4.583 0-7.332 6.057-9.165 12.113C2.123 23.29-.72 32.885 7.503 32.885h6.925a4.63 4.63 0 004.456-3.358 2078.617 2078.617 0 014.971-17.156c.843-2.843 1.544-5.284 2.621-6.805C27.08 4.714 28.086 4 29.5 4z" fill="url(#prefix__paint2_linear_56201_15503)" />
-            <path d="M29.5 4H13.46c-4.583 0-7.332 6.057-9.165 12.113C2.123 23.29-.72 32.885 7.503 32.885h6.925a4.63 4.63 0 004.456-3.358 2078.617 2078.617 0 014.971-17.156c.843-2.843 1.544-5.284 2.621-6.805C27.08 4.714 28.086 4 29.5 4z" fill="url(#prefix__paint3_linear_56201_15503)" />
-            <path d="M18.498 44h16.04c4.582 0 7.332-6.058 9.165-12.115 2.171-7.177 5.013-16.775-3.208-16.775h-6.926a4.63 4.63 0 00-4.455 3.358 2084.036 2084.036 0 01-4.972 17.16c-.842 2.843-1.544 5.285-2.62 6.806-.604.852-1.61 1.566-3.024 1.566z" fill="url(#prefix__paint4_radial_56201_15503)" />
-            <path d="M18.498 44h16.04c4.582 0 7.332-6.058 9.165-12.115 2.171-7.177 5.013-16.775-3.208-16.775h-6.926a4.63 4.63 0 00-4.455 3.358 2084.036 2084.036 0 01-4.972 17.16c-.842 2.843-1.544 5.285-2.62 6.806-.604.852-1.61 1.566-3.024 1.566z" fill="url(#prefix__paint5_linear_56201_15503)" />
-            <defs>
-              <radialGradient id="prefix__paint0_radial_56201_15503" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(-10.96051 -13.38922 12.59013 -10.30637 38.005 20.514)"><stop offset=".096" stop-color="#00AEFF"/><stop offset=".773" stop-color="#2253CE"/><stop offset="1" stop-color="#0736C4"/></radialGradient>
-              <radialGradient id="prefix__paint1_radial_56201_15503" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="rotate(51.84 -28.201 27.85) scale(15.9912 15.5119)"><stop stop-color="#FFB657"/><stop offset=".634" stop-color="#FF5F3D"/><stop offset=".923" stop-color="#C02B3C"/></radialGradient>
-              <radialGradient id="prefix__paint4_radial_56201_15503" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="rotate(109.274 16.301 20.802) scale(38.3873 45.9867)"><stop offset=".066" stop-color="#8C48FF"/><stop offset=".5" stop-color="#F2598A"/><stop offset=".896" stop-color="#FFB152"/></radialGradient>
-              <linearGradient id="prefix__paint2_linear_56201_15503" x1="12.5" y1="7.5" x2="14.788" y2="33.975" gradientUnits="userSpaceOnUse"><stop offset=".156" stop-color="#0D91E1"/><stop offset=".487" stop-color="#52B471"/><stop offset=".652" stop-color="#98BD42"/><stop offset=".937" stop-color="#FFC800"/></linearGradient>
-              <linearGradient id="prefix__paint3_linear_56201_15503" x1="14.5" y1="4" x2="15.75" y2="32.885" gradientUnits="userSpaceOnUse"><stop stop-color="#3DCBFF"/><stop offset=".247" stop-color="#0588F7" stop-opacity="0"/></linearGradient>
-              <linearGradient id="prefix__paint5_linear_56201_15503" x1="42.586" y1="13.346" x2="42.569" y2="21.215" gradientUnits="userSpaceOnUse"><stop offset=".058" stop-color="#F8ADFA"/><stop offset=".708" stop-color="#A86EDD" stop-opacity="0"/></linearGradient>
-            </defs>
-          </svg>
-        </button>
+            {/* Inner container with SpaceBook Logo */}
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/95 shadow-inner p-1">
+              <img
+                src="/Logo.png"
+                alt="SpaceBook Assistant"
+                className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110"
+              />
+            </div>
+
+            {/* Sparkle AI Badge */}
+            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-amber-950 shadow-md border-2 border-white">
+              <Sparkles size={11} className="fill-amber-950" />
+            </span>
+          </button>
+        </div>
       )}
     </>
   );

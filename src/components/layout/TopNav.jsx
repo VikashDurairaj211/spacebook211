@@ -126,9 +126,12 @@ export default function TopNav({
             setLiveBookings(list)
           }
         } else {
+          const todayStr = new Date().toISOString().split("T")[0];
           const [availRes, myBookingsRes] = await Promise.allSettled([
-            client.get('/employee/availability'),
-            client.get('/employee/my-bookings'),
+          client.get('/employee/availability', {
+    params: { date: todayStr } // <-- Pass the required date parameter here
+  }),
+            client.get('/employee/mybookings'),
           ])
 
           if (availRes.status === 'fulfilled' && availRes.value.data) {
