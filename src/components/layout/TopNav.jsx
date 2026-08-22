@@ -165,6 +165,26 @@ export default function TopNav({
     loadSearchData()
   }, [publicOnly, user, isAdmin])
 
+  // Helper to get locally marked read notification IDs
+  const getReadNotificationIds = () => {
+    try {
+      const raw = localStorage.getItem('spacebook_read_notifications')
+      return raw ? JSON.parse(raw) : []
+    } catch (e) {
+      return []
+    }
+  }
+
+  const saveReadNotificationIds = (ids) => {
+    try {
+      const existing = getReadNotificationIds()
+      const merged = Array.from(new Set([...existing, ...ids]))
+      localStorage.setItem('spacebook_read_notifications', JSON.stringify(merged))
+    } catch (e) {
+      // ignore
+    }
+  }
+
   // =====================================================
   // Fetch Notifications
   // =====================================================
@@ -185,11 +205,30 @@ export default function TopNav({
         : '/employee/notifications'
 
       const response = await client.get(endpoint)
+      const rawList = Array.isArray(response.data)
+        ? response.data
+        : response.data?.notifications || []
 
-      setNotifications(response.data || [])
+      const readIds = new Set(getReadNotificationIds().map(String))
+
+      const mapped = rawList.map((n, idx) => {
+        const id = String(n.notificationId ?? n.id ?? n._id ?? idx)
+        const isRead =
+          n.isRead === true ||
+          n.is_read === true ||
+          n.read === true ||
+          readIds.has(id)
+
+        return {
+          ...n,
+          notificationId: id,
+          isRead,
+        }
+      })
+
+      setNotifications(mapped)
     } catch (error) {
       console.error('Failed to fetch notifications in TopNav:', error)
-
       setNotifications([])
     } finally {
       setLoadingNotifications(false)
@@ -212,7 +251,22 @@ export default function TopNav({
         ? '/admin/notifications/read-all'
         : '/employee/notifications/read-all'
 
-      await client.patch(endpoint, {})
+      // Call backend
+      try {
+        await client.patch(endpoint, {})
+      } catch (err) {
+        try {
+          await client.put(endpoint, {})
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // Persist read IDs locally
+      const currentIds = notifications.map((n, idx) =>
+        String(n.notificationId ?? n.id ?? n._id ?? idx)
+      )
+      saveReadNotificationIds(currentIds)
 
       setNotifications((previous) =>
         previous.map((notification) => ({
