@@ -556,6 +556,37 @@ export default function MyBookings() {
     return "bg-slate-500 text-white";
   };
 
+  const getDisplayStatus = (booking) => {
+    const status = String(booking?.status || "")
+      .toLowerCase()
+      .replace(/\s+/g, "");
+
+    if (
+      status === "cancelled" ||
+      status === "canceled"
+    ) {
+      return "CANCELLED";
+    }
+
+    if (
+      status === "checkedin" ||
+      booking?.checkInTime ||
+      booking?.checkedIn === true ||
+      booking?.isCheckedIn === true
+    ) {
+      return "CHECKED IN";
+    }
+
+    if (
+      status === "approved" ||
+      status === "confirmed"
+    ) {
+      return "APPROVED";
+    }
+
+    return booking?.status || "APPROVED";
+  };
+
   // =====================================================
   // VIEW
   // =====================================================
@@ -1365,10 +1396,10 @@ export default function MyBookings() {
 
                     <span
                       className={`inline-block w-24 rounded-full py-1 text-center text-xs font-bold uppercase tracking-wider ${getStatusBadgeClass(
-                        b.status
+                        getDisplayStatus(b)
                       )}`}
                     >
-                      {b.status}
+                      {getDisplayStatus(b)}
                     </span>
 
                   </td>
@@ -1583,10 +1614,10 @@ export default function MyBookings() {
             <dd>
               <span
                 className={`inline-block w-28 rounded-full py-1 text-center text-xs font-bold uppercase tracking-wider ${getStatusBadgeClass(
-                  selected.status
+                  getDisplayStatus(selected)
                 )}`}
               >
-                {selected.status}
+                {getDisplayStatus(selected)}
               </span>
             </dd>
 

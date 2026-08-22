@@ -152,7 +152,10 @@ function Section({
                         className="m2-seat-cell"
                         key={`gap-${rowIndex}-${columnIndex}`}
                       >
-                        <div className="m2-seat-gap" />
+                        <div 
+                          className="m2-seat-gap m2-seat-unavailable" 
+                          title="Unavailable"
+                        />
                       </div>
                     );
                   }
@@ -547,21 +550,11 @@ export default function FloorMapModule2({
           opacity: 0.95;
         }
 
-        /* ============================================================
-           AVAILABLE
-           Green
-        ============================================================ */
-
         .m2-vacant {
           background: #22c55e;
           border: 1.5px solid #16a34a;
           color: #ffffff;
         }
-
-        /* ============================================================
-           BOOKED
-           Red
-        ============================================================ */
 
         .m2-occupied {
           background: #ef4444 !important;
@@ -569,21 +562,11 @@ export default function FloorMapModule2({
           color: #ffffff !important;
         }
 
-        /* ============================================================
-           PENDING CHECK-IN
-           Yellow
-        ============================================================ */
-
         .m2-reserved {
           background: #fef3c7;
           border: 1.5px solid #f59e0b;
           color: #b45309;
         }
-
-        /* ============================================================
-           MY BOOKING
-           Red
-        ============================================================ */
 
         .m2-my-booked {
           background: #ef4444 !important;
@@ -594,11 +577,6 @@ export default function FloorMapModule2({
             0 0 0 2px
             rgba(239, 68, 68, 0.30) !important;
         }
-
-        /* ============================================================
-           SELECTED
-           Blue
-        ============================================================ */
 
         .m2-selected {
           background: #3b82f6 !important;
@@ -624,6 +602,12 @@ export default function FloorMapModule2({
 
           display: grid;
           place-items: center;
+        }
+
+        /* Added grey styling for unavailable null slots in Module 2 */
+        .m2-seat-unavailable {
+          background: #94a3b8 !important;
+          border: 1.5px solid #64748b !important;
         }
 
         .m2-room {

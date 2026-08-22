@@ -8,9 +8,6 @@ import { getMyBookings } from "../api/bookings";
 import { getMyHotseatBookings } from "../api/hotseat";
 
 // Format a booking time for display.
-// Handles both:
-//   10:00:00
-//   2026-08-20T10:00:00
 const formatTime = (value) => {
   if (!value) {
     return "";
@@ -18,7 +15,6 @@ const formatTime = (value) => {
 
   const text = String(value);
 
-  // ISO DateTime returned by an API.
   if (text.includes("T")) {
     const timePart = text.split("T")[1];
 
@@ -27,9 +23,10 @@ const formatTime = (value) => {
       : "";
   }
 
-  // Normal TimeOnly value.
   return text.substring(0, 5);
 };
+
+const HOTSEAT_API_BASE = "https://spacebook-505h.onrender.com/api/Hotseat";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -38,44 +35,247 @@ export default function Dashboard() {
   const [roomBookings, setRoomBookings] = useState([]);
   const [hotseatBookings, setHotseatBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [checkingInId, setCheckingInId] = useState(null);
+
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem("spacebook_token") || "";
+
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+  };
+
+  const loadDashboard = async () => {
+    try {
+      setLoading(true);
+
+      const [dashboardData, roomData, hotseatData] =
+        await Promise.all([
+          employeeApi.getDashboard(),
+          getMyBookings(),
+          getMyHotseatBookings(),
+        ]);
+
+      setDashboard(dashboardData);
+
+      const roomList = Array.isArray(roomData)
+        ? roomData
+        : roomData?.bookings || [];
+
+      const hotseatList = Array.isArray(hotseatData)
+        ? hotseatData
+        : hotseatData?.bookings || [];
+
+      setRoomBookings(roomList);
+      setHotseatBookings(hotseatList);
+    } catch (err) {
+      console.error("Dashboard Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadDashboard() {
-      try {
-        setLoading(true);
-
-        const [dashboardData, roomData, hotseatData] =
-          await Promise.all([
-            employeeApi.getDashboard(),
-            getMyBookings(),
-            getMyHotseatBookings(),
-          ]);
-
-        console.log("Dashboard Data:", dashboardData);
-        console.log("Room Bookings:", roomData);
-        console.log("Hotseat Bookings:", hotseatData);
-
-        setDashboard(dashboardData);
-
-        const roomList = Array.isArray(roomData)
-          ? roomData
-          : roomData?.bookings || [];
-
-        const hotseatList = Array.isArray(hotseatData)
-          ? hotseatData
-          : hotseatData?.bookings || [];
-
-        setRoomBookings(roomList);
-        setHotseatBookings(hotseatList);
-      } catch (err) {
-        console.error("Dashboard Error:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     loadDashboard();
   }, []);
+
+  const normalizeStatus = (status) =>
+    String(status || "")
+      .toLowerCase()
+      .replace(/\\s+/g, "");
+
+  const getCheckInDeadline = (booking) => {
+    const rawExpected =
+      booking?.expectedCheckIn ||
+      booking?.expectedCheckInTime ||
+      booking?.time;
+
+    if (!rawExpected) return null;
+
+    const expected = new Date(rawExpected);
+
+    if (Number.isNaN(expected.getTime())) {
+      const date = String(booking?.date || "").substring(0, 10);
+      const time = String(rawExpected).substring(0, 5);
+
+      if (!date || !time) return null;
+
+      const fallback = new Date(`${date}T${time}:00`);
+
+      if (Number.isNaN(fallback.getTime())) return null;
+
+      return new Date(fallback.getTime() + 30 * 60 * 1000);
+    }
+
+    return new Date(expected.getTime() + 30 * 60 * 1000);
+  };
+
+  const releaseHotseat = async (bookingId) => {
+    try {
+      const response = await fetch(`${HOTSEAT_API_BASE}/${bookingId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        let errData = null;
+
+        try {
+          errData = await response.json();
+        } catch {
+          errData = null;
+        }
+
+        console.error(
+          "HOTSEAT RELEASE FAILED:",
+          response.status,
+          errData
+        );
+
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error("HOTSEAT RELEASE ERROR:", err);
+      return false;
+    }
+  };
+
+  async function handleCheckIn(booking) {
+    if (checkingInId) return;
+    if (!booking?.isHotseat) return;
+
+    const bookingId = booking.rawId || booking.bookingId;
+    if (!bookingId) return;
+
+    const status = normalizeStatus(booking.status);
+
+    if (status === "checkedin") return;
+
+    if (!["confirmed", "approved"].includes(status)) return;
+
+    const deadline = getCheckInDeadline(booking);
+
+    if (deadline && new Date() > deadline) {
+      setCheckingInId(bookingId);
+
+      try {
+        const released = await releaseHotseat(bookingId);
+
+        if (released) {
+          alert(
+            "The 30-minute check-in window has expired. The hotseat has been released."
+          );
+          await loadDashboard();
+        } else {
+          alert(
+            "The check-in window has expired, but the hotseat could not be released automatically."
+          );
+        }
+      } finally {
+        setCheckingInId(null);
+      }
+
+      return;
+    }
+
+    try {
+      setCheckingInId(bookingId);
+
+      const response = await fetch(
+        `${HOTSEAT_API_BASE}/${bookingId}/check-in`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        let errData = null;
+
+        try {
+          errData = await response.json();
+        } catch {
+          errData = null;
+        }
+
+        alert(
+          errData?.message ||
+            errData?.title ||
+            "Failed to check in."
+        );
+
+        return;
+      }
+
+      alert("Checked in successfully!");
+      await loadDashboard();
+    } catch (err) {
+      console.error("CHECK-IN ERROR:", err);
+      alert("Network error during check-in.");
+    } finally {
+      setCheckingInId(null);
+    }
+  }
+
+  // Automatically check for expired confirmed hotseat bookings.
+  // This runs once per minute while the Dashboard is open.
+  useEffect(() => {
+    if (!hotseatBookings.length) return;
+
+    let cancelled = false;
+
+    const releaseExpiredHotseats = async () => {
+      const now = new Date();
+
+      const expiredBookings = hotseatBookings.filter((booking) => {
+        const status = normalizeStatus(booking.status);
+
+        if (!["confirmed", "approved"].includes(status)) {
+          return false;
+        }
+
+        const deadline = getCheckInDeadline(booking);
+
+        return deadline && now > deadline;
+      });
+
+      if (!expiredBookings.length) return;
+
+      for (const booking of expiredBookings) {
+        if (cancelled) return;
+
+        const bookingId = booking.bookingId || booking.id;
+        if (!bookingId) continue;
+
+        const released = await releaseHotseat(bookingId);
+
+        if (released) {
+          console.log(
+            `Hotseat booking ${bookingId} released after the 30-minute check-in window.`
+          );
+        }
+      }
+
+      if (!cancelled) {
+        await loadDashboard();
+      }
+    };
+
+    releaseExpiredHotseats();
+
+    const timer = setInterval(
+      releaseExpiredHotseats,
+      60 * 1000
+    );
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [hotseatBookings]);
 
   if (user?.role === "Admin") {
     return <Navigate to="/admin/dashboard" replace />;
@@ -88,10 +288,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  // =====================================================
-  // STATUS
-  // =====================================================
 
   const isInactiveStatus = (status) => {
     const s = String(status || "")
@@ -107,13 +303,10 @@ export default function Dashboard() {
     ].includes(s);
   };
 
-  // =====================================================
-  // NORMALIZE ROOM + HOTSEAT BOOKINGS
-  // =====================================================
-
   const normalizedRoomBookings = roomBookings.map((booking) => ({
     ...booking,
     isHotseat: false,
+    bookingId: booking.bookingId || booking.id,
 
     date:
       booking.bookingDate ||
@@ -142,6 +335,7 @@ export default function Dashboard() {
   const normalizedHotseatBookings = hotseatBookings.map((booking) => ({
     ...booking,
     isHotseat: true,
+    bookingId: booking.bookingId || booking.id,
 
     date:
       booking.bookingDate ||
@@ -170,33 +364,19 @@ export default function Dashboard() {
     ),
   }));
 
-  // One common list containing BOTH room and Hotseat bookings.
   const allBookings = [
     ...normalizedRoomBookings,
     ...normalizedHotseatBookings,
   ];
 
-  // =====================================================
-  // DATE / TIME HELPERS
-  // =====================================================
-
   const pad = (value) => String(value).padStart(2, "0");
 
-  // Local date in YYYY-MM-DD format.
   const getLocalDateString = (date = new Date()) => {
     return `${date.getFullYear()}-${pad(
       date.getMonth() + 1
     )}-${pad(date.getDate())}`;
   };
 
-  /*
-   * Converts a booking's date + time into a JavaScript Date.
-   *
-   * Handles:
-   * 1. date = "2026-08-20", time = "10:00"
-   * 2. date = "2026-08-20", time = "10:00:00"
-   * 3. time/date values returned as ISO DateTime strings
-   */
   const parseBookingDateTime = (booking) => {
     if (!booking?.date) {
       return null;
@@ -211,7 +391,6 @@ export default function Dashboard() {
 
     const rawTime = String(booking.time || "");
 
-    // If the API already returned a full ISO DateTime.
     if (rawTime.includes("T")) {
       const isoDateTime = new Date(rawTime);
 
@@ -220,7 +399,6 @@ export default function Dashboard() {
       }
     }
 
-    // If the booking date itself contains a time.
     if (rawDate.includes("T")) {
       const dateTime = new Date(rawDate);
 
@@ -229,7 +407,6 @@ export default function Dashboard() {
       }
     }
 
-    // Normal time-only value such as 10:00 or 10:00:00.
     const timePart = rawTime.substring(0, 8);
 
     if (!timePart) {
@@ -253,32 +430,8 @@ export default function Dashboard() {
 
   const now = new Date();
 
-  // =====================================================
-  // DASHBOARD COUNTS
-  // =====================================================
-
-  /*
-   * TOTAL BOOKINGS
-   *
-   * Total = Room bookings + Hotseat bookings.
-   *
-   * Past bookings are still bookings, so they remain
-   * included in the total.
-   */
   const totalBookings = allBookings.length;
 
-  /*
-   * UPCOMING
-   *
-   * Only active bookings whose actual date/time has NOT
-   * passed are counted.
-   *
-   * Example:
-   * Aug 18 -> past -> NOT counted
-   * Aug 19 08:00 when current time is 10:00 -> NOT counted
-   * Aug 19 14:00 -> counted
-   * Aug 20 -> counted
-   */
   const upcomingBookings = allBookings.filter((booking) => {
     if (isInactiveStatus(booking.status)) {
       return false;
@@ -296,13 +449,6 @@ export default function Dashboard() {
 
   const upcomingCount = upcomingBookings.length;
 
-  /*
-   * BOOKINGS TODAY
-   *
-   * Room bookings today + Hotseat bookings today.
-   * Cancelled/rejected/released/expired bookings are
-   * excluded.
-   */
   const today = getLocalDateString();
 
   const bookingsToday = allBookings.filter((booking) => {
@@ -316,19 +462,10 @@ export default function Dashboard() {
     );
   }).length;
 
-  /*
-   * HOTSEAT BOOKINGS
-   *
-   * Active Hotseat bookings only.
-   */
   const hotseatBookingCount =
     normalizedHotseatBookings.filter(
       (booking) => !isInactiveStatus(booking.status)
     ).length;
-
-  // =====================================================
-  // STATUS BADGE
-  // =====================================================
 
   const getStatusBadgeClass = (status) => {
     const s = status?.toLowerCase() || "";
@@ -357,35 +494,44 @@ export default function Dashboard() {
     return "bg-slate-500 text-white";
   };
 
-  // =====================================================
-  // RECENT RESERVATIONS
-  // =====================================================
+  const getDisplayStatus = (booking) => {
+    const status = String(booking?.status || "")
+      .toLowerCase()
+      .replace(/\s+/g, "");
 
-  /*
-   * IMPORTANT:
-   *
-   * Dashboard Recent Reservations should NOT show past
-   * bookings.
-   *
-   * Therefore we use the same upcoming logic here.
-   *
-   * A booking from:
-   *   2026-08-18 -> will NOT appear
-   *
-   * A booking from:
-   *   2026-08-19 at a past time -> will NOT appear
-   *
-   * A booking from:
-   *   2026-08-19 at a future time -> WILL appear
-   *
-   * A booking from:
-   *   2026-08-20 -> WILL appear
-   */
+    if (
+      status === "cancelled" ||
+      status === "canceled"
+    ) {
+      return "CANCELLED";
+    }
+
+    if (
+      status === "checkedin" ||
+      booking?.checkInTime ||
+      booking?.checkedIn === true ||
+      booking?.isCheckedIn === true
+    ) {
+      return "CHECKED IN";
+    }
+
+    if (
+      status === "approved" ||
+      status === "confirmed"
+    ) {
+      return "APPROVED";
+    }
+
+    return booking?.status || "APPROVED";
+  };
+
   const recentReservations = upcomingBookings
     .map((booking) => ({
       bookingId: booking.isHotseat
         ? `hotseat-${booking.bookingId}`
         : booking.bookingId,
+
+      rawId: booking.bookingId,
 
       roomName: booking.displayName,
 
@@ -395,7 +541,9 @@ export default function Dashboard() {
 
       endTime: booking.endTime || booking.time,
 
-      status: booking.status || "Confirmed",
+      status: getDisplayStatus(booking),
+
+      isHotseat: booking.isHotseat,
     }))
     .sort((a, b) => {
       const dateA = parseBookingDateTime({
@@ -411,7 +559,6 @@ export default function Dashboard() {
       if (!dateA) return 1;
       if (!dateB) return -1;
 
-      // Nearest upcoming booking first.
       return dateA - dateB;
     })
     .slice(0, 5);
@@ -484,6 +631,7 @@ export default function Dashboard() {
                 <th className="py-3">DATE</th>
                 <th className="py-3">TIME</th>
                 <th className="py-3">STATUS</th>
+                <th className="py-3 text-right">ACTION</th>
               </tr>
             </thead>
 
@@ -491,7 +639,7 @@ export default function Dashboard() {
               {recentReservations.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="py-6 text-center text-slate-500 text-sm"
                   >
                     No upcoming reservations found.
@@ -532,6 +680,29 @@ export default function Dashboard() {
                       >
                         {booking.status}
                       </span>
+                    </td>
+
+                    <td className="py-4 text-right">
+                      {booking.isHotseat ? (
+                        normalizeStatus(booking.status) === "checkedin" ? (
+                          <span className="text-xs font-semibold text-[#658362]">
+                            ✓ Checked In
+                          </span>
+                        ) : ["confirmed", "approved"].includes(
+                            normalizeStatus(booking.status)
+                          ) ? (
+                          <button
+                            type="button"
+                            disabled={checkingInId === booking.rawId}
+                            onClick={() => handleCheckIn(booking)}
+                            className="rounded-lg bg-[#2F6FE0] px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                          >
+                            {checkingInId === booking.rawId
+                              ? "Checking in..."
+                              : "Check-In"}
+                          </button>
+                        ) : null
+                      ) : null}
                     </td>
                   </tr>
                 ))
