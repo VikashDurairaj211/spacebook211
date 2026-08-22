@@ -817,19 +817,7 @@ export default function TopNav({
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-xl border border-slate-200 bg-white py-1 font-sans text-sm text-ink shadow-lg overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false)
-                    window.dispatchEvent(new Event('openSpaceBookGuide'))
-                  }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-left font-medium text-slate-700 transition-colors hover:bg-slate-50 text-xs border-b border-slate-100"
-                >
-                  <BookOpen size={13} className="text-sky-600" />
-                  <span>User Guide</span>
-                </button>
-
+              <div className="absolute right-0 top-full z-50 mt-1 w-32 rounded-lg border border-slate-200 bg-white py-1 font-sans text-sm text-ink shadow-md">
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -837,7 +825,6 @@ export default function TopNav({
                 >
                   Sign out
                 </button>
-
               </div>
             )}
           </div>
