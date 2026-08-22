@@ -1,7 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { LayoutDashboard, Search, CalendarRange, MapPin, ShieldCheck, Building2, BookOpenCheck, BarChart3, Clock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { BookingStatsCard } from '../cards/BookingStatsCard'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -53,9 +52,6 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
 
             {!collapsed && (
               <div className="pt-2 space-y-4">
-                {/* Live Hotseat Stats Card */}
-                <BookingStatsCard modules={modules} bookings={bookings} />
-
                 {/* Office Policy Card */}
                 <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">

@@ -43,6 +43,14 @@ function formatDate(dateKey) {
   return `${month}-${day}-${year}`;
 }
 
+function isWeekend(dateKey) {
+  if (!dateKey) return false;
+  const [year, month, day] = dateKey.split("-");
+  const date = new Date(year, month - 1, day);
+  const dayOfWeek = date.getDay();
+  return dayOfWeek === 0 || dayOfWeek === 6; // 0 = Sunday, 6 = Saturday
+}
+
 function getTodayKey() {
   return toDateKey(new Date());
 }
@@ -107,11 +115,14 @@ function Select({
         >
           <option value="">{placeholder}</option>
 
-          {normalized.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
+          {normalized.map((o) => {
+            const disabledWeekend = isWeekend(o.value);
+            return (
+              <option key={o.value} value={o.value} disabled={disabledWeekend}>
+                {o.label} {disabledWeekend ? "(Weekend)" : ""}
+              </option>
+            );
+          })}
         </select>
 
         <ChevronDown
@@ -420,7 +431,7 @@ export default function HotseatBookingApp() {
   const toast = useToast();
 
   const tomorrow = getTomorrowKey();
-  const [targetDate, setTargetDate] = useState(tomorrow);
+  const [targetDate, setTargetDate] = useState(isWeekend(tomorrow) ? getTodayKey() : tomorrow);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem("spacebook_token") || "";
@@ -443,17 +454,6 @@ export default function HotseatBookingApp() {
       if (seatsRes.ok) {
         const rawSeats = await seatsRes.json();
         const seatArray = Array.isArray(rawSeats) ? rawSeats : rawSeats?.seats || [];
-
-        const targetSeat = seatArray.find(
-          (seat) => seat.seatNumber === "WS-05-EO2-121"
-        );
-
-        const targetIndex = seatArray.findIndex(
-          (seat) => seat.seatNumber === "WS-05-EO2-121"
-        );
-
-        console.log("TARGET SEAT:", targetSeat);
-        console.log("TARGET SEAT INDEX:", targetIndex);
 
         const module1Seats = seatArray
           .filter((s) => s.seatNumber?.includes("EO1"))
@@ -498,7 +498,9 @@ export default function HotseatBookingApp() {
   };
 
   useEffect(() => {
-    fetchOfficeData();
+    if (!isWeekend(targetDate)) {
+      fetchOfficeData();
+    }
   }, [targetDate]);
 
   const showCustomToast = useCallback((message, details) => {
@@ -506,6 +508,10 @@ export default function HotseatBookingApp() {
   }, []);
 
   async function reserveItem({ item, targetDate, expectedCheckIn }) {
+    if (isWeekend(targetDate)) {
+      return { ok: false, message: "Hotseat bookings are not allowed on weekends." };
+    }
+
     try {
       const numericSeatId = parseInt(item.id.replace(/[^0-9]/g, "").slice(-3), 10);
       
@@ -517,20 +523,16 @@ export default function HotseatBookingApp() {
           ? numericSeatId + 98
           : numericSeatId;
 
-      const payload = {
-        seatId: actualSeatId,
-        seatNumber: item.id,
-        bookingDate: targetDate,
-        expectedCheckInTime: formattedTime,
-      };
+      const formattedBookingDate = targetDate.includes("T")
+        ? targetDate.substring(0, 10)
+        : targetDate;
 
-      console.log("BOOKING PAYLOAD:", payload);
-
-      // Re-check the latest seat status immediately before POST.
-      // This improves the UX when another user has just booked the seat.
+      // Always fetch the freshest office seats right before attempting to reserve.
       const latestSeatsResponse = await fetch(
-        `${API_BASE}?date=${targetDate}`,
-        { headers: getAuthHeaders() }
+        `${API_BASE}/seats?date=${formattedBookingDate}`,
+        {
+          headers: getAuthHeaders(),
+        }
       );
 
       if (latestSeatsResponse.ok) {
@@ -563,6 +565,13 @@ export default function HotseatBookingApp() {
           };
         }
       }
+
+      const payload = {
+        seatId: actualSeatId,
+        seatNumber: item.id,
+        bookingDate: formattedBookingDate,
+        expectedCheckInTime: formattedTime,
+      };
 
       const response = await fetch(API_BASE, {
         method: "POST",
@@ -608,14 +617,6 @@ export default function HotseatBookingApp() {
           };
         }
 
-        if (
-          responseData?.existingBookingId ||
-          responseData?.message?.includes("already have a hotseat booking")
-        ) {
-          setConflictData(responseData);
-          return { ok: false, message: responseData.message };
-        }
-
         let errorMessage = "Failed to reserve hotseat.";
         if (responseData?.errors) {
           errorMessage = Object.entries(responseData.errors)
@@ -634,8 +635,6 @@ export default function HotseatBookingApp() {
       );
 
       window.dispatchEvent(new Event("booking-updated"));
-
-      // Refresh from both backend endpoints.
       await fetchOfficeData();
 
       // Some API responses expose the booking immediately in /my-bookings
@@ -664,6 +663,10 @@ export default function HotseatBookingApp() {
   }
 
   async function editBookingTime(bookingId, changes) {
+    if (isWeekend(changes.date)) {
+      return { ok: false, message: "Hotseat bookings are not allowed on weekends." };
+    }
+
     try {
       const numericSeatId = parseInt(changes.seatId.replace(/[^0-9]/g, "").slice(-3), 10);
       const rawTime = String(changes.expectedCheckIn || "10:00");
@@ -673,10 +676,14 @@ export default function HotseatBookingApp() {
         ? numericSeatId + 98
         : numericSeatId;
 
+      const formattedBookingDate = changes.date.includes("T")
+        ? changes.date.substring(0, 10)
+        : changes.date;
+
       const payload = {
         seatId: actualSeatId,
         seatNumber: changes.seatId,
-        bookingDate: changes.date,
+        bookingDate: formattedBookingDate,
         expectedCheckInTime: formattedTime,
       };
 
@@ -823,7 +830,7 @@ function OfficeMapTab({
   const tomorrow = getTomorrowKey();
 
   const LOCATIONS = ["Coimbatore"];
-  const ZONES = ["Elcot Park", "Tidel Park"];
+  const ZONES = ["Elcot Park"];
 
   const currentModule = modules.find((m) => m.id === moduleId);
   const readyForModule = location && zone;
@@ -876,7 +883,7 @@ function OfficeMapTab({
   });
 
   function handleSelectSeat(seat) {
-    if (seat.status === "occupied") {
+    if (seat.status === "occupied" && !seat.isMyBooking) {
       return;
     }
 
@@ -893,7 +900,7 @@ function OfficeMapTab({
       );
     });
 
-    if (existingUserBooking) {
+    if (existingUserBooking && !seat.isMyBooking) {
       setConflictData({
         message: "You already have a hotseat booking for this date.",
         existingBookingId: existingUserBooking.bookingId || existingUserBooking.id,
@@ -986,6 +993,7 @@ function OfficeMapTab({
             label="BOOKING DATE"
             value={targetDate}
             onChange={(value) => {
+              if (isWeekend(value)) return;
               setTargetDate(value);
               setActive(null);
               setBookingResult(null);
@@ -1103,9 +1111,25 @@ function OfficeMapTab({
               BOOKED
             </span>
 
+            {/* Added Unavailable Legend Item */}
+            <span className="flex items-center gap-2">
+              <span
+                style={{
+                  background: "#94a3b8",
+                  border: "1px solid #64748b",
+                  width: "12px",
+                  height: "12px",
+                  borderRadius: "3px",
+                  display: "inline-block",
+                }}
+              />
+              UNAVAILABLE
+            </span>
+
             <span className="ml-auto text-slate-400 font-normal">
               Click an available seat to reserve
             </span>
+
           </div>
         </div>
       )}
@@ -1158,6 +1182,10 @@ function BookingDialog({
 
   function requestSave(event) {
     event.preventDefault();
+    if (isWeekend(date)) {
+      setError("Hotseat bookings are not allowed on weekends.");
+      return;
+    }
     setError("");
     setConfirmation(isEditing ? "update" : "create");
   }
@@ -1174,13 +1202,15 @@ function BookingDialog({
       if (confirmation === "create") {
         result = await onCreate({ item, expectedCheckIn, date });
       } else if (confirmation === "update") {
-        result = await onUpdate(booking.bookingId || booking.id, {
+        const bookingId = booking?.bookingId || booking?.id || booking?.hotseatBookingId;
+        result = await onUpdate(bookingId, {
           date,
           expectedCheckIn,
           seatId: item.id,
         });
       } else {
-        result = await onCancel(booking.bookingId || booking.id);
+        const bookingId = booking?.bookingId || booking?.id || booking?.hotseatBookingId;
+        result = await onCancel(bookingId);
       }
 
       if (!result) {
@@ -1252,11 +1282,18 @@ function BookingDialog({
 
             <select
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => {
+                if (isWeekend(e.target.value)) return;
+                setDate(e.target.value);
+              }}
               className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 focus:border-[#2F6FE0] focus:outline-none"
             >
-              <option value={getTodayKey()}>{formatDate(getTodayKey())}</option>
-              <option value={getTomorrowKey()}>{formatDate(getTomorrowKey())}</option>
+              <option value={getTodayKey()} disabled={isWeekend(getTodayKey())}>
+                {formatDate(getTodayKey())} {isWeekend(getTodayKey()) ? "(Weekend)" : ""}
+              </option>
+              <option value={getTomorrowKey()} disabled={isWeekend(getTomorrowKey())}>
+                {formatDate(getTomorrowKey())} {isWeekend(getTomorrowKey()) ? "(Weekend)" : ""}
+              </option>
             </select>
           </div>
 

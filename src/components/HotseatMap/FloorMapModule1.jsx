@@ -117,7 +117,7 @@ function Section({
             <b key={index}>{index + 1}</b>
           )
         )}
-    </div>
+      </div>
 
       <div className="m1-rows">
         {rows.map((row, rowIndex) => (
@@ -141,7 +141,11 @@ function Section({
                       className="m1-seat-cell"
                       key={`gap-${rowIndex}-${columnIndex}`}
                     >
-                      <div className="m1-seat-gap" />
+                      {/* Added title and updated class for grey styling */}
+                      <div 
+                        className="m1-seat-gap m1-seat-unavailable" 
+                        title="Unavailable"
+                      />
                     </div>
                   );
                 }
@@ -159,7 +163,7 @@ function Section({
                         seat={seat}
                         selected={
                           seat.id === activeSeatId
-                      }
+                        }
                         onClick={onSelect}
                       />
                     )}
@@ -519,21 +523,11 @@ export default function FloorMapModule1({
           opacity: 0.95;
         }
 
-        /* ============================================================
-           AVAILABLE
-           Green
-        ============================================================ */
-
         .m1-vacant {
           background: #22c55e;
           border: 1.5px solid #16a34a;
           color: #ffffff;
         }
-
-        /* ============================================================
-           BOOKED
-           Red
-        ============================================================ */
 
         .m1-occupied {
           background: #ef4444 !important;
@@ -541,21 +535,11 @@ export default function FloorMapModule1({
           color: #ffffff !important;
         }
 
-        /* ============================================================
-           PENDING CHECK-IN
-           Yellow
-        ============================================================ */
-
         .m1-reserved {
           background: #fef3c7;
           border: 1.5px solid #f59e0b;
           color: #b45309;
         }
-
-        /* ============================================================
-           MY BOOKING
-           Red as requested
-        ============================================================ */
 
         .m1-my-booked {
           background: #ef4444 !important;
@@ -566,11 +550,6 @@ export default function FloorMapModule1({
             0 0 0 2px
             rgba(239, 68, 68, 0.30) !important;
         }
-
-        /* ============================================================
-           SELECTED
-           Blue
-        ============================================================ */
 
         .m1-selected {
           background: #3b82f6 !important;
@@ -597,6 +576,12 @@ export default function FloorMapModule1({
           place-items: center;
         }
 
+        /* Added grey styling for unavailable null slots */
+        .m1-seat-unavailable {
+          background: #94a3b8 !important;
+          border: 1.5px solid #64748b !important;
+        }
+
         .m1-room {
           display: flex;
 
@@ -621,13 +606,13 @@ export default function FloorMapModule1({
 
         .m1-reception-room {
           background: #eff6ff;
-          border: 1px solid #bfdbfe;
+          border: 1.5px solid #bfdbfe;
           color: #2563eb;
         }
 
         .m1-conference-room {
           background: #f5f3ff;
-          border: 1px solid #ddd6fe;
+          border: 1.5px solid #ddd6fe;
           color: #7c3aed;
         }
       `}</style>

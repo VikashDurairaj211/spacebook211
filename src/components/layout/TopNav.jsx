@@ -121,14 +121,17 @@ export default function TopNav({
               : raw.data || raw.bookings || []
             setLiveBookings(list)
           }
-        } else {
           const now = new Date()
           const day = now.getDay()
           const target = new Date(now)
           // If Saturday (+2) or Sunday (+1), use Monday
           if (day === 6) target.setDate(now.getDate() + 2)
           else if (day === 0) target.setDate(now.getDate() + 1)
-          const targetDateStr = target.toISOString().split('T')[0]
+
+          const year = target.getFullYear()
+          const month = String(target.getMonth() + 1).padStart(2, '0')
+          const d = String(target.getDate()).padStart(2, '0')
+          const targetDateStr = `${year}-${month}-${d}`
 
           const [availRes, myBookingsRes] = await Promise.allSettled([
             client.get('/employee/availability', {
