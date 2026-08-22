@@ -7,12 +7,14 @@ import Sidebar from './Sidebar'
 import { ToastProvider } from '../common/ToastProvider'
 import SpaceBookCopilot from '../SpaceBookCopilot'
 import SessionExpiredModal from '../common/SessionExpiredModal'
+import UserGuideModal from '../common/UserGuideModal'
 
 export default function Layout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [isCopilotOpen, setIsCopilotOpen] = useState(false)
   const [showCopilotBubble, setShowCopilotBubble] = useState(true)
   const [sessionExpired, setSessionExpired] = useState(false)
+  const [isGuideOpen, setIsGuideOpen] = useState(false)
 
   // Listen for session expiry from API interceptor
   useEffect(() => {
@@ -20,9 +22,16 @@ export default function Layout() {
       setSessionExpired(true)
     }
 
+    const handleOpenGuide = () => {
+      setIsGuideOpen(true)
+    }
+
     window.addEventListener('spacebook_session_expired', handleSessionExpired)
+    window.addEventListener('openSpaceBookGuide', handleOpenGuide)
+
     return () => {
       window.removeEventListener('spacebook_session_expired', handleSessionExpired)
+      window.removeEventListener('openSpaceBookGuide', handleOpenGuide)
     }
   }, [])
 
@@ -161,6 +170,14 @@ export default function Layout() {
         <SessionExpiredModal
           open={sessionExpired}
           onClose={() => setSessionExpired(false)}
+        />
+
+        {/* ================================
+            SPACEBOOK USER GUIDE & HELP MODAL
+           ================================= */}
+        <UserGuideModal
+          open={isGuideOpen}
+          onClose={() => setIsGuideOpen(false)}
         />
 
       </div>

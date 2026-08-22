@@ -6,6 +6,8 @@ import {
   PanelLeftOpen,
   Home,
   X,
+  HelpCircle,
+  BookOpen,
 } from 'lucide-react'
 
 import { useAuth } from '../../context/AuthContext'
@@ -779,6 +781,18 @@ export default function TopNav({
             />
           </div>
 
+          {/* User Guide & Help Button */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event('openSpaceBookGuide'))}
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-sky-900 border border-sky-300/80 bg-white/70 hover:bg-sky-200/80 hover:border-sky-400 transition shadow-xs"
+            title="Open SpaceBook User Guide & Help"
+            aria-label="User Guide"
+          >
+            <HelpCircle size={14} className="text-sky-700" />
+            <span className="hidden sm:inline">Guide</span>
+          </button>
+
           {/* User Menu */}
 
           <div className="relative">
@@ -803,12 +817,23 @@ export default function TopNav({
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-32 rounded-lg border border-slate-200 bg-white py-1 font-sans text-sm text-ink shadow-md">
+              <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-xl border border-slate-200 bg-white py-1 font-sans text-sm text-ink shadow-lg overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    window.dispatchEvent(new Event('openSpaceBookGuide'))
+                  }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-left font-medium text-slate-700 transition-colors hover:bg-slate-50 text-xs border-b border-slate-100"
+                >
+                  <BookOpen size={13} className="text-sky-600" />
+                  <span>User Guide</span>
+                </button>
 
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="block w-full px-3 py-2 text-left font-medium text-clay transition-colors hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left font-medium text-clay transition-colors hover:bg-slate-50 text-xs"
                 >
                   Sign out
                 </button>
