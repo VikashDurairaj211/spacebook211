@@ -1170,7 +1170,7 @@ export default function MyBookings() {
         <select
           value={dateFilter}
           onChange={(e) => setDateFilter(e.target.value)}
-          className="rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-ink outline-none shadow-sm"
+          className="rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-ink outline-none shadow-sm transition-colors hover:border-sky-400"
         >
           <option value="All">All Dates</option>
           <option value="Today">Today</option>
@@ -1277,7 +1277,7 @@ export default function MyBookings() {
                       ? "hotseat"
                       : "room"
                   }-${b.bookingId}`}
-                  className="border-b border-line last:border-0"
+                  className="border-b border-line last:border-0 transition-colors duration-150 hover:bg-slate-50/90"
                 >
 
                   {/* BOOKING ID */}

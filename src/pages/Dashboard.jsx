@@ -358,20 +358,25 @@ export default function Dashboard() {
   };
 
   // =====================================================
-  // RECENT RESERVATIONS (TODAY'S BOOKINGS)
+  // ACTIVE & UPCOMING RESERVATIONS (ASCENDING CHRONOLOGICAL ORDER)
   // =====================================================
 
   /*
-   * Shows all active reservations (rooms and hotseats) scheduled for today.
+   * Shows all active reservations (rooms and hotseats) scheduled for today
+   * and upcoming dates, sorted in ascending order (earliest first).
    */
-  const recentReservations = allBookings
+  const activeAndEarlyReservations = allBookings
     .filter((booking) => {
       if (isInactiveStatus(booking.status)) {
         return false;
       }
 
       const bookingDateStr = String(booking.date || "").substring(0, 10);
-      return bookingDateStr === today;
+      if (!bookingDateStr || bookingDateStr < today) {
+        return false;
+      }
+
+      return true;
     })
     .map((booking) => ({
       bookingId: booking.isHotseat
@@ -389,11 +394,15 @@ export default function Dashboard() {
       status: booking.status || "Confirmed",
     }))
     .sort((a, b) => {
+      const dateA = String(a.bookingDate || "").substring(0, 10);
+      const dateB = String(b.bookingDate || "").substring(0, 10);
+      const dateCompare = dateA.localeCompare(dateB);
+      if (dateCompare !== 0) return dateCompare;
+
       const timeA = a.startTime || "";
       const timeB = b.startTime || "";
       return timeA.localeCompare(timeB);
-    })
-    .slice(0, 10);
+    });
 
   return (
     <div className="space-y-8">
@@ -440,11 +449,11 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Recent Reservations */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      {/* Active & Upcoming Reservations */}
+      <Card className="p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">
-            Recent Reservations
+            Active & Upcoming Reservations
           </h2>
 
           <Link
@@ -467,20 +476,20 @@ export default function Dashboard() {
             </thead>
 
             <tbody>
-              {recentReservations.length === 0 ? (
+              {activeAndEarlyReservations.length === 0 ? (
                 <tr>
                   <td
                     colSpan={4}
                     className="py-6 text-center text-slate-500 text-sm"
                   >
-                    No reservations found for today.
+                    No active or upcoming reservations found.
                   </td>
                 </tr>
               ) : (
-                recentReservations.map((booking) => (
+                activeAndEarlyReservations.map((booking) => (
                   <tr
                     key={booking.bookingId}
-                    className="border-b hover:bg-slate-50 text-sm"
+                    className="border-b hover:bg-slate-50 text-sm transition-colors"
                   >
                     <td className="py-4 font-medium text-slate-900">
                       {booking.roomName ||
@@ -518,7 +527,7 @@ export default function Dashboard() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

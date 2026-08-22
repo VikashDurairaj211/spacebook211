@@ -37,10 +37,9 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
                       to={to}
                       end={end}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-all duration-200 ${
-                          isActive
-                            ? 'bg-sky-600 text-white font-medium shadow-sm'
-                            : 'text-sky-950 hover:bg-sky-200/60 hover:text-sky-900'
+                        `flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-all duration-200 ${isActive
+                          ? 'bg-sky-600 text-white font-medium shadow-sm'
+                          : 'text-sky-950 hover:bg-sky-200/60 hover:text-sky-900'
                         } ${collapsed ? 'justify-center px-2' : ''}`
                       }
                     >
@@ -91,10 +90,9 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
                   <NavLink
                     to={to}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-all duration-200 ${
-                        isActive
-                          ? 'bg-sky-600 text-white font-medium shadow-sm'
-                          : 'text-sky-950 hover:bg-sky-200/60 hover:text-sky-900'
+                      `flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-all duration-200 ${isActive
+                        ? 'bg-sky-600 text-white font-medium shadow-sm'
+                        : 'text-sky-950 hover:bg-sky-200/60 hover:text-sky-900'
                       } ${collapsed ? 'justify-center px-2' : ''}`
                     }
                   >

@@ -473,9 +473,11 @@ export default function RoomManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-ink bg-white p-5">
-        <h1 className="font-display text-xl font-bold text-ink">Room Management</h1>
-        <p className="mt-2 text-sm text-slate">
+      <div>
+        <h1 className="font-display text-xl font-700 text-ink">
+          Room Management
+        </h1>
+        <p className="mt-1 text-sm text-slate">
           Manage room inventory, capacity, availability, and facilities dynamically.
         </p>
       </div>

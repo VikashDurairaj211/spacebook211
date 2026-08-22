@@ -818,7 +818,7 @@ export default function AvailabilityCalendar() {
                 event.target.value
               )
             }
-            className="min-w-[170px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
+            className="min-w-[170px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink transition-colors hover:border-sky-400"
           />
 
           {/* NEXT DAY */}
@@ -843,7 +843,7 @@ export default function AvailabilityCalendar() {
                 event.target.value
               )
             }
-            className="w-auto min-w-[170px] max-w-[220px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
+            className="w-auto min-w-[170px] max-w-[220px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink transition-colors hover:border-sky-400"
           >
             {ROOM_TYPE_OPTIONS.map(
               (type) => (

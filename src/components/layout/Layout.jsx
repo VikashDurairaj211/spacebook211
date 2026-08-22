@@ -30,7 +30,7 @@ export default function Layout() {
         />
 
         {/* Lower section */}
-        <div className="flex flex-1 overflow-hidden relative">
+        <div className="flex flex-1 overflow-hidden relative pt-[52px]">
 
           {/* Sidebar */}
           <Sidebar collapsed={sidebarCollapsed} />

@@ -10,6 +10,7 @@ import StatusTag from '../components/common/StatusTag'
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null)
+  const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -25,20 +26,25 @@ export default function AdminDashboard() {
         return
       }
 
-      /*
-       * Your shared axios client already has:
-       *
-       * baseURL =
-       * https://spacebook-505h.onrender.com/api
-       *
-       * and automatically sends the JWT token.
-       */
+      const [dashRes, bookingsRes] = await Promise.allSettled([
+        client.get('/admin/dashboard'),
+        client.get('/admin/bookings'),
+      ])
 
-      const response = await client.get('/admin/dashboard')
+      if (dashRes.status === 'fulfilled') {
+        setData(dashRes.value.data)
+      } else {
+        throw dashRes.reason
+      }
 
-      console.log('ADMIN DASHBOARD RESPONSE:', response.data)
-
-      setData(response.data)
+      if (bookingsRes.status === 'fulfilled') {
+        const raw = Array.isArray(bookingsRes.value.data)
+          ? bookingsRes.value.data
+          : bookingsRes.value.data?.data ||
+            bookingsRes.value.data?.bookings ||
+            []
+        setBookings(raw)
+      }
     } catch (err) {
       console.error('Error loading admin dashboard:', err)
 
@@ -132,34 +138,81 @@ export default function AdminDashboard() {
     )
   }
 
-  /*
-   * Backend response fields
-   *
-   * Expected from:
-   * GET /api/admin/dashboard
-   *
-   * {
-   *   totalRooms,
-   *   todayBookings,
-   *   pendingApprovals,
-   *   utilization,
-   *   pendingApprovalList,
-   *   recentBookings
-   * }
-   */
-
   const totalRooms = data.totalRooms ?? 0
   const todayBookings = data.todayBookings ?? 0
-  const pendingApprovals = data.pendingApprovals ?? 0
   const utilization = data.utilization ?? 0
-
-  const pendingApprovalList = Array.isArray(data.pendingApprovalList)
-    ? data.pendingApprovalList
-    : []
-
   const recentBookings = Array.isArray(data.recentBookings)
     ? data.recentBookings
     : []
+
+  const today = new Date().toISOString().split('T')[0]
+
+  const isInactiveStatus = (status) => {
+    const s = String(status || '').toUpperCase()
+    return [
+      'CANCELLED',
+      'CANCELED',
+      'REJECTED',
+      'EXPIRED',
+      'RELEASED',
+    ].includes(s)
+  }
+
+  const allLiveBookings =
+    bookings.length > 0
+      ? bookings.map((b) => ({
+          bookingId: b.bookingId || b.id,
+          roomName:
+            b.roomName ||
+            b.room?.name ||
+            `Room ${b.roomId || ''}`,
+          bookingDate: b.bookingDate || b.date || '',
+          startTime: b.startTime
+            ? String(b.startTime).substring(0, 5)
+            : '',
+          endTime: b.endTime
+            ? String(b.endTime).substring(0, 5)
+            : '',
+          status: b.status || 'Confirmed',
+        }))
+      : recentBookings.map((b) => ({
+          bookingId: b.bookingId || b.id,
+          roomName:
+            b.roomName ||
+            `Room ${b.roomId || ''}`,
+          bookingDate: b.bookingDate || b.date || '',
+          startTime: b.startTime
+            ? String(b.startTime).substring(0, 5)
+            : '',
+          endTime: b.endTime
+            ? String(b.endTime).substring(0, 5)
+            : '',
+          status: b.status || 'Confirmed',
+        }))
+
+  const activeAndEarlyBookings = allLiveBookings
+    .filter((booking) => {
+      if (isInactiveStatus(booking.status)) {
+        return false
+      }
+      const bookingDateStr = String(
+        booking.bookingDate || ''
+      ).substring(0, 10)
+      if (!bookingDateStr || bookingDateStr < today) {
+        return false
+      }
+      return true
+    })
+    .sort((a, b) => {
+      const dateA = String(a.bookingDate || '').substring(0, 10)
+      const dateB = String(b.bookingDate || '').substring(0, 10)
+      const dateCompare = dateA.localeCompare(dateB)
+      if (dateCompare !== 0) return dateCompare
+
+      const timeA = a.startTime || ''
+      const timeB = b.startTime || ''
+      return timeA.localeCompare(timeB)
+    })
 
   return (
     <div className="space-y-4">
@@ -174,7 +227,7 @@ export default function AdminDashboard() {
         </h1>
 
         <p className="mt-1 text-sm text-slate">
-          Operational overview for room management and approval workloads.
+          Operational overview for room management and booking activity.
         </p>
       </div>
 
@@ -182,12 +235,13 @@ export default function AdminDashboard() {
           KPI CARDS
       ====================================================== */}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 
         <DashboardCard
-          title="Total Rooms"
-          value={totalRooms}
-          description="Active room inventory"
+          title="Total Active Bookings"
+          value={activeAndEarlyBookings.length}
+          description="Confirmed upcoming bookings"
+          to="/admin/booking-management"
         />
 
         <DashboardCard
@@ -195,14 +249,6 @@ export default function AdminDashboard() {
           value={todayBookings}
           tone="warning"
           description="Bookings scheduled for today"
-        />
-
-        <DashboardCard
-          title="Pending Approvals"
-          value={pendingApprovals}
-          tone="accent"
-          description="Requests awaiting review"
-          to="/admin/booking-management"
         />
 
         <DashboardCard
@@ -217,10 +263,10 @@ export default function AdminDashboard() {
           MAIN CONTENT
       ====================================================== */}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div>
 
         {/* ===================================================
-            PENDING APPROVALS
+            ACTIVE & UPCOMING RESERVATIONS
         ==================================================== */}
 
         <Card>
@@ -228,13 +274,15 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between">
 
             <div>
+
               <h2 className="font-display text-sm font-700 text-ink">
-                Pending Approvals
+                Active & Upcoming Reservations
               </h2>
 
               <p className="text-xs text-slate">
-                Review the latest pending room requests.
+                Scheduled workspace reservations in chronological order.
               </p>
+
             </div>
 
             <Link
@@ -246,116 +294,17 @@ export default function AdminDashboard() {
 
           </div>
 
-          {pendingApprovalList.length === 0 ? (
+          {activeAndEarlyBookings.length === 0 ? (
 
             <p className="mt-4 text-sm text-slate">
-              No pending bookings at the moment.
+              No active or upcoming reservations found.
             </p>
 
           ) : (
 
             <div className="mt-4 space-y-3">
 
-              {pendingApprovalList.slice(0, 6).map((booking) => (
-
-                <div
-                  key={booking.bookingId || booking.id}
-                  className="rounded-xl border border-line bg-portal-bg p-3"
-                >
-
-                  <div className="flex items-center justify-between gap-3">
-
-                    <div>
-
-                      <p className="font-medium text-sm text-ink">
-                        {booking.roomName ||
-                          `Room ${booking.roomId || ''}`}
-                      </p>
-
-                      <p className="text-xs text-slate">
-
-                        {booking.bookingDate ||
-                          booking.date ||
-                          '—'}
-
-                        {' • '}
-
-                        {booking.startTime
-                          ? booking.startTime.substring(0, 5)
-                          : ''}
-
-                        {'–'}
-
-                        {booking.endTime
-                          ? booking.endTime.substring(0, 5)
-                          : ''}
-
-                      </p>
-
-                    </div>
-
-                    <StatusTag status="Pending" />
-
-                  </div>
-
-                  <p className="mt-2 text-xs text-slate">
-                    Requested by{' '}
-                    {booking.requestedBy ||
-                      booking.createdBy ||
-                      booking.requester ||
-                      'Team member'}
-                  </p>
-
-                </div>
-
-              ))}
-
-            </div>
-
-          )}
-
-        </Card>
-
-        {/* ===================================================
-            RECENT ACTIVITY
-        ==================================================== */}
-
-        <Card>
-
-          <div className="flex items-center justify-between">
-
-            <div>
-
-              <h2 className="font-display text-sm font-700 text-ink">
-                Recent Activity
-              </h2>
-
-              <p className="text-xs text-slate">
-                Latest room bookings and status changes.
-              </p>
-
-            </div>
-
-            <Link
-              to="/admin/reports"
-              className="text-xs text-brand-blue underline hover:opacity-80"
-            >
-              View reports
-            </Link>
-
-          </div>
-
-          {recentBookings.length === 0 ? (
-
-            <p className="mt-4 text-sm text-slate">
-              No recent activity at the moment.
-            </p>
-
-          ) : (
-
-            <div className="mt-4 space-y-3">
-
-              {recentBookings.slice(0, 6).map((booking, index) => (
+              {activeAndEarlyBookings.slice(0, 10).map((booking, index) => (
 
                 <div
                   key={booking.bookingId || booking.id || index}

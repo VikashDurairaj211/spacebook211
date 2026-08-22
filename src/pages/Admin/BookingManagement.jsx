@@ -377,21 +377,7 @@ export default function BookingManagement() {
           Summary Cards
       ================================================= */}
 
-      <div className="grid gap-3 md:grid-cols-3">
-
-        <Card>
-          <p className="font-mono text-[11px] uppercase tracking-wider text-slate">
-            Pending Requests
-          </p>
-
-          <p className="mt-2 text-3xl font-700 text-[#E09F3E]">
-            {statusCounts.Pending}
-          </p>
-
-          <p className="mt-1 text-sm text-slate">
-            Awaiting admin approval
-          </p>
-        </Card>
+      <div className="grid gap-3 sm:grid-cols-2">
 
         <Card>
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">
