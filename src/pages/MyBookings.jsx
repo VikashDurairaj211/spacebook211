@@ -1093,13 +1093,28 @@ export default function MyBookings() {
         err
       );
 
+      let errorTitle =
+        err.response?.data?.message ||
+        err.response?.data?.title ||
+        err.message ||
+        "Unable to update booking.";
+
+      const lowerMsg = String(errorTitle).toLowerCase();
+      if (
+        (lowerMsg.includes("accommodate") ||
+          lowerMsg.includes("capacity") ||
+          lowerMsg.includes("overlap") ||
+          lowerMsg.includes("conflict") ||
+          lowerMsg.includes("no room can")) &&
+        (lowerMsg.includes("participant") || lowerMsg.includes("no room can"))
+      ) {
+        errorTitle =
+          "The selected room is already booked for the selected time period. Please choose another room or time.";
+      }
+
       toast.addToast({
         type: "error",
-        title:
-          err.response?.data?.message ||
-          err.response?.data?.title ||
-          err.message ||
-          "Unable to update booking.",
+        title: errorTitle,
       });
     }
   }

@@ -109,7 +109,114 @@ function normalizeRooms(data) {
       room.facilities ||
       room.roomFacilities ||
       [],
+
+    // ===============================================
+    // TIME SLOTS & BOOKINGS
+    // ===============================================
+
+    timeSlots:
+      room.timeSlots ||
+      room.slots ||
+      room.availabilitySlots ||
+      [],
+
+    bookings:
+      room.bookings ||
+      [],
   }))
+}
+
+// =====================================================
+// HELPER - CHECK ROOM TIME OVERLAP CONFLICT
+// =====================================================
+
+function checkRoomBookingConflict(room, requestedStart, requestedEnd) {
+  if (!room || !requestedStart || !requestedEnd) return false
+
+  const reqStart =
+    requestedStart.length === 5
+      ? `${requestedStart}:00`
+      : requestedStart
+
+  const reqEnd =
+    requestedEnd.length === 5
+      ? `${requestedEnd}:00`
+      : requestedEnd
+
+  // 1. Check timeSlots / slots / availabilitySlots
+  const rawSlots =
+    room.timeSlots ||
+    room.slots ||
+    room.availabilitySlots ||
+    []
+
+  for (const slot of rawSlots) {
+    const isBooked =
+      slot.isBooked === true ||
+      slot.booked === true ||
+      String(slot.status || '').toLowerCase() === 'booked' ||
+      String(slot.status || '').toLowerCase() === 'pending' ||
+      String(slot.status || '').toLowerCase() === 'confirmed'
+
+    if (isBooked) {
+      const slotStart =
+        slot.start ||
+        slot.startTime ||
+        slot.fromTime ||
+        slot.timeSlot?.start ||
+        slot.timeSlot?.startTime
+
+      const slotEnd =
+        slot.end ||
+        slot.endTime ||
+        slot.toTime ||
+        slot.timeSlot?.end ||
+        slot.timeSlot?.endTime
+
+      if (slotStart && slotEnd) {
+        const sStart =
+          slotStart.length === 5
+            ? `${slotStart}:00`
+            : slotStart
+
+        const sEnd =
+          slotEnd.length === 5
+            ? `${slotEnd}:00`
+            : slotEnd
+
+        if (reqStart < sEnd && reqEnd > sStart) {
+          return true
+        }
+      }
+    }
+  }
+
+  // 2. Check bookings array if present
+  const bookings = room.bookings || []
+  for (const b of bookings) {
+    const status = String(b.status || '').toLowerCase()
+    if (status !== 'cancelled' && status !== 'rejected') {
+      const bStart = b.startTime || b.start
+      const bEnd = b.endTime || b.end
+      if (bStart && bEnd) {
+        const sStart =
+          bStart.length === 5
+            ? `${bStart}:00`
+            : bStart
+
+        const sEnd =
+          bEnd.length === 5
+            ? `${bEnd}:00`
+            : bEnd
+
+        if (reqStart < sEnd && reqEnd > sStart) {
+          return true
+        }
+      }
+    }
+  }
+
+  return false
 }
 
 // =====================================================
@@ -504,6 +611,26 @@ export default function BookRoom() {
     }
 
     // -------------------------------------------------
+    // ROOM BOOKING OVERLAP PRE-VALIDATION
+    // -------------------------------------------------
+
+    if (
+      selectedRoomDetails &&
+      checkRoomBookingConflict(
+        selectedRoomDetails,
+        form.startTime,
+        form.endTime
+      )
+    ) {
+      setErrors({
+        startTime:
+          'The selected room is already booked for the selected time period. Please choose another room or time.',
+      })
+
+      return
+    }
+
+    // -------------------------------------------------
     // OPEN CONFIRMATION MODAL
     // -------------------------------------------------
 
@@ -579,6 +706,20 @@ export default function BookRoom() {
         errorMessage =
           responseData.message ||
           responseData.title
+      }
+
+      // Intercept misleading backend capacity/participant errors for room time conflict
+      const lowerMsg = String(errorMessage).toLowerCase()
+      if (
+        (lowerMsg.includes('accommodate') ||
+          lowerMsg.includes('capacity') ||
+          lowerMsg.includes('overlap') ||
+          lowerMsg.includes('conflict') ||
+          lowerMsg.includes('no room can')) &&
+        (lowerMsg.includes('participant') || lowerMsg.includes('no room can'))
+      ) {
+        errorMessage =
+          'The selected room is already booked for the selected time period. Please choose another room or time.'
       }
 
       toast.addToast({

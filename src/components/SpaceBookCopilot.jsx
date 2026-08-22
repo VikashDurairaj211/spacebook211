@@ -25,7 +25,7 @@ export default function SpaceBookCopilot({ onClose }) {
         onClick={() => {
           if (onClose) onClose();
         }}
-        aria-label="Close Copilot"
+        aria-label="Close Aira"
         style={{
           position: 'absolute',
           top: '12px',
@@ -58,7 +58,7 @@ export default function SpaceBookCopilot({ onClose }) {
       {/* Microsoft Copilot Iframe */}
       <iframe
         src="https://copilotstudio.microsoft.com/environments/Default-13085c86-4bcb-460a-a6f0-b373421c6323/bots/crc1d_officeroomassistant_gSlTyn/webchat?__version__=2&enableFileAttachment=false&cliAgent=true"
-        title="SpaceBook Copilot"
+        title="Aira Assistant"
         frameBorder="0"
         style={{
           width: '100%',

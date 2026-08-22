@@ -154,16 +154,16 @@ const GUIDE_SECTIONS = [
     ],
   },
   {
-    id: 'spacebook-copilot',
-    title: 'SpaceBook AI Copilot',
+    id: 'aira-assistant',
+    title: 'Aira AI Assistant',
     icon: Sparkles,
     badge: 'AI Assistant',
     description: 'Using the built-in intelligent assistant for instant support.',
     topics: [
       {
-        title: 'What SpaceBook AI Can Do',
+        title: 'What Aira Can Do',
         content:
-          'SpaceBook features a built-in AI Copilot accessible via the floating icon in the top right corner. You can chat with it to get quick help on:',
+          'SpaceBook features a built-in AI Assistant named Aira accessible via the floating icon in the top right corner. You can chat with it to get quick help on:',
         steps: [
           'Checking room availability and recommending rooms based on team size.',
           'Explaining office booking rules, operational hours, and policies.',
@@ -462,7 +462,7 @@ export default function UserGuideModal({ open, onClose }) {
         <div className="flex items-center justify-between border-t border-line bg-slate-50 px-6 py-3 text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <Sparkles size={14} className="text-sky-600" />
-            <span>Need more help? Ask the floating <strong>SpaceBook AI Copilot</strong> anytime.</span>
+            <span>Need more help? Ask <strong>Aira</strong> anytime.</span>
           </div>
 
           <button

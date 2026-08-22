@@ -122,7 +122,7 @@ export default function Layout() {
                 {/* Message Content */}
                 <div className="flex flex-col text-left">
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="font-semibold text-xs text-sky-950">SpaceBook AI</span>
+                    <span className="font-semibold text-xs text-sky-950">Aira</span>
                     <span className="flex h-2 w-2 relative" title="Online">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -138,20 +138,20 @@ export default function Layout() {
               </div>
             )}
 
-            {/* Branded SpaceBook AI Assistant Button */}
+            {/* Branded Aira Assistant Button */}
             <button
               type="button"
               onClick={() => setIsCopilotOpen(true)}
               className="relative flex items-center justify-center w-13 h-13 rounded-full bg-gradient-to-tr from-sky-700 via-sky-600 to-sky-500 text-white shadow-lg shadow-sky-600/30 hover:shadow-xl hover:shadow-sky-500/40 hover:scale-105 active:scale-95 transition-all duration-300 border-2 border-white focus:outline-none focus:ring-4 focus:ring-sky-200 group flex-shrink-0"
               style={{ width: '52px', height: '52px' }}
-              title="SpaceBook AI Assistant - Ask doubts or get help"
-              aria-label="Open SpaceBook AI Assistant"
+              title="Aira Assistant - Ask doubts or get help"
+              aria-label="Open Aira Assistant"
             >
-              {/* Inner container with SpaceBook Logo */}
+              {/* Inner container with Logo */}
               <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/95 shadow-inner p-1">
                 <img
                   src="/Logo.png"
-                  alt="SpaceBook Assistant"
+                  alt="Aira Assistant"
                   className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110"
                 />
               </div>
