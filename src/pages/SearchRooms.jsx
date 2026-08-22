@@ -35,7 +35,7 @@ const INITIAL_FILTERS = {
 // =====================================================
 
 const OFFICE_START_TIME = "10:00";
-const OFFICE_END_TIME = "19:00";
+const OFFICE_END_TIME = "22:00";
 
 // =====================================================
 // HELPER FUNCTIONS
@@ -99,7 +99,7 @@ function ScrollableTimePicker({
       : ["", ""];
 
   const hoursList = Array.from(
-    { length: 10 },
+    { length: 13 },
     (_, index) =>
       String(index + 10).padStart(2, "0")
   );
@@ -145,10 +145,10 @@ function ScrollableTimePicker({
   function isHourDisabled(hour) {
     const numericHour = Number(hour);
 
-    // Office hours
+    // Office hours (10:00 AM to 10:00 PM)
     if (
       numericHour < 10 ||
-      numericHour > 19
+      numericHour > 22
     ) {
       return true;
     }
@@ -788,7 +788,7 @@ export default function SearchRooms() {
         OFFICE_START_TIME
     ) {
       setError(
-        "Bookings are allowed only during office hours: 10:00 AM to 07:00 PM."
+        "Bookings are allowed only during office hours: 10:00 AM to 10:00 PM."
       );
       return;
     }
@@ -799,7 +799,7 @@ export default function SearchRooms() {
         OFFICE_END_TIME
     ) {
       setError(
-        "Bookings are allowed only during office hours: 10:00 AM to 07:00 PM."
+        "Bookings are allowed only during office hours: 10:00 AM to 10:00 PM."
       );
       return;
     }

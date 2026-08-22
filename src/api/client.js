@@ -23,7 +23,7 @@ client.interceptors.request.use(
   }
 );
 
-// Handle authentication errors
+// Handle authentication errors and session timeout
 client.interceptors.response.use(
   (response) => {
     return response;
@@ -33,8 +33,9 @@ client.interceptors.response.use(
       localStorage.removeItem("spacebook_token");
       localStorage.removeItem("spacebook_user");
 
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
+      // Dispatch custom event for session expiry modal popup
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        window.dispatchEvent(new Event("spacebook_session_expired"));
       }
     }
 

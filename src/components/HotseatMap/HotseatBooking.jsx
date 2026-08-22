@@ -143,7 +143,7 @@ function CustomTimePicker({ value, onChange, selectedDate }) {
     : ["", ""];
 
   const hours = Array.from(
-    { length: 10 },
+    { length: 13 },
     (_, i) => String(i + 10).padStart(2, "0")
   );
 

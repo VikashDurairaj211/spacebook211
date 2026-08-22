@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sparkles, X } from 'lucide-react'
 
@@ -6,11 +6,25 @@ import TopNav from './TopNav'
 import Sidebar from './Sidebar'
 import { ToastProvider } from '../common/ToastProvider'
 import SpaceBookCopilot from '../SpaceBookCopilot'
+import SessionExpiredModal from '../common/SessionExpiredModal'
 
 export default function Layout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [isCopilotOpen, setIsCopilotOpen] = useState(false)
   const [showCopilotBubble, setShowCopilotBubble] = useState(true)
+  const [sessionExpired, setSessionExpired] = useState(false)
+
+  // Listen for session expiry from API interceptor
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setSessionExpired(true)
+    }
+
+    window.addEventListener('spacebook_session_expired', handleSessionExpired)
+    return () => {
+      window.removeEventListener('spacebook_session_expired', handleSessionExpired)
+    }
+  }, [])
 
   // compute sidebar width classes for main margin
   const mainMarginClass = sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'
@@ -140,6 +154,14 @@ export default function Layout() {
             </button>
           </div>
         )}
+
+        {/* ================================
+            SESSION EXPIRED POPUP MODAL
+           ================================= */}
+        <SessionExpiredModal
+          open={sessionExpired}
+          onClose={() => setSessionExpired(false)}
+        />
 
       </div>
 

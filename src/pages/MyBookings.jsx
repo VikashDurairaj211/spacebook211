@@ -719,7 +719,7 @@ export default function MyBookings() {
     }
 
     const OFFICE_START = "10:00";
-    const OFFICE_END = "19:00";
+    const OFFICE_END = "22:00";
 
     if (startTime < OFFICE_START) {
       toast.addToast({
@@ -735,7 +735,7 @@ export default function MyBookings() {
       toast.addToast({
         type: "error",
         title:
-          "End time cannot be after 7:00 PM.",
+          "End time cannot be after 10:00 PM.",
       });
 
       return false;
@@ -1742,7 +1742,7 @@ export default function MyBookings() {
                     <Input
                       type="time"
                       min="10:00"
-                      max="19:00"
+                      max="22:00"
                       value={formatDisplayTime(
                         selected.startTime
                       )}
@@ -1762,7 +1762,7 @@ export default function MyBookings() {
                     <Input
                       type="time"
                       min="10:00"
-                      max="19:00"
+                      max="22:00"
                       value={formatDisplayTime(
                         selected.endTime
                       )}
@@ -1782,7 +1782,7 @@ export default function MyBookings() {
                 <p className="text-xs text-slate-500">
                   Booking hours:{" "}
                   <span className="font-semibold">
-                    10:00 AM - 7:00 PM
+                    10:00 AM - 10:00 PM
                   </span>
                 </p>
 

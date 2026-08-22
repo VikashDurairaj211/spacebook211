@@ -477,7 +477,7 @@ export default function BookRoom() {
       '10:00'
 
     const OFFICE_END_TIME =
-      '19:01'
+      '22:01'
 
     if (
       form.startTime <
@@ -485,7 +485,7 @@ export default function BookRoom() {
     ) {
       setErrors({
         startTime:
-          'Bookings are allowed only between 10:00 AM and 07:00 PM.',
+          'Bookings are allowed only between 10:00 AM and 10:00 PM.',
       })
 
       return
@@ -497,7 +497,7 @@ export default function BookRoom() {
     ) {
       setErrors({
         endTime:
-          'Bookings are allowed only between 10:00 AM and 07:00 PM.',
+          'Bookings are allowed only between 10:00 AM and 10:00 PM.',
       })
 
       return

@@ -421,7 +421,6 @@ export default function Reports() {
 
   const hourlyDistributionData = useMemo(() => {
     const slots = {
-      '09:00': 0,
       '10:00': 0,
       '11:00': 0,
       '12:00': 0,
@@ -431,6 +430,10 @@ export default function Reports() {
       '16:00': 0,
       '17:00': 0,
       '18:00': 0,
+      '19:00': 0,
+      '20:00': 0,
+      '21:00': 0,
+      '22:00': 0,
     }
 
     filteredBookings.forEach((b) => {
