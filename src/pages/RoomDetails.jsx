@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { getRoomById } from '../api/rooms'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
 import Loader from '../components/common/Loader'
+
 
 export default function RoomDetails() {
   const [searchParams] = useSearchParams()

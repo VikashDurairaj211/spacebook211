@@ -15,12 +15,6 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useState, useMemo, useRef, useEffect } from 'react'
 
 import client from '../../api/client'
-
-import {
-  rooms as ROOMS,
-  bookings as BOOKINGS,
-} from '../../services/mockData'
-
 import NotificationDropdown from '../common/NotificationDropdown'
 
 export default function TopNav({
@@ -327,8 +321,8 @@ export default function TopNav({
 
     const query = searchInput.trim().toLowerCase()
 
-    const roomDataSource = liveRooms.length > 0 ? liveRooms : ROOMS
-    const bookingDataSource = liveBookings.length > 0 ? liveBookings : BOOKINGS
+    const roomDataSource = liveRooms
+    const bookingDataSource = liveBookings
 
     const matchedRooms = roomDataSource
       .filter((room) => {
