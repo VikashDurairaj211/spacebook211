@@ -71,6 +71,7 @@ export default function BusinessDatePicker({
   label,
   error,
   disabled = false,
+  className = '',
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef(null)
@@ -99,7 +100,7 @@ export default function BusinessDatePicker({
 
   // Handle outside click to close dropdown
   useEffect(() => {
-    function handleClickOutside(event) {
+    const handleClickOutside = (event) => {
       if (
         containerRef.current &&
         !containerRef.current.contains(event.target)
@@ -177,25 +178,25 @@ export default function BusinessDatePicker({
         onClick={() => {
           if (!disabled) setIsOpen((prev) => !prev)
         }}
-        className={`flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border bg-sky-50/70 hover:bg-sky-100/70 px-3 text-sm shadow-sm transition-colors ${
+        className={`flex h-10 w-full min-w-[190px] cursor-pointer items-center justify-between gap-2 rounded-lg border bg-sky-50/70 hover:bg-sky-100/70 px-3 text-sm shadow-sm transition-colors ${
           disabled
             ? 'cursor-not-allowed bg-slate-100 opacity-60'
             : error
             ? 'border-red-300 bg-red-50/30 hover:border-red-400'
             : 'border-sky-300/80 hover:border-sky-400'
-        }`}
+        } ${className}`}
       >
         <span
-          className={
+          className={`whitespace-nowrap ${
             value ? 'text-sky-950 font-semibold' : 'text-slate-500'
-          }
+          }`}
         >
           {formatDisplay(value)}
         </span>
 
         {/* Calendar Icon */}
         <svg
-          className="h-4 w-4 text-sky-700"
+          className="h-4 w-4 shrink-0 text-sky-700"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
