@@ -121,6 +121,7 @@ export default function TopNav({
               : raw.data || raw.bookings || []
             setLiveBookings(list)
           }
+        } else {
           const now = new Date()
           const day = now.getDay()
           const target = new Date(now)
