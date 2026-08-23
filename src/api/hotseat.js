@@ -26,3 +26,13 @@ export async function updateHotseatBooking(id, booking) {
   const { data } = await client.put(`/Hotseat/${id}`, booking);
   return data;
 }
+
+export async function checkInHotseatBooking(id) {
+  const { data } = await client.post(`/Hotseat/${id}/check-in`);
+  return data;
+}
+
+export async function getHotseatStats() {
+  const { data } = await client.get("/Hotseat/stats");
+  return data;
+}

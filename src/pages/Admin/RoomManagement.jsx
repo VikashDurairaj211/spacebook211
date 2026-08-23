@@ -519,7 +519,7 @@ export default function RoomManagement() {
       </div>
 
       {/* CONTROL BAR */}
-      <Card className="hover:-translate-y-0 hover:shadow-none">
+      <Card>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <h2 className="font-display text-sm font-bold text-ink">Room Inventory</h2>

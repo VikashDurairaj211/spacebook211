@@ -29,3 +29,9 @@ export async function rejectBooking(id) {
   const { data } = await client.patch(`/admin/bookings/${id}/reject`);
   return data;
 }
+
+// DELETE Booking (Admin deletion/override)
+export async function deleteAdminBooking(id) {
+  const { data } = await client.delete(`/admin/bookings/${id}`);
+  return data;
+}

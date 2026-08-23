@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import client from '../../api/client'
+import { deleteAdminBooking } from '../../api/adminBookings'
 
 import Card from '../../components/common/Card'
 import Button from '../../components/common/Button'
@@ -352,6 +353,30 @@ export default function BookingManagement() {
   }
 
   // =====================================================
+  // Delete / Cancel Booking (Admin Override)
+  // =====================================================
+
+  async function handleDeleteBooking(bookingId) {
+    if (!bookingId) return
+    const id = String(bookingId).replace(/^#/, '')
+    if (!window.confirm(`Are you sure you want to cancel and remove booking #${id}?`)) {
+      return
+    }
+
+    try {
+      setLoading(true)
+      await deleteAdminBooking(id)
+      closeModal()
+      await fetchBookingData()
+    } catch (err) {
+      console.error('Failed to delete booking:', err)
+      alert(err.response?.data?.message || 'Failed to delete booking.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // =====================================================
   // UI
   // =====================================================
 
@@ -631,6 +656,14 @@ export default function BookingManagement() {
                       >
                         View
                       </button>
+                      <button
+                        onClick={() =>
+                          handleDeleteBooking(booking.bookingId)
+                        }
+                        className="text-red-600 hover:text-red-800 font-bold text-sm hover:underline ml-1"
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -653,7 +686,14 @@ export default function BookingManagement() {
           onClose={closeModal}
           title="Booking Details"
           footer={
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full items-center justify-between">
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={() => handleDeleteBooking(selectedBooking.bookingId)}
+              >
+                Cancel Booking
+              </Button>
               <Button
                 size="sm"
                 variant="secondary"

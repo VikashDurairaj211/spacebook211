@@ -8,7 +8,7 @@ export default function DashboardCard({ title, value, description, tone = 'defau
     warning: 'border-signal bg-signal/10 text-ink',
   }
 
-  const sharedClasses = `rounded-xl border p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${toneStyles[tone] || toneStyles.default}`
+  const sharedClasses = `rounded-xl border p-4 shadow-sm ${toneStyles[tone] || toneStyles.default}`
   
   const content = (
     <>

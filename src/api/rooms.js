@@ -92,7 +92,18 @@ export async function deleteAdminRoom(id) {
 }
 
 // PATCH /api/admin/rooms/{id}/status
-export async function updateAdminRoomStatus(id, status) {
-  const { data } = await client.patch(`/admin/rooms/${id}/status`, { status });
+export async function updateAdminRoomStatus(id, isBlocked) {
+  const isBlockedBool =
+    typeof isBlocked === "boolean"
+      ? isBlocked
+      : typeof isBlocked === "object" && isBlocked !== null
+      ? Boolean(isBlocked.isBlocked ?? isBlocked.IsBlocked)
+      : String(isBlocked).toLowerCase() === "maintenance" ||
+        String(isBlocked).toLowerCase() === "blocked" ||
+        String(isBlocked).toLowerCase() === "true";
+
+  const { data } = await client.patch(`/admin/rooms/${id}/status`, {
+    isBlocked: isBlockedBool,
+  });
   return data;
 }

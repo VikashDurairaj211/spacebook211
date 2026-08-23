@@ -53,7 +53,7 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
             {!collapsed && (
               <div className="pt-2 space-y-4">
                 {/* Office Policy Card */}
-                <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-sky-300">
+                <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-800">
                       Office Policy
@@ -102,7 +102,7 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
             {!collapsed && (
               <div className="mt-6 pt-2 space-y-4">
                 {/* Office Policy Card for Admin */}
-                <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-sky-300">
+                <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-800">
                       Office Policy

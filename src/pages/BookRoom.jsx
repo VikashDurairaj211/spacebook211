@@ -22,6 +22,26 @@ function getLocalDateStr(dateObj = new Date()) {
     .slice(0, 10)
 }
 
+function isWeekendDate(dateStr) {
+  if (!dateStr) return false
+  const [y, m, d] = dateStr.split('-').map(Number)
+  if (!y || !m || !d) return false
+  const dt = new Date(y, m - 1, d)
+  const day = dt.getDay()
+  return day === 0 || day === 6
+}
+
+function getNextBusinessDayStr(dateObj = new Date()) {
+  const next = new Date(dateObj)
+  const day = next.getDay()
+  if (day === 6) {
+    next.setDate(next.getDate() + 2)
+  } else if (day === 0) {
+    next.setDate(next.getDate() + 1)
+  }
+  return getLocalDateStr(next)
+}
+
 // =====================================================
 // HELPER - GET LOCAL TIME
 // =====================================================
@@ -357,17 +377,17 @@ function ScrollableTimePicker({
       <Field label={label}>
         <div
           onClick={() => setIsOpen((c) => !c)}
-          className={`flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border bg-white px-3 text-sm shadow-sm transition-colors ${
+          className={`flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border bg-sky-50/70 hover:bg-sky-100/70 px-3 text-sm shadow-sm transition-colors ${
             error
-              ? 'border-red-300 hover:border-red-400'
-              : 'border-slate-300 hover:border-slate-400'
+              ? 'border-red-300 hover:border-red-400 bg-red-50/30'
+              : 'border-sky-300/80 hover:border-sky-400'
           }`}
         >
-          <span className={value ? 'text-slate-900' : 'text-slate-400'}>
+          <span className={value ? 'text-sky-950 font-semibold' : 'text-slate-500'}>
             {value ? String(value).substring(0, 5) : 'Select time'}
           </span>
           <svg
-            className={`h-4 w-4 text-slate-500 transition-transform ${
+            className={`h-4 w-4 text-sky-700 transition-transform ${
               isOpen ? 'rotate-180' : ''
             }`}
             fill="none"
@@ -388,10 +408,10 @@ function ScrollableTimePicker({
       </Field>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 flex w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+        <div className="absolute z-50 mt-1 flex w-full overflow-hidden rounded-xl border border-sky-200 bg-white shadow-xl">
           {/* HOURS */}
           <div className="flex flex-1 flex-col border-r border-slate-100 min-w-0">
-            <div className="bg-slate-50 py-1.5 text-xs font-semibold text-slate-600 border-b border-slate-100 text-center select-none">
+            <div className="bg-sky-100 text-sky-900 py-1.5 text-xs font-bold border-b border-sky-200 text-center select-none">
               Hour
             </div>
             <div className="max-h-48 overflow-y-auto p-1.5 space-y-1 text-center [scrollbar-width:thin]">
@@ -409,7 +429,7 @@ function ScrollableTimePicker({
                         ? 'cursor-not-allowed bg-slate-50 text-slate-300 opacity-50'
                         : selected
                         ? 'bg-[#2F6FE0] text-white font-bold shadow-sm'
-                        : 'text-slate-700 hover:bg-slate-100'
+                        : 'text-slate-700 hover:bg-sky-50'
                     }`}
                   >
                     {hour}
@@ -421,7 +441,7 @@ function ScrollableTimePicker({
 
           {/* MINUTES */}
           <div className="flex flex-1 flex-col min-w-0">
-            <div className="bg-slate-50 py-1.5 text-xs font-semibold text-slate-600 border-b border-slate-100 text-center select-none">
+            <div className="bg-sky-100 text-sky-900 py-1.5 text-xs font-bold border-b border-sky-200 text-center select-none">
               Min
             </div>
             <div className="max-h-48 overflow-y-auto p-1.5 space-y-1 text-center [scrollbar-width:thin]">
@@ -440,7 +460,7 @@ function ScrollableTimePicker({
                         ? 'cursor-not-allowed bg-slate-50 text-slate-300 opacity-50'
                         : selected
                         ? 'bg-[#2F6FE0] text-white font-bold shadow-sm'
-                        : 'text-slate-700 hover:bg-slate-100'
+                        : 'text-slate-700 hover:bg-sky-50'
                     }`}
                   >
                     {minute}
@@ -467,10 +487,11 @@ export default function BookRoom() {
     searchParams.get('roomId')
 
   const todayStr = getLocalDateStr()
+  const defaultBusinessDay = getNextBusinessDayStr()
 
   const prefillDate =
     searchParams.get('date') ||
-    todayStr
+    defaultBusinessDay
 
   const prefillStart =
     searchParams.get('startTime') || ''
@@ -655,6 +676,14 @@ export default function BookRoom() {
       [key]: value,
     }))
 
+    if (key === 'date' && isWeekendDate(value)) {
+      setErrors((prev) => ({
+        ...prev,
+        date: 'Room reservations are only permitted on business working days (Monday to Friday). Saturdays and Sundays are unavailable.',
+      }))
+      return
+    }
+
     setErrors((prev) => ({
       ...prev,
       [key]: '',
@@ -722,6 +751,9 @@ export default function BookRoom() {
     if (!form.date) {
       newErrors.date =
         'Date is required.'
+    } else if (isWeekendDate(form.date)) {
+      newErrors.date =
+        'Room reservations are only permitted on business working days (Monday to Friday). Saturdays and Sundays are unavailable.'
     }
 
     if (!form.startTime) {

@@ -22,3 +22,8 @@ export async function updateBooking(id, booking) {
   );
   return data;
 }
+
+export async function checkInRoomBooking(id) {
+  const { data } = await client.post(`/employee/bookings/${id}/checkin`);
+  return data;
+}

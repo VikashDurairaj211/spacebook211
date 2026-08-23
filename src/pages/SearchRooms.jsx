@@ -21,19 +21,34 @@ const ROOM_TYPES = [
   { id: 3, name: "Discussion" },
 ];
 
-const getTodayFormatted = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+const isWeekendDate = (dateStr) => {
+  if (!dateStr) return false;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return false;
+  const dt = new Date(y, m - 1, d);
+  const day = dt.getDay();
+  return day === 0 || day === 6;
+};
+
+const getNextBusinessDayFormatted = () => {
+  const next = new Date();
+  const day = next.getDay();
+  if (day === 6) {
+    next.setDate(next.getDate() + 2);
+  } else if (day === 0) {
+    next.setDate(next.getDate() + 1);
+  }
+  const year = next.getFullYear();
+  const month = String(next.getMonth() + 1).padStart(2, "0");
+  const d = String(next.getDate()).padStart(2, "0");
+  return `${year}-${month}-${d}`;
 };
 
 const INITIAL_FILTERS = {
   module: "",
   roomTypeId: "",
   capacity: "",
-  date: getTodayFormatted(),
+  date: getNextBusinessDayFormatted(),
   startTime: "",
   endTime: "",
 };
@@ -374,13 +389,13 @@ function ScrollableTimePicker({
           onClick={() =>
             setIsOpen((current) => !current)
           }
-          className="flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm hover:border-slate-400"
+          className="flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border border-sky-300/80 bg-sky-50/70 hover:bg-sky-100/70 px-3 text-sm shadow-sm transition-colors"
         >
           <span
             className={
               value
-                ? "text-slate-900"
-                : "text-slate-400"
+                ? "text-sky-950 font-semibold"
+                : "text-slate-500"
             }
           >
             {value
@@ -389,7 +404,7 @@ function ScrollableTimePicker({
           </span>
 
           <svg
-            className={`h-4 w-4 text-slate-500 transition-transform ${
+            className={`h-4 w-4 text-sky-700 transition-transform ${
               isOpen
                 ? "rotate-180"
                 : ""
@@ -409,11 +424,11 @@ function ScrollableTimePicker({
       </Field>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 flex w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+        <div className="absolute z-50 mt-1 flex w-full overflow-hidden rounded-xl border border-sky-200 bg-white shadow-xl">
 
           {/* HOURS */}
           <div className="flex flex-1 flex-col border-r border-slate-100 min-w-0">
-            <div className="bg-slate-50 py-1.5 text-xs font-semibold text-slate-600 border-b border-slate-100 text-center select-none">
+            <div className="bg-sky-100 text-sky-900 py-1.5 text-xs font-bold border-b border-sky-200 text-center select-none">
               Hour
             </div>
 
@@ -433,7 +448,7 @@ function ScrollableTimePicker({
                         ? "cursor-not-allowed bg-slate-50 text-slate-300 opacity-50"
                         : selected
                         ? "bg-[#2F6FE0] text-white font-bold shadow-sm"
-                        : "text-slate-700 hover:bg-slate-100"
+                        : "text-slate-700 hover:bg-sky-50"
                     }`}
                   >
                     {hour}
@@ -445,7 +460,7 @@ function ScrollableTimePicker({
 
           {/* MINUTES */}
           <div className="flex flex-1 flex-col min-w-0">
-            <div className="bg-slate-50 py-1.5 text-xs font-semibold text-slate-600 border-b border-slate-100 text-center select-none">
+            <div className="bg-sky-100 text-sky-900 py-1.5 text-xs font-bold border-b border-sky-200 text-center select-none">
               Min
             </div>
 
@@ -466,7 +481,7 @@ function ScrollableTimePicker({
                         ? "cursor-not-allowed bg-slate-50 text-slate-300 opacity-50"
                         : selected
                         ? "bg-[#2F6FE0] text-white font-bold shadow-sm"
-                        : "text-slate-700 hover:bg-slate-100"
+                        : "text-slate-700 hover:bg-sky-50"
                     }`}
                   >
                     {minute}
@@ -475,7 +490,6 @@ function ScrollableTimePicker({
               })}
             </div>
           </div>
-
         </div>
       )}
     </div>
