@@ -21,11 +21,19 @@ const ROOM_TYPES = [
   { id: 3, name: "Discussion" },
 ];
 
+const getTodayFormatted = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const INITIAL_FILTERS = {
   module: "",
   roomTypeId: "",
   capacity: "",
-  date: "",
+  date: getTodayFormatted(),
   startTime: "",
   endTime: "",
 };
@@ -116,14 +124,16 @@ function ScrollableTimePicker({
 
   const now = new Date();
 
-  const todayStr = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-  ].join("-");
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const todayStr = `${year}-${month}-${day}`;
 
   const isToday =
-    selectedDate === todayStr;
+    !selectedDate || selectedDate === todayStr;
+
+  const isPastDate =
+    Boolean(selectedDate && selectedDate < todayStr);
 
   const currentHour =
     now.getHours();
@@ -153,25 +163,37 @@ function ScrollableTimePicker({
       return true;
     }
 
-    // Today - don't allow past hour
-    if (
-      isToday &&
-      numericHour < currentHour
-    ) {
+    if (isPastDate) {
       return true;
     }
 
+    // Today - don't allow past hour
+    if (isToday) {
+      if (numericHour < currentHour) {
+        return true;
+      }
+
+      if (numericHour === currentHour) {
+        const hasValidMinute = minutesList.some(
+          (minute) => !isMinuteDisabled(hour, minute)
+        );
+        if (!hasValidMinute) {
+          return true;
+        }
+      }
+    }
+
     // If this is the END time,
-    // don't allow hour before START time.
+    // don't allow hour if entire hour is before START time.
     if (
       minimumTimeMinutes !== null &&
       minimumTimeMinutes !== undefined
     ) {
-      const hourStart =
-        numericHour * 60;
+      const hourMax =
+        numericHour * 60 + 59;
 
       if (
-        hourStart <
+        hourMax <=
         minimumTimeMinutes
       ) {
         return true;
@@ -206,7 +228,11 @@ function ScrollableTimePicker({
       return true;
     }
 
-    // Today - don't allow past time
+    if (isPastDate) {
+      return true;
+    }
+
+    // Today - strictly don't allow past time
     if (isToday) {
       const currentTotalMinutes =
         currentHour * 60 +
@@ -220,7 +246,7 @@ function ScrollableTimePicker({
       }
     }
 
-    // End time must be after start time
+    // End time must be strictly after start time
     if (
       minimumTimeMinutes !== null &&
       minimumTimeMinutes !== undefined
@@ -286,8 +312,14 @@ function ScrollableTimePicker({
   // ===================================================
 
   function handleMinuteClick(minute) {
-    const hour =
-      selectedHour || "10";
+    let hour = selectedHour;
+    if (!hour || isHourDisabled(hour)) {
+      const firstAvailableHour = hoursList.find(
+        (h) => !isHourDisabled(h)
+      );
+      if (!firstAvailableHour) return;
+      hour = firstAvailableHour;
+    }
 
     if (
       isMinuteDisabled(
@@ -377,89 +409,73 @@ function ScrollableTimePicker({
       </Field>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 flex w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
+        <div className="absolute z-50 mt-1 flex w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
 
           {/* HOURS */}
-
-          <div className="max-h-60 flex-1 overflow-y-auto border-r border-slate-100 p-1 text-center">
-
-            <div className="sticky top-0 z-10 bg-slate-50 py-2 text-xs font-semibold text-slate-500">
+          <div className="flex flex-1 flex-col border-r border-slate-100 min-w-0">
+            <div className="bg-slate-50 py-1.5 text-xs font-semibold text-slate-600 border-b border-slate-100 text-center select-none">
               Hour
             </div>
 
-            {hoursList.map((hour) => {
-              const disabled =
-                isHourDisabled(hour);
+            <div className="max-h-48 overflow-y-auto p-1.5 space-y-1 text-center [scrollbar-width:thin]">
+              {hoursList.map((hour) => {
+                const disabled = isHourDisabled(hour);
+                const selected = selectedHour === hour;
 
-              const selected =
-                selectedHour === hour;
-
-              return (
-                <button
-                  key={hour}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() =>
-                    handleHourClick(hour)
-                  }
-                  className={`block w-full rounded px-2 py-1.5 text-sm ${
-                    disabled
-                      ? "cursor-not-allowed bg-slate-100 text-slate-300"
-                      : selected
-                      ? "bg-blue-600 font-bold text-white"
-                      : "text-slate-700 hover:bg-blue-50"
-                  }`}
-                >
-                  {hour}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={hour}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => handleHourClick(hour)}
+                    className={`block w-full rounded-md py-1.5 text-xs font-semibold transition-colors text-center ${
+                      disabled
+                        ? "cursor-not-allowed bg-slate-50 text-slate-300 opacity-50"
+                        : selected
+                        ? "bg-[#2F6FE0] text-white font-bold shadow-sm"
+                        : "text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {hour}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* MINUTES */}
-
-          <div className="max-h-60 flex-1 overflow-y-auto p-1 text-center">
-
-            <div className="sticky top-0 z-10 bg-slate-50 py-2 text-xs font-semibold text-slate-500">
+          <div className="flex flex-1 flex-col min-w-0">
+            <div className="bg-slate-50 py-1.5 text-xs font-semibold text-slate-600 border-b border-slate-100 text-center select-none">
               Min
             </div>
 
-            {minutesList.map((minute) => {
-              const hour =
-                selectedHour || "10";
+            <div className="max-h-48 overflow-y-auto p-1.5 space-y-1 text-center [scrollbar-width:thin]">
+              {minutesList.map((minute) => {
+                const hour = selectedHour || "10";
+                const disabled = isMinuteDisabled(hour, minute);
+                const selected = selectedMinute === minute;
 
-              const disabled =
-                isMinuteDisabled(
-                  hour,
-                  minute
+                return (
+                  <button
+                    key={minute}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => handleMinuteClick(minute)}
+                    className={`block w-full rounded-md py-1.5 text-xs font-semibold transition-colors text-center ${
+                      disabled
+                        ? "cursor-not-allowed bg-slate-50 text-slate-300 opacity-50"
+                        : selected
+                        ? "bg-[#2F6FE0] text-white font-bold shadow-sm"
+                        : "text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {minute}
+                  </button>
                 );
-
-              const selected =
-                selectedMinute === minute;
-
-              return (
-                <button
-                  key={minute}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() =>
-                    handleMinuteClick(
-                      minute
-                    )
-                  }
-                  className={`block w-full rounded px-2 py-1.5 text-sm ${
-                    disabled
-                      ? "cursor-not-allowed bg-slate-100 text-slate-300"
-                      : selected
-                      ? "bg-blue-600 font-bold text-white"
-                      : "text-slate-700 hover:bg-blue-50"
-                  }`}
-                >
-                  {minute}
-                </button>
-              );
-            })}
+              })}
+            </div>
           </div>
+
         </div>
       )}
     </div>

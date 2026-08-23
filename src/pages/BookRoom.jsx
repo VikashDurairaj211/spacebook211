@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { createBooking } from '../api/bookings'
 import { getRoomAvailability } from '../api/rooms'
@@ -217,6 +217,242 @@ function checkRoomBookingConflict(room, requestedStart, requestedEnd) {
   }
 
   return false
+}
+
+// =====================================================
+// SCROLLABLE TIME PICKER
+// =====================================================
+
+function ScrollableTimePicker({
+  label,
+  value,
+  onChange,
+  selectedDate,
+  minTime,
+  error,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef(null)
+
+  const currentValue = value ? String(value).substring(0, 5) : ''
+
+  const [selectedHour, selectedMinute] = currentValue
+    ? currentValue.split(':')
+    : ['', '']
+
+  const hoursList = Array.from(
+    { length: 13 },
+    (_, index) => String(index + 10).padStart(2, '0')
+  )
+
+  const minutesList = Array.from(
+    { length: 60 },
+    (_, index) => String(index).padStart(2, '0')
+  )
+
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const todayStr = `${year}-${month}-${day}`
+
+  const isToday = !selectedDate || selectedDate === todayStr
+  const isPastDate = Boolean(selectedDate && selectedDate < todayStr)
+
+  const currentHour = now.getHours()
+  const currentMinute = now.getMinutes()
+
+  const minimumTimeMinutes = minTime
+    ? (() => {
+        const [h, m] = minTime.substring(0, 5).split(':').map(Number)
+        return Number.isNaN(h) || Number.isNaN(m) ? null : h * 60 + m
+      })()
+    : null
+
+  function isHourDisabled(hour) {
+    const numericHour = Number(hour)
+    if (numericHour < 10 || numericHour > 22) return true
+    if (isPastDate) return true
+
+    if (isToday) {
+      if (numericHour < currentHour) return true
+      if (numericHour === currentHour) {
+        const hasValidMinute = minutesList.some(
+          (minute) => !isMinuteDisabled(hour, minute)
+        );
+        if (!hasValidMinute) return true
+      }
+    }
+
+    if (minimumTimeMinutes !== null) {
+      const hourMax = numericHour * 60 + 59
+      if (hourMax <= minimumTimeMinutes) return true
+    }
+
+    return false
+  }
+
+  function isMinuteDisabled(hour, minute) {
+    const numericHour = Number(hour)
+    const numericMinute = Number(minute)
+    const selectedMinutes = numericHour * 60 + numericMinute
+
+    if (selectedMinutes < 10 * 60 || selectedMinutes > 22 * 60) return true
+    if (isPastDate) return true
+
+    if (isToday) {
+      const currentTotal = currentHour * 60 + currentMinute
+      if (selectedMinutes <= currentTotal) return true
+    }
+
+    if (minimumTimeMinutes !== null) {
+      if (selectedMinutes <= minimumTimeMinutes) return true
+    }
+
+    return false
+  }
+
+  function handleHourClick(hour) {
+    if (isHourDisabled(hour)) return
+
+    const minuteToUse = selectedMinute || '00'
+    if (isMinuteDisabled(hour, minuteToUse)) {
+      const firstAvailableMinute = minutesList.find(
+        (minute) => !isMinuteDisabled(hour, minute)
+      )
+      if (!firstAvailableMinute) return
+      onChange(`${hour}:${firstAvailableMinute}`)
+      return
+    }
+    onChange(`${hour}:${minuteToUse}`)
+  }
+
+  function handleMinuteClick(minute) {
+    let hour = selectedHour
+    if (!hour || isHourDisabled(hour)) {
+      const firstAvailableHour = hoursList.find((h) => !isHourDisabled(h))
+      if (!firstAvailableHour) return
+      hour = firstAvailableHour
+    }
+    if (isMinuteDisabled(hour, minute)) return
+    onChange(`${hour}:${minute}`)
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target)
+      ) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () =>
+      document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <Field label={label}>
+        <div
+          onClick={() => setIsOpen((c) => !c)}
+          className={`flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border bg-white px-3 text-sm shadow-sm transition-colors ${
+            error
+              ? 'border-red-300 hover:border-red-400'
+              : 'border-slate-300 hover:border-slate-400'
+          }`}
+        >
+          <span className={value ? 'text-slate-900' : 'text-slate-400'}>
+            {value ? String(value).substring(0, 5) : 'Select time'}
+          </span>
+          <svg
+            className={`h-4 w-4 text-slate-500 transition-transform ${
+              isOpen ? 'rotate-180' : ''
+            }`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </div>
+        {error && (
+          <p className="mt-1 text-sm font-medium text-red-600">{error}</p>
+        )}
+      </Field>
+
+      {isOpen && (
+        <div className="absolute z-50 mt-1 flex w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+          {/* HOURS */}
+          <div className="flex flex-1 flex-col border-r border-slate-100 min-w-0">
+            <div className="bg-slate-50 py-1.5 text-xs font-semibold text-slate-600 border-b border-slate-100 text-center select-none">
+              Hour
+            </div>
+            <div className="max-h-48 overflow-y-auto p-1.5 space-y-1 text-center [scrollbar-width:thin]">
+              {hoursList.map((hour) => {
+                const disabled = isHourDisabled(hour)
+                const selected = selectedHour === hour
+                return (
+                  <button
+                    key={hour}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => handleHourClick(hour)}
+                    className={`block w-full rounded-md py-1.5 text-xs font-semibold transition-colors text-center ${
+                      disabled
+                        ? 'cursor-not-allowed bg-slate-50 text-slate-300 opacity-50'
+                        : selected
+                        ? 'bg-[#2F6FE0] text-white font-bold shadow-sm'
+                        : 'text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    {hour}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* MINUTES */}
+          <div className="flex flex-1 flex-col min-w-0">
+            <div className="bg-slate-50 py-1.5 text-xs font-semibold text-slate-600 border-b border-slate-100 text-center select-none">
+              Min
+            </div>
+            <div className="max-h-48 overflow-y-auto p-1.5 space-y-1 text-center [scrollbar-width:thin]">
+              {minutesList.map((minute) => {
+                const hour = selectedHour || '10'
+                const disabled = isMinuteDisabled(hour, minute)
+                const selected = selectedMinute === minute
+                return (
+                  <button
+                    key={minute}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => handleMinuteClick(minute)}
+                    className={`block w-full rounded-md py-1.5 text-xs font-semibold transition-colors text-center ${
+                      disabled
+                        ? 'cursor-not-allowed bg-slate-50 text-slate-300 opacity-50'
+                        : selected
+                        ? 'bg-[#2F6FE0] text-white font-bold shadow-sm'
+                        : 'text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    {minute}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // =====================================================
@@ -886,54 +1122,22 @@ export default function BookRoom() {
 
             </Field>
 
-            <Field label="Start Time">
+            <ScrollableTimePicker
+              label="Start Time"
+              value={form.startTime}
+              selectedDate={form.date}
+              onChange={(value) => update('startTime', value)}
+              error={errors.startTime}
+            />
 
-              <Input
-                type="time"
-                min={minStartTime}
-                max="19:01"
-                value={form.startTime}
-                onChange={(e) =>
-                  update(
-                    'startTime',
-                    e.target.value
-                  )
-                }
-              />
-
-              {errors.startTime && (
-                <p className="mt-1 text-sm font-medium text-red-600">
-                  {errors.startTime}
-                </p>
-              )}
-
-            </Field>
-
-            <Field label="End Time">
-
-              <Input
-                type="time"
-                min={
-                  form.startTime ||
-                  minStartTime
-                }
-                max="19:01"
-                value={form.endTime}
-                onChange={(e) =>
-                  update(
-                    'endTime',
-                    e.target.value
-                  )
-                }
-              />
-
-              {errors.endTime && (
-                <p className="mt-1 text-sm font-medium text-red-600">
-                  {errors.endTime}
-                </p>
-              )}
-
-            </Field>
+            <ScrollableTimePicker
+              label="End Time"
+              value={form.endTime}
+              selectedDate={form.date}
+              minTime={form.startTime}
+              onChange={(value) => update('endTime', value)}
+              error={errors.endTime}
+            />
 
           </div>
 

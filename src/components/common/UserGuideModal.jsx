@@ -287,7 +287,7 @@ export default function UserGuideModal({ open, onClose }) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-900/60 p-3 sm:p-6 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100000] font-sans flex items-center justify-center bg-slate-900/60 p-3 sm:p-6 backdrop-blur-md animate-in fade-in duration-200">
       <div className="relative flex h-[90vh] max-h-[820px] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-2xl">
         {/* =================================================
             Modal Header
@@ -298,7 +298,7 @@ export default function UserGuideModal({ open, onClose }) {
               <BookOpen size={20} />
             </div>
             <div>
-              <h2 className="font-display text-lg font-bold text-sky-950">
+              <h2 className="text-lg font-bold text-sky-950">
                 SpaceBook User Guide & Help Center
               </h2>
               <p className="text-xs text-slate-500">
@@ -350,7 +350,7 @@ export default function UserGuideModal({ open, onClose }) {
         <div className="flex flex-1 overflow-hidden">
           {/* Left Navigation Sidebar */}
           <div className="w-64 border-r border-line bg-slate-50/60 p-3 overflow-y-auto hidden md:block">
-            <p className="px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <p className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
               Guide Chapters
             </p>
             <nav className="mt-1 space-y-1">
@@ -363,7 +363,7 @@ export default function UserGuideModal({ open, onClose }) {
                     onClick={() => setActiveSectionId(section.id)}
                     className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${
                       isActive
-                        ? 'bg-sky-600 text-white shadow-sm'
+                        ? 'bg-sky-600 text-white shadow-sm font-bold'
                         : 'text-slate-700 hover:bg-slate-200/60 hover:text-slate-900'
                     }`}
                   >
@@ -386,7 +386,7 @@ export default function UserGuideModal({ open, onClose }) {
                 <span>Active Hours</span>
                 <Clock size={13} className="text-sky-600" />
               </div>
-              <p className="mt-1 text-xs font-mono font-bold text-sky-700">
+              <p className="mt-1 text-xs font-bold text-sky-700">
                 10:00 AM – 10:00 PM
               </p>
               <p className="mt-1 text-[10px] text-slate-500 leading-tight">
@@ -400,11 +400,11 @@ export default function UserGuideModal({ open, onClose }) {
             {/* Active Chapter Header */}
             <div className="border-b border-line pb-4">
               <div className="flex items-center gap-2">
-                <span className="rounded-full bg-sky-100 px-2.5 py-0.5 font-mono text-[10px] font-bold text-sky-800 uppercase tracking-wider">
+                <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-[11px] font-bold text-sky-800 uppercase tracking-wider">
                   {activeSection.badge}
                 </span>
               </div>
-              <h3 className="mt-1 font-display text-xl font-bold text-slate-900">
+              <h3 className="mt-1 text-xl font-bold text-slate-900">
                 {activeSection.title}
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -420,10 +420,10 @@ export default function UserGuideModal({ open, onClose }) {
                   className="rounded-2xl border border-slate-200/80 bg-slate-50/40 p-5 space-y-3 transition hover:border-sky-200 hover:bg-white"
                 >
                   <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-100 text-sky-800 font-mono text-xs font-bold">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-100 text-sky-800 text-xs font-bold">
                       {idx + 1}
                     </div>
-                    <h4 className="font-display text-sm font-bold text-slate-900">
+                    <h4 className="text-sm font-bold text-slate-900">
                       {topic.title}
                     </h4>
                   </div>
