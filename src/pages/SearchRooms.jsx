@@ -5,6 +5,7 @@ import { searchRooms } from "../api/rooms";
 import { getMyBookings } from "../api/bookings";
 
 import { Field, Input, Select } from "../components/common/Input";
+import BusinessDatePicker from "../components/common/BusinessDatePicker";
 import Button from "../components/common/Button";
 import Card from "../components/common/Card";
 import Loader from "../components/common/Loader";
@@ -1503,20 +1504,15 @@ export default function SearchRooms() {
 
             {/* DATE */}
 
-            <Field label="4. Booking Date">
-              <Input
-                type="date"
-                min={todayStr}
-                max={maxDateStr}
-                value={filters.date}
-                onChange={(e) =>
-                  updateFilter(
-                    "date",
-                    e.target.value
-                  )
-                }
-              />
-            </Field>
+            <BusinessDatePicker
+              label="4. Booking Date"
+              min={todayStr}
+              max={maxDateStr}
+              value={filters.date}
+              onChange={(value) =>
+                updateFilter("date", value)
+              }
+            />
 
             {/* START TIME */}
 

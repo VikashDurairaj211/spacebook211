@@ -25,6 +25,7 @@ export default function MyBookings() {
   const [selected, setSelected] = useState(null);
   const [mode, setMode] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
 
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("All");
@@ -628,6 +629,18 @@ export default function MyBookings() {
       return;
     }
 
+    const cleanId = Number(
+      String(selected.bookingId).replace(/^#/, "").trim()
+    );
+
+    if (!cleanId || isNaN(cleanId)) {
+      toast.addToast({
+        type: "error",
+        title: "Invalid booking ID.",
+      });
+      return;
+    }
+
     if (!selected?.isHotseat && (!cancelReason || !cancelReason.trim())) {
       toast.addToast({
         type: "error",
@@ -636,9 +649,11 @@ export default function MyBookings() {
       return;
     }
 
+    setCancelling(true);
+
     try {
       if (selected.isHotseat) {
-        await cancelHotseatBooking(selected.bookingId);
+        await cancelHotseatBooking(cleanId);
 
         toast.addToast({
           type: "success",
@@ -647,7 +662,7 @@ export default function MyBookings() {
         });
       } else {
         await cancelBooking(
-          selected.bookingId,
+          cleanId,
           { reason: cancelReason.trim() }
         );
 
@@ -671,14 +686,19 @@ export default function MyBookings() {
         err
       );
 
+      const errorMsg =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.response?.data?.title ||
+        err.message ||
+        "Unable to cancel booking.";
+
       toast.addToast({
         type: "error",
-        title:
-          err.response?.data?.message ||
-          err.response?.data?.title ||
-          err.message ||
-          "Unable to cancel booking.",
+        title: errorMsg,
       });
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -1638,13 +1658,43 @@ export default function MyBookings() {
           <>
             <Button
               variant="secondary"
+              disabled={cancelling}
               onClick={closeModal}
             >
               No
             </Button>
 
-            <Button onClick={cancel}>
-              Yes, Cancel
+            <Button
+              disabled={cancelling}
+              onClick={cancel}
+              className="flex items-center gap-2"
+            >
+              {cancelling ? (
+                <>
+                  <svg
+                    className="h-4 w-4 animate-spin text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  <span>Cancelling...</span>
+                </>
+              ) : (
+                "Yes, Cancel"
+              )}
             </Button>
           </>
         }

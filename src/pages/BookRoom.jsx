@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { createBooking } from '../api/bookings'
 import { getRoomAvailability } from '../api/rooms'
 import { Field, Input, Select } from '../components/common/Input'
+import BusinessDatePicker from '../components/common/BusinessDatePicker'
 import { useToast } from '../components/common/ToastProvider'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
@@ -915,8 +916,17 @@ export default function BookRoom() {
 
     try {
       const payload = {
+        meetingTitle:
+          form.title.trim(),
+
+        purpose:
+          form.title.trim(),
+
         roomId:
           Number(form.roomId),
+
+        participantCount:
+          Number(form.attendees),
 
         bookingDate:
           form.date,
@@ -930,12 +940,6 @@ export default function BookRoom() {
           form.endTime.length === 5
             ? `${form.endTime}:00`
             : form.endTime,
-
-        purpose:
-          form.title.trim(),
-
-        participantCount:
-          Number(form.attendees),
 
         facilityIds: [],
       }
@@ -1132,27 +1136,15 @@ export default function BookRoom() {
 
           <div className="grid grid-cols-3 gap-4">
 
-            <Field label="Date">
-
-              <Input
-                type="date"
-                min={todayStr}
-                value={form.date}
-                onChange={(e) =>
-                  update(
-                    'date',
-                    e.target.value
-                  )
-                }
-              />
-
-              {errors.date && (
-                <p className="mt-1 text-sm font-medium text-red-600">
-                  {errors.date}
-                </p>
-              )}
-
-            </Field>
+            <BusinessDatePicker
+              label="Date"
+              min={todayStr}
+              value={form.date}
+              error={errors.date}
+              onChange={(value) =>
+                update('date', value)
+              }
+            />
 
             <ScrollableTimePicker
               label="Start Time"
@@ -1221,7 +1213,7 @@ export default function BookRoom() {
 
           <Button
             type="submit"
-            className="w-full"
+            className="w-full flex items-center justify-center gap-2"
             disabled={
               submitting ||
               (
@@ -1233,10 +1225,39 @@ export default function BookRoom() {
               )
             }
           >
-            {submitting
-              ? 'Confirming...'
-              : 'Confirm Booking'}
+            {submitting ? (
+              <>
+                <svg
+                  className="h-4 w-4 animate-spin text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                <span>Confirming...</span>
+              </>
+            ) : (
+              'Confirm Booking'
+            )}
           </Button>
+
+          {submitting && (
+            <p className="text-center text-xs text-sky-600 font-medium animate-pulse">
+              Connecting to server and reserving room...
+            </p>
+          )}
 
         </form>
 
@@ -1261,9 +1282,10 @@ export default function BookRoom() {
             </Button>
 
             <Button
+              disabled={submitting}
               onClick={confirmBooking}
             >
-              Confirm Booking
+              {submitting ? 'Confirming...' : 'Confirm Booking'}
             </Button>
           </>
         }
