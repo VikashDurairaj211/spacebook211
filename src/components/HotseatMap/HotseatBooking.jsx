@@ -938,7 +938,7 @@ function OfficeMapTab({
       </p>
 
       {/* FILTERS */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mb-6">
+      <Card className="p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           <Select
             step="1"
@@ -1005,23 +1005,23 @@ function OfficeMapTab({
             placeholder="Select date"
           />
         </div>
-      </div>
+      </Card>
 
       {!readyForModule && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center text-sm text-slate-400">
+        <Card className="p-10 text-center text-sm text-slate-400">
           Select a location and zone to load the Hotseat reservation.
-        </div>
+        </Card>
       )}
 
       {readyForModule && !currentModule && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center text-sm text-slate-400">
+        <Card className="p-10 text-center text-sm text-slate-400">
           Select a module to view seats and rooms.
-        </div>
+        </Card>
       )}
 
       {/* FLOOR MAP */}
       {currentModule && (
-        <div className="office-map-active">
+        <Card className="office-map-active p-6">
           {moduleId === "module1" && (
             <FloorMapModule1
               seats={currentSeats}
@@ -1131,7 +1131,7 @@ function OfficeMapTab({
             </span>
 
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

@@ -98,14 +98,20 @@ const GUIDE_SECTIONS = [
           'The floor map uses live color coding for each workstation pin:',
         steps: [
           '🟢 Green Pin: Available workstation ready for immediate booking.',
-          '🔴 Red Pin: Occupied desk currently reserved by another team member.',
           '🔵 Blue Pin: Your currently selected seat on the floor map.',
+          '🔴 Red Pin: Occupied / Booked desk currently reserved by another team member.',
+          '⚪ Gray Pin: Unavailable workstation (non-reservable or maintenance slot).',
         ],
       },
       {
         title: '3. Reserving Your Hot-Seat',
         content:
           'Click on any available green seat pin, select your expected check-in time (from 10:00 AM onwards), and confirm your reservation. You can manage or release your hot-seat from the desk panel anytime.',
+      },
+      {
+        title: '4. Hassle-Free Hot-Seat Cancellation',
+        content:
+          'If your plans change, cancelling a hot-seat is quick and effortless. Simply click "Cancel" on your hot-seat booking—no cancellation reason is required, and the seat is immediately freed for your colleagues.',
       },
     ],
   },
@@ -127,9 +133,13 @@ const GUIDE_SECTIONS = [
           'Need to change your meeting time? Click the "Edit / Reschedule" button on your booking card. Pick a new date or adjust the start/end time slots within 10:00 AM – 10:00 PM. The system validates conflict-free slots instantly.',
       },
       {
-        title: '3. Cancelling with Reason',
+        title: '3. Cancelling Reservations',
         content:
-          'If your meeting is no longer happening, click "Cancel". Select or enter a brief cancellation reason (e.g. Schedule Conflict, Client Postponed). This immediately frees the room for other colleagues and records clean analytics for the company.',
+          'If you no longer need a reserved space, click "Cancel" on your booking card:',
+        steps: [
+          'Meeting Rooms: Enter a brief cancellation reason (e.g. Schedule Conflict, Client Postponed) to help the workplace team maintain accurate reporting.',
+          'Hot-Seats: Instant cancellation with confirmation only—no reason required.',
+        ],
       },
     ],
   },
@@ -161,14 +171,16 @@ const GUIDE_SECTIONS = [
     description: 'Using the built-in intelligent assistant for instant support.',
     topics: [
       {
-        title: 'What Aira Can Do',
+        title: 'Supported Prompts & Capabilities',
         content:
-          'SpaceBook features a built-in AI Assistant named Aira accessible via the floating icon in the top right corner. You can chat with it to get quick help on:',
+          'SpaceBook features a built-in AI Assistant named Aira accessible via the floating icon in the top right corner. You can chat with Aira using these 6 supported prompts:',
         steps: [
-          'Checking room availability and recommending rooms based on team size.',
-          'Explaining office booking rules, operational hours, and policies.',
-          'Guiding you on how to reschedule or cancel bookings.',
-          'Answering general workplace and facility questions in real-time.',
+          '1. Office Locations: "What office locations are available in the system?"',
+          '2. Office Search: "Search for the office located in [City/Location Name]."',
+          '3. Available Rooms: "What rooms are available in the [Office Name] office?"',
+          '4. Room Search: "Search for the room named [Room Name]."',
+          '5. Office & Room Filtering: "Show me the rooms in [Office Name] that match the selected [Filter Criteria]."',
+          '6. Room Information: "Tell me about the [Room Name] room."',
         ],
       },
     ],
