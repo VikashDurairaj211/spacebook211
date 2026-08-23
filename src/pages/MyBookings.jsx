@@ -628,7 +628,7 @@ export default function MyBookings() {
       return;
     }
 
-    if (!cancelReason || !cancelReason.trim()) {
+    if (!selected?.isHotseat && (!cancelReason || !cancelReason.trim())) {
       toast.addToast({
         type: "error",
         title: "Cancellation reason is required.",
@@ -638,10 +638,7 @@ export default function MyBookings() {
 
     try {
       if (selected.isHotseat) {
-        await cancelHotseatBooking(
-          selected.bookingId,
-          { reason: cancelReason.trim() }
-        );
+        await cancelHotseatBooking(selected.bookingId);
 
         toast.addToast({
           type: "success",
@@ -1635,7 +1632,7 @@ export default function MyBookings() {
 
       <Modal
         open={mode === "cancel"}
-        title="Cancel Booking"
+        title={selected?.isHotseat ? "Cancel Hotseat Booking" : "Cancel Booking"}
         className="max-w-md h-fit"
         footer={
           <>
@@ -1655,17 +1652,21 @@ export default function MyBookings() {
 
         <div className="space-y-4">
           <p>
-            Are you sure you want to cancel this booking?
+            {selected?.isHotseat
+              ? "Are you sure you want to cancel this hotseat booking?"
+              : "Are you sure you want to cancel this booking?"}
           </p>
 
-          <Field label="Reason for Cancellation *">
-            <Input
-              type="text"
-              placeholder="Enter reason here..."
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-            />
-          </Field>
+          {!selected?.isHotseat && (
+            <Field label="Reason for Cancellation *">
+              <Input
+                type="text"
+                placeholder="Enter reason here..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+              />
+            </Field>
+          )}
         </div>
 
       </Modal>
