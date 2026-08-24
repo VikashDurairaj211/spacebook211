@@ -298,16 +298,19 @@ export default function Reports() {
   // =====================================================
 
   const filteredBookings = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0]
     const now = new Date()
+    const formatLocalDate = (d) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-    const sevenDaysAgo = new Date()
+    const todayStr = formatLocalDate(now)
+
+    const sevenDaysAgo = new Date(now)
     sevenDaysAgo.setDate(now.getDate() - 7)
-    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0]
+    const sevenDaysAgoStr = formatLocalDate(sevenDaysAgo)
 
-    const thirtyDaysAgo = new Date()
+    const thirtyDaysAgo = new Date(now)
     thirtyDaysAgo.setDate(now.getDate() - 30)
-    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0]
+    const thirtyDaysAgoStr = formatLocalDate(thirtyDaysAgo)
 
     return bookings.filter((b) => {
       // Module Filter
@@ -736,7 +739,7 @@ export default function Reports() {
       <Card className="p-3.5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold uppercase tracking-wider text-slate">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate">
               Filters:
             </span>
 
@@ -790,7 +793,7 @@ export default function Reports() {
         {/* Total Reservations */}
         <Card className="p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
               Total Reservations
             </span>
             <Calendar size={16} className="text-sky-600" />
@@ -810,7 +813,7 @@ export default function Reports() {
         {/* Utilization */}
         <Card className="p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
               Utilization
             </span>
             <Activity size={16} className="text-sky-600" />
@@ -833,7 +836,7 @@ export default function Reports() {
         {/* Confirmed Rate */}
         <Card className="p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
               Confirmed Bookings
             </span>
             <CheckCircle2 size={16} className="text-[#658362]" />
@@ -863,7 +866,7 @@ export default function Reports() {
         {/* Cancellation Rate */}
         <Card className="p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
               Cancelled Bookings
             </span>
             <XCircle size={16} className="text-[#B85450]" />
@@ -893,7 +896,7 @@ export default function Reports() {
         {/* Active Bookers */}
         <Card className="p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
               Workforce Engagement
             </span>
             <Users size={16} className="text-purple-600" />
@@ -966,7 +969,7 @@ export default function Reports() {
         <div className="overflow-x-auto p-4">
           <table className="w-full min-w-[800px] text-left text-xs">
             <thead>
-              <tr className="border-b border-line font-mono text-[11px] font-extrabold uppercase tracking-wider text-black">
+              <tr className="border-b border-line text-[11px] font-extrabold uppercase tracking-wider text-black">
                 <th className="px-3 py-2.5 whitespace-nowrap">Booking ID</th>
                 <th className="px-3 py-2.5 whitespace-nowrap">Meeting Title</th>
                 <th className="px-3 py-2.5 whitespace-nowrap">Room</th>
@@ -994,7 +997,9 @@ export default function Reports() {
                 displayedTableBookings.map((booking) => (
                   <tr
                     key={booking.bookingId}
-                    className="transition-colors duration-150 hover:bg-portal-bg/70"
+                    onClick={() => openViewModal(booking)}
+                    className="cursor-pointer transition-colors duration-150 hover:bg-sky-50/70"
+                    title="Click to view full reservation details"
                   >
                     <td className="px-3 py-3 font-sans text-xs font-semibold text-ink whitespace-nowrap">
                       {booking.bookingId}
@@ -1335,7 +1340,7 @@ export default function Reports() {
                       <span className="font-semibold text-ink">
                         "{item.reason}"
                       </span>
-                      <span className="font-mono font-bold text-red-700">
+                      <span className="font-bold text-red-700">
                         {item.count} {item.count === 1 ? 'time' : 'times'} (
                         {item.percentage}%)
                       </span>
@@ -1419,11 +1424,11 @@ export default function Reports() {
           <div className="space-y-4 text-sm text-slate">
             <div className="grid grid-cols-2 gap-3 border-b border-line pb-3">
               <div>
-                <p className="text-xs uppercase tracking-wider text-slate font-mono">Booking ID</p>
+                <p className="text-xs uppercase tracking-wider text-slate font-semibold">Booking ID</p>
                 <p className="font-bold text-ink text-base">{selectedBooking.bookingId}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wider text-slate font-mono">Status</p>
+                <p className="text-xs uppercase tracking-wider text-slate font-semibold">Status</p>
                 <div className="mt-1">
                   <CustomStatusTag status={selectedBooking.status} />
                 </div>
@@ -1431,35 +1436,35 @@ export default function Reports() {
             </div>
 
             <div>
-              <p className="text-xs uppercase tracking-wider text-slate font-mono">Meeting Title</p>
+              <p className="text-xs uppercase tracking-wider text-slate font-semibold">Meeting Title</p>
               <p className="font-semibold text-ink text-base mt-0.5">{selectedBooking.title}</p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <p className="text-xs uppercase tracking-wider text-slate font-mono">Room</p>
+                <p className="text-xs uppercase tracking-wider text-slate font-semibold">Room</p>
                 <p className="font-medium text-ink mt-0.5">{selectedBooking.roomName}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wider text-slate font-mono">Module</p>
+                <p className="text-xs uppercase tracking-wider text-slate font-semibold">Module</p>
                 <p className="font-medium text-ink mt-0.5">{selectedBooking.module}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wider text-slate font-mono">Date</p>
+                <p className="text-xs uppercase tracking-wider text-slate font-semibold">Date</p>
                 <p className="font-medium text-ink mt-0.5">{selectedBooking.date}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wider text-slate font-mono">Time</p>
-                <p className="font-medium text-ink mt-0.5 font-mono">
+                <p className="text-xs uppercase tracking-wider text-slate font-semibold">Time</p>
+                <p className="font-medium text-ink mt-0.5">
                   {selectedBooking.startTime} {selectedBooking.endTime ? `– ${selectedBooking.endTime}` : ''}
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wider text-slate font-mono">Created By</p>
+                <p className="text-xs uppercase tracking-wider text-slate font-semibold">Created By</p>
                 <p className="font-medium text-ink mt-0.5">{selectedBooking.createdBy}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wider text-slate font-mono">Room Type</p>
+                <p className="text-xs uppercase tracking-wider text-slate font-semibold">Room Type</p>
                 <p className="font-medium text-ink mt-0.5">{selectedBooking.roomType}</p>
               </div>
             </div>
