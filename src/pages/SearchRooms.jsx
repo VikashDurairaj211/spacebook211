@@ -7,6 +7,7 @@ import client from "../api/client";
 
 import { Field, Input, Select } from "../components/common/Input";
 import BusinessDatePicker from "../components/common/BusinessDatePicker";
+import ScrollableTimePicker from "../components/common/ScrollableTimePicker";
 import Button from "../components/common/Button";
 import Card from "../components/common/Card";
 import Loader from "../components/common/Loader";
@@ -133,6 +134,7 @@ function computeRoomTypeGuides(rooms) {
   });
 }
 
+
 const isWeekendDate = (dateStr) => {
   if (!dateStr) return false;
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -211,402 +213,8 @@ function isBookingActive(status) {
   ].includes(value);
 }
 
-// =====================================================
-// SCROLLABLE TIME PICKER
-// =====================================================
 
-function ScrollableTimePicker({
-  label,
-  value,
-  onChange,
-  selectedDate,
-  minTime,
-}) {
-  const [isOpen, setIsOpen] = useState(false);
 
-  const containerRef = useRef(null);
-
-  const currentValue = normalizeTime(value);
-
-  const [selectedHour, selectedMinute] =
-    currentValue
-      ? currentValue.split(":")
-      : ["", ""];
-
-  const hoursList = Array.from(
-    { length: 13 },
-    (_, index) =>
-      String(index + 10).padStart(2, "0")
-  );
-
-  const minutesList = Array.from(
-    { length: 60 },
-    (_, index) =>
-      String(index).padStart(2, "0")
-  );
-
-  // ===================================================
-  // CURRENT DATE/TIME
-  // ===================================================
-
-  const now = new Date();
-
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  const todayStr = `${year}-${month}-${day}`;
-
-  const isToday =
-    !selectedDate || selectedDate === todayStr;
-
-  const isPastDate =
-    Boolean(selectedDate && selectedDate < todayStr);
-
-  const currentHour =
-    now.getHours();
-
-  const currentMinute =
-    now.getMinutes();
-
-  // ===================================================
-  // MINIMUM TIME
-  // ===================================================
-
-  const minimumTimeMinutes =
-    timeToMinutes(minTime);
-
-  // ===================================================
-  // CHECK HOUR DISABLED
-  // ===================================================
-
-  function isHourDisabled(hour) {
-    const numericHour = Number(hour);
-
-    // Office hours (10:00 AM to 10:00 PM)
-    if (
-      numericHour < 10 ||
-      numericHour > 22
-    ) {
-      return true;
-    }
-
-    if (isPastDate) {
-      return true;
-    }
-
-    // Today - don't allow past hour
-    if (isToday) {
-      if (numericHour < currentHour) {
-        return true;
-      }
-
-      if (numericHour === currentHour) {
-        const hasValidMinute = minutesList.some(
-          (minute) => !isMinuteDisabled(hour, minute)
-        );
-        if (!hasValidMinute) {
-          return true;
-        }
-      }
-    }
-
-    // If this is the END time,
-    // don't allow hour if entire hour is before START time.
-    if (
-      minimumTimeMinutes !== null &&
-      minimumTimeMinutes !== undefined
-    ) {
-      const hourMax =
-        numericHour * 60 + 59;
-
-      if (
-        hourMax <=
-        minimumTimeMinutes
-      ) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  // ===================================================
-  // CHECK MINUTE DISABLED
-  // ===================================================
-
-  function isMinuteDisabled(
-    hour,
-    minute
-  ) {
-    const numericHour = Number(hour);
-    const numericMinute = Number(minute);
-
-    const selectedMinutes =
-      numericHour * 60 +
-      numericMinute;
-
-    // Office hours
-    if (
-      selectedMinutes <
-        timeToMinutes(OFFICE_START_TIME) ||
-      selectedMinutes >
-        timeToMinutes(OFFICE_END_TIME)
-    ) {
-      return true;
-    }
-
-    if (isPastDate) {
-      return true;
-    }
-
-    // Today - strictly don't allow past time
-    if (isToday) {
-      const currentTotalMinutes =
-        currentHour * 60 +
-        currentMinute;
-
-      if (
-        selectedMinutes <=
-        currentTotalMinutes
-      ) {
-        return true;
-      }
-    }
-
-    // End time must be strictly after start time
-    if (
-      minimumTimeMinutes !== null &&
-      minimumTimeMinutes !== undefined
-    ) {
-      if (
-        selectedMinutes <=
-        minimumTimeMinutes
-      ) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  // ===================================================
-  // HANDLE HOUR
-  // ===================================================
-
-  function handleHourClick(hour) {
-    if (isHourDisabled(hour)) {
-      return;
-    }
-
-    const minuteToUse =
-      selectedMinute || "00";
-
-    if (
-      isMinuteDisabled(
-        hour,
-        minuteToUse
-      )
-    ) {
-      // If selected minute is invalid,
-      // find first available minute.
-      const firstAvailableMinute =
-        minutesList.find(
-          (minute) =>
-            !isMinuteDisabled(
-              hour,
-              minute
-            )
-        );
-
-      if (!firstAvailableMinute) {
-        return;
-      }
-
-      onChange(
-        `${hour}:${firstAvailableMinute}`
-      );
-
-      return;
-    }
-
-    onChange(
-      `${hour}:${minuteToUse}`
-    );
-  }
-
-  // ===================================================
-  // HANDLE MINUTE
-  // ===================================================
-
-  function handleMinuteClick(minute) {
-    let hour = selectedHour;
-    if (!hour || isHourDisabled(hour)) {
-      const firstAvailableHour = hoursList.find(
-        (h) => !isHourDisabled(h)
-      );
-      if (!firstAvailableHour) return;
-      hour = firstAvailableHour;
-    }
-
-    if (
-      isMinuteDisabled(
-        hour,
-        minute
-      )
-    ) {
-      return;
-    }
-
-    onChange(
-      `${hour}:${minute}`
-    );
-  }
-
-  // ===================================================
-  // CLOSE OUTSIDE CLICK
-  // ===================================================
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(
-          event.target
-        )
-      ) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener(
-      "mousedown",
-      handleClickOutside
-    );
-
-    return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside
-      );
-    };
-  }, []);
-
-  return (
-    <div
-      className="relative"
-      ref={containerRef}
-    >
-      <Field label={label}>
-        <div
-          onClick={() =>
-            setIsOpen((current) => !current)
-          }
-          className="flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/80 px-3 text-sm shadow-sm transition-colors"
-        >
-          <span
-            className={
-              value
-                ? "text-ink font-semibold"
-                : "text-slate-500"
-            }
-          >
-            {value
-              ? normalizeTime(value)
-              : "Select time"}
-          </span>
-
-          <svg
-            className={`h-4 w-4 text-slate-500 transition-transform ${
-              isOpen
-                ? "rotate-180"
-                : ""
-            }`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
-        </div>
-      </Field>
-
-      {isOpen && (
-        <div className="absolute z-50 mt-1 flex w-full overflow-hidden rounded-xl border border-sky-200 bg-white shadow-xl">
-
-          {/* HOURS */}
-          <div className="flex flex-1 flex-col border-r border-slate-100 min-w-0">
-            <div className="bg-sky-100 text-sky-900 py-1.5 text-xs font-bold border-b border-sky-200 text-center select-none">
-              Hour
-            </div>
-
-            <div className="max-h-48 overflow-y-auto p-1.5 space-y-1 text-center [scrollbar-width:thin]">
-              {hoursList.map((hour) => {
-                const disabled = isHourDisabled(hour);
-                const selected = selectedHour === hour;
-
-                return (
-                  <button
-                    key={hour}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => handleHourClick(hour)}
-                    className={`block w-full rounded-md py-1.5 text-xs font-semibold transition-colors text-center ${
-                      disabled
-                        ? "cursor-not-allowed bg-slate-50 text-slate-300 opacity-50"
-                        : selected
-                        ? "bg-[#2F6FE0] text-white font-bold shadow-sm"
-                        : "text-slate-700 hover:bg-sky-50"
-                    }`}
-                  >
-                    {hour}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* MINUTES */}
-          <div className="flex flex-1 flex-col min-w-0">
-            <div className="bg-sky-100 text-sky-900 py-1.5 text-xs font-bold border-b border-sky-200 text-center select-none">
-              Min
-            </div>
-
-            <div className="max-h-48 overflow-y-auto p-1.5 space-y-1 text-center [scrollbar-width:thin]">
-              {minutesList.map((minute) => {
-                const hour = selectedHour || "10";
-                const disabled = isMinuteDisabled(hour, minute);
-                const selected = selectedMinute === minute;
-
-                return (
-                  <button
-                    key={minute}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => handleMinuteClick(minute)}
-                    className={`block w-full rounded-md py-1.5 text-xs font-semibold transition-colors text-center ${
-                      disabled
-                        ? "cursor-not-allowed bg-slate-50 text-slate-300 opacity-50"
-                        : selected
-                        ? "bg-[#2F6FE0] text-white font-bold shadow-sm"
-                        : "text-slate-700 hover:bg-sky-50"
-                    }`}
-                  >
-                    {minute}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // =====================================================
 // SEARCH ROOMS PAGE
@@ -956,17 +564,35 @@ export default function SearchRooms() {
     }
 
     // =================================================
-    // PARTICIPANT VALIDATION
+    // PARTICIPANT VALIDATION & CAPACITY CHECK
     // =================================================
 
-    if (
-      filters.capacity &&
-      Number(filters.capacity) < 1
-    ) {
+    const requestedCapacity = filters.capacity
+      ? Number(filters.capacity)
+      : 0;
+
+    if (filters.capacity && requestedCapacity < 1) {
       setError(
         "Number of participants must be at least 1."
       );
       return;
+    }
+
+    if (requestedCapacity > 0) {
+      const maxCap = getMaxCapacityForType(
+        filters.roomTypeId,
+        knownRooms
+      );
+
+      if (maxCap !== null && requestedCapacity > maxCap) {
+        setCapacityExceeded(true);
+        setSearchMessage(
+          "No room can accommodate the selected number of participants."
+        );
+        setResults([]);
+        setResultsOpen(true);
+        return;
+      }
     }
 
     // =================================================
@@ -1168,6 +794,8 @@ export default function SearchRooms() {
       // =================================================
 
       let searchResults = [];
+      let backendMessage = "";
+      let isCapacityExceeded = false;
 
       if (
         Array.isArray(data)
@@ -1180,38 +808,43 @@ export default function SearchRooms() {
         searchResults =
           data.rooms;
 
-        setSearchMessage(
-          data.message || ""
-        );
+        backendMessage =
+          data.message || "";
 
-        setCapacityExceeded(
-          data.capacityExceeded === true
-        );
-      } else {
+        isCapacityExceeded =
+          data.capacityExceeded === true;
+      } else if (data) {
         searchResults = [];
 
-        if (data?.message) {
-          setSearchMessage(
-            data.message
-          );
-        }
+        backendMessage =
+          data.message || "";
 
-        if (
-          data?.capacityExceeded === true
-        ) {
-          setCapacityExceeded(
-            true
-          );
-        }
+        isCapacityExceeded =
+          data.capacityExceeded === true;
       }
 
+      // Check if backend message indicates capacity failure
+      const lowerBackendMsg = String(backendMessage).toLowerCase();
+      if (
+        isCapacityExceeded ||
+        lowerBackendMsg.includes("accommodate") ||
+        (lowerBackendMsg.includes("capacity") &&
+          lowerBackendMsg.includes("participant"))
+      ) {
+        isCapacityExceeded = true;
+        backendMessage =
+          "No room can accommodate the selected number of participants.";
+      }
+
+      let finalMessage = backendMessage;
+
       // =================================================
-      // BETTER NO-RESULT MESSAGE
+      // NO-RESULT MESSAGE (Availability vs Capacity)
       // =================================================
 
       if (
         searchResults.length === 0 &&
-        !searchMessage
+        !finalMessage
       ) {
         const roomType =
           getRoomTypeName();
@@ -1221,23 +854,28 @@ export default function SearchRooms() {
           filters.module ===
             "Module 2 - Elcot Park - CMB"
         ) {
-          setSearchMessage(
-            "Conference rooms are available only in Module 1 - Elcot Park - CMB."
-          );
+          finalMessage =
+            "Conference rooms are available only in Module 1 - Elcot Park - CMB.";
         } else if (
           roomType === "Training" &&
           filters.module ===
             "Module 1 - Elcot Park - CMB"
         ) {
-          setSearchMessage(
-            "Training rooms are available only in Module 2 - Elcot Park - CMB."
-          );
+          finalMessage =
+            "Training rooms are available only in Module 2 - Elcot Park - CMB.";
         } else {
-          setSearchMessage(
-            "No rooms are available for the selected date and time. The rooms may already be booked or unavailable."
-          );
+          finalMessage =
+            "No rooms are available for the selected date and time. The rooms may already be booked or unavailable.";
         }
       }
+
+      setCapacityExceeded(
+        isCapacityExceeded
+      );
+
+      setSearchMessage(
+        finalMessage
+      );
 
       setResults(
         searchResults
@@ -1553,7 +1191,7 @@ export default function SearchRooms() {
 
       <div>
         <h1 className="font-display text-3xl font-bold">
-          Search Rooms
+          Workspace Search
         </h1>
 
         <p className="mt-2 text-slate-600">

@@ -22,6 +22,7 @@ import HotseatBookingPage from '../components/HotseatMap/HotseatBooking'
 
 import AdminRoomManagementPage from '../pages/Admin/RoomManagement'
 import AdminBookingManagementPage from '../pages/Admin/BookingManagement'
+import AdminHotseatManagementPage from '../pages/Admin/HotseatManagement'
 import AdminReportsPage from '../pages/Admin/Reports'
 
 export default function AppRoutes() {
@@ -123,6 +124,15 @@ export default function AppRoutes() {
             <Route
               path="/admin/booking-management"
               element={<Navigate to="/admin/reports" replace />}
+            />
+
+            <Route
+              path="/admin/hotseat-management"
+              element={
+                <RequireAuth allowedRoles={['Admin']}>
+                  <AdminHotseatManagementPage />
+                </RequireAuth>
+              }
             />
 
             <Route
