@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import FloorMapModule1 from "./FloorMapModule1";
 import FloorMapModule2 from "./FloorMapModule2";
+import FloorMapTidalParkModule1 from "./FloorMapModule1Tidal";
 import "../../index.css";
 import {
   CheckCircle2,
@@ -134,7 +135,6 @@ function Select({
     </div>
   );
 }
-
 
 
 
@@ -316,9 +316,28 @@ export default function HotseatBookingApp() {
             bookedByUserId: s.bookedByUserId || s.userId || null,
           }));
 
+        const tidalSeats = Array.from({ length: 224 }, (_, i) => {
+          const num = i + 1;
+          const seatCode = `WS-04-${String(num).padStart(3, "0")}`;
+          const found = seatArray.find(
+            (s) =>
+              String(s.seatNumber || "").toLowerCase() === seatCode.toLowerCase()
+          );
+          return {
+            id: seatCode,
+            label: `Seat ${num}`,
+            number: num,
+            modulePrefix: "WS-04",
+            type: "hotseat",
+            status: found ? String(found.status || "available").toLowerCase() : "available",
+            bookedByUserId: found?.bookedByUserId || found?.userId || null,
+          };
+        });
+
         setModules([
-          { id: "module1", label: "Module 1", seats: module1Seats, rooms: [] },
-          { id: "module2", label: "Module 2", seats: module2Seats, rooms: [] },
+          { id: "module1", label: "Module 1", office: "Elcot Park", seats: module1Seats, rooms: [] },
+          { id: "module2", label: "Module 2", office: "Elcot Park", seats: module2Seats, rooms: [] },
+          { id: "tidal-module1", label: "Module 1", office: "Tidal Park", seats: tidalSeats, rooms: [] },
         ]);
       }
 
@@ -658,7 +677,7 @@ function OfficeMapTab({
   setTargetDate,
 }) {
   const [location, setLocation] = useState("Coimbatore");
-  const [zone, setZone] = useState("Elcot Park");
+  const [zone, setZone] = useState("Tidal Park");
   const [moduleId, setModuleId] = useState("module1");
   const [active, setActive] = useState(null);
   const [bookingResult, setBookingResult] = useState(null);
@@ -667,9 +686,36 @@ function OfficeMapTab({
   const tomorrow = getTomorrowKey();
 
   const LOCATIONS = ["Coimbatore"];
-  const ZONES = ["Elcot Park"];
+  const ZONES = ["Tidal Park", "Elcot Park"];
 
-  const currentModule = modules.find((m) => m.id === moduleId);
+  const isTidalPark =
+    String(zone).toLowerCase().includes("tidal") ||
+    String(zone).toLowerCase().includes("tidel");
+
+  const availableModuleOptions = isTidalPark
+    ? [{ value: "module1", label: "Module 1" }]
+    : [
+        { value: "module1", label: "Module 1" },
+        { value: "module2", label: "Module 2" },
+      ];
+
+  const currentModule = isTidalPark
+    ? modules.find((m) => m.office === "Tidal Park") || {
+        id: "tidal-module1",
+        label: "Module 1",
+        office: "Tidal Park",
+        seats: Array.from({ length: 224 }, (_, i) => ({
+          id: `WS-04-${String(i + 1).padStart(3, "0")}`,
+          label: `Seat ${i + 1}`,
+          number: i + 1,
+          modulePrefix: "WS-04",
+          type: "hotseat",
+          status: "available",
+        })),
+      }
+    : modules.find((m) => m.id === moduleId && m.office === "Elcot Park") ||
+      modules.find((m) => m.id === moduleId);
+
   const readyForModule = location && zone;
 
   const myBookingForDate = bookings.find((b) => {
@@ -784,7 +830,7 @@ function OfficeMapTab({
             value={location}
             onChange={(v) => {
               setLocation(v);
-              setModuleId("");
+              setModuleId("module1");
               setActive(null);
             }}
             options={LOCATIONS}
@@ -798,7 +844,7 @@ function OfficeMapTab({
             value={zone}
             onChange={(v) => {
               setZone(v);
-              setModuleId("");
+              setModuleId("module1");
               setActive(null);
             }}
             options={ZONES}
@@ -814,14 +860,7 @@ function OfficeMapTab({
               setModuleId(v);
               setActive(null);
             }}
-            options={
-              readyForModule
-                ? modules.map((m) => ({
-                    value: m.id,
-                    label: m.label,
-                  }))
-                : []
-            }
+            options={readyForModule ? availableModuleOptions : []}
             placeholder={readyForModule ? "Select Module" : "Choose Office First"}
           />
 
@@ -859,7 +898,15 @@ function OfficeMapTab({
       {/* FLOOR MAP */}
       {currentModule && (
         <Card className="office-map-active p-6">
-          {moduleId === "module1" && (
+          {isTidalPark && moduleId === "module1" && (
+            <FloorMapTidalParkModule1
+              seats={currentSeats}
+              onSelect={handleSelectSeat}
+              activeSeatId={active?.id}
+            />
+          )}
+
+          {!isTidalPark && moduleId === "module1" && (
             <FloorMapModule1
               seats={currentSeats}
               onSelect={handleSelectSeat}
@@ -867,7 +914,7 @@ function OfficeMapTab({
             />
           )}
 
-          {moduleId === "module2" && (
+          {!isTidalPark && moduleId === "module2" && (
             <FloorMapModule2
               seats={currentSeats}
               onSelect={handleSelectSeat}

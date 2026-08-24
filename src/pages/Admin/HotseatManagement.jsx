@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Eye, Download, FileSpreadsheet, FileText, Search, RefreshCw, X, CheckCircle2 } from 'lucide-react'
+import { Eye, Download, FileSpreadsheet, FileText, RefreshCw, X, CheckCircle2 } from 'lucide-react'
 import client from '../../api/client'
 import Card from '../../components/common/Card'
 import Button from '../../components/common/Button'
@@ -188,7 +188,6 @@ export default function HotseatManagement() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [dateFilter, setDateFilter] = useState('All')
 
@@ -291,20 +290,7 @@ export default function HotseatManagement() {
 
   const filteredBookings = useMemo(() => {
     return bookings.filter((b) => {
-      // 1. Search filter
-      if (search.trim()) {
-        const q = search.toLowerCase()
-        const matchId = String(b.bookingId || b.id || '').toLowerCase().includes(q)
-        const matchEmp = String(b.employee || b.employeeShort || '').toLowerCase().includes(q)
-        const matchSeat = String(b.seat || '').toLowerCase().includes(q)
-        const matchMod = String(b.module || '').toLowerCase().includes(q)
-        const matchSec = String(b.section || '').toLowerCase().includes(q)
-        if (!matchId && !matchEmp && !matchSeat && !matchMod && !matchSec) {
-          return false
-        }
-      }
-
-      // 2. Status filter
+      // 1. Status filter
       if (statusFilter !== 'All') {
         const normFilter = statusFilter.toUpperCase()
         const normStatus = String(b.status || '').toUpperCase()
@@ -321,7 +307,7 @@ export default function HotseatManagement() {
         }
       }
 
-      // 3. Date filter
+      // 2. Date filter
       if (dateFilter !== 'All') {
         const bDate = String(b.date || '').substring(0, 10)
         if (dateFilter === 'Today') {
@@ -335,7 +321,7 @@ export default function HotseatManagement() {
 
       return true
     })
-  }, [bookings, search, statusFilter, dateFilter, todayStr])
+  }, [bookings, statusFilter, dateFilter, todayStr])
 
   // =====================================================
   // Export Handlers
@@ -492,31 +478,6 @@ export default function HotseatManagement() {
           </div>
 
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-            {/* Search Input */}
-            <div className="relative w-full sm:w-72">
-              <Search
-                size={15}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-              />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search ID, employee, seat, module..."
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-9 pr-8 py-2 text-xs text-ink outline-none focus:border-sky-500 focus:bg-white transition-colors"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-ink text-xs font-bold"
-                  aria-label="Clear search"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
             {/* Status Filter */}
             <select
               value={statusFilter}

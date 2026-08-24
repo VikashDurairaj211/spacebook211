@@ -24,116 +24,6 @@ const ROOM_TYPES = [
   { id: 3, name: "Discussion" },
 ];
 
-function computeRoomTypeGuides(rooms) {
-  if (!Array.isArray(rooms) || rooms.length === 0) {
-    try {
-      const raw = localStorage.getItem("spacebook_room_inventory");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          rooms = parsed;
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  if (!Array.isArray(rooms) || rooms.length === 0) {
-    return [];
-  }
-
-  // Group rooms by their room type
-  const groups = {};
-
-  rooms.forEach((room) => {
-    const rawType =
-      room.roomType?.name ||
-      room.roomType ||
-      room.type ||
-      room.roomTypeName ||
-      "";
-    const typeName = String(rawType).trim();
-    if (!typeName) return;
-
-    const key =
-      typeName.charAt(0).toUpperCase() + typeName.slice(1);
-
-    if (!groups[key]) {
-      groups[key] = {
-        name: key,
-        capacities: [],
-        facilities: new Set(),
-      };
-    }
-
-    const cap = Number(room.capacity ?? room.Capacity);
-    if (!Number.isNaN(cap) && cap > 0) {
-      groups[key].capacities.push(cap);
-    }
-
-    const rawFacs =
-      room.facilities ||
-      room.roomFacilities ||
-      room.Facilities ||
-      [];
-
-    if (Array.isArray(rawFacs)) {
-      rawFacs.forEach((f) => {
-        const facName =
-          typeof f === "string"
-            ? f
-            : f?.name || f?.facilityName || f?.FacilityName;
-        if (facName && String(facName).trim()) {
-          groups[key].facilities.add(String(facName).trim());
-        }
-      });
-    }
-  });
-
-  const preferredOrder = ["Discussion", "Conference", "Training"];
-  const keys = Object.keys(groups).sort((a, b) => {
-    const idxA = preferredOrder.indexOf(a);
-    const idxB = preferredOrder.indexOf(b);
-    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-    if (idxA !== -1) return -1;
-    if (idxB !== -1) return 1;
-    return a.localeCompare(b);
-  });
-
-  return keys.map((key) => {
-    const g = groups[key];
-    const caps = g.capacities;
-    let capacityText = "Standard Capacity";
-    if (caps.length > 0) {
-      const minCap = Math.min(...caps);
-      const maxCap = Math.max(...caps);
-      if (minCap === maxCap) {
-        capacityText = `Up to ${maxCap} People`;
-      } else {
-        capacityText = `${minCap} to ${maxCap} People`;
-      }
-    }
-
-    const facilitiesArr = Array.from(g.facilities);
-    const facilitiesText =
-      facilitiesArr.length > 0 ? facilitiesArr.join(", ") : "";
-
-    const label =
-      key.toLowerCase().endsWith("room") ||
-      key.toLowerCase().endsWith("rooms")
-        ? `${key}:`
-        : `${key} Rooms:`;
-
-    return {
-      type: key,
-      label,
-      capacityText,
-      facilitiesText,
-    };
-  });
-}
-
 
 const isWeekendDate = (dateStr) => {
   if (!dateStr) return false;
@@ -312,81 +202,13 @@ export default function SearchRooms() {
   const [conflictingBooking, setConflictingBooking] =
     useState(null);
 
-  const [pendingRoomId, setPendingRoomId] =
-    useState(null);
-
-  const [roomTypeGuides, setRoomTypeGuides] =
-    useState(() => computeRoomTypeGuides([]));
-
   // ===================================================
-  // LOAD BOOKINGS & ROOM SPECS FROM BACKEND
+  // LOAD BOOKINGS FROM BACKEND
   // ===================================================
 
   useEffect(() => {
     loadBookings();
-    loadRoomSpecs();
   }, []);
-
-  async function loadRoomSpecs() {
-    try {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      const day = String(now.getDate()).padStart(2, "0");
-      const todayDate = `${year}-${month}-${day}`;
-
-      let roomsList = [];
-
-      // 1. Fetch live employee availability for today
-      try {
-        const availData = await getRoomAvailability(todayDate);
-        const arr = Array.isArray(availData)
-          ? availData
-          : availData?.rooms || availData?.data || [];
-        if (arr.length > 0) {
-          roomsList = arr;
-        }
-      } catch (e) {
-        console.warn("Availability endpoint note:", e);
-      }
-
-      // 2. Fetch admin rooms if available
-      if (roomsList.length === 0) {
-        try {
-          const { data: adminData } = await client.get("/admin/rooms");
-          const arr = Array.isArray(adminData)
-            ? adminData
-            : adminData?.data || adminData?.rooms || [];
-          if (arr.length > 0) {
-            roomsList = arr;
-          }
-        } catch (e) {
-          console.warn("Admin rooms endpoint note:", e);
-        }
-      }
-
-      // 3. Check master inventory from storage
-      if (roomsList.length === 0) {
-        try {
-          const raw = localStorage.getItem("spacebook_room_inventory");
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              roomsList = parsed;
-            }
-          }
-        } catch {
-          // ignore
-        }
-      }
-
-      if (roomsList.length > 0) {
-        setRoomTypeGuides(computeRoomTypeGuides(roomsList));
-      }
-    } catch (err) {
-      console.warn("Unable to load room availability specs from backend:", err);
-    }
-  }
 
   async function loadBookings() {
     try {
@@ -1199,18 +1021,7 @@ export default function SearchRooms() {
         </p>
       </div>
 
-      {/* CAPACITY & FACILITY GUIDE CARD */}
-      <Card className="text-sm text-ink">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-medium">
-          {roomTypeGuides.map((guide, idx) => (
-            <div key={guide.type || idx}>
-              <strong className="text-ink">{guide.label}</strong>{" "}
-              {guide.capacityText}
-              {guide.facilitiesText ? ` (${guide.facilitiesText})` : ""}
-            </div>
-          ))}
-        </div>
-      </Card>
+
 
       {/* SEARCH FORM */}
 
