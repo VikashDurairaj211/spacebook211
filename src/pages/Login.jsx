@@ -26,7 +26,7 @@ export default function Login() {
     const user = JSON.parse(localStorage.getItem("spacebook_user"));
 
     if (user?.role === "Admin") {
-      navigate("/admin/dashboard");
+      navigate("/admin/reports");
     } else {
       navigate("/dashboard");
     }

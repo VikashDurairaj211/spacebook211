@@ -50,19 +50,16 @@ export default function TopNav({
     user?.isAdmin === true
 
   // =====================================================
-  // Synchronize search input with URL search parameters
+  // Synchronize search input with URL search parameters for Room Management
   // =====================================================
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const urlSearch = params.get('search') || params.get('q') || ''
 
-    if (
-      location.pathname === '/admin/room-management' ||
-      location.pathname === '/admin/booking-management' ||
-      location.pathname === '/search-rooms' ||
-      location.pathname === '/my-bookings'
-    ) {
+    if (location.pathname === '/admin/room-management') {
+      setSearchInput(urlSearch)
+    } else if (location.pathname === '/admin/reports' || location.pathname === '/search-rooms' || location.pathname === '/my-bookings') {
       setSearchInput(urlSearch)
     } else {
       setSearchInput('')
@@ -268,12 +265,7 @@ export default function TopNav({
       )
       saveReadNotificationIds(currentIds)
 
-      setNotifications((previous) =>
-        previous.map((notification) => ({
-          ...notification,
-          isRead: true,
-        }))
-      )
+      setNotifications([])
 
       window.dispatchEvent(new Event('notificationsRead'))
     } catch (error) {
@@ -416,8 +408,8 @@ export default function TopNav({
     if (!query) {
       if (location.pathname === '/admin/room-management') {
         navigate('/admin/room-management')
-      } else if (location.pathname === '/admin/booking-management') {
-        navigate('/admin/booking-management')
+      } else if (location.pathname === '/admin/reports') {
+        navigate('/admin/reports')
       } else if (location.pathname === '/search-rooms') {
         navigate('/search-rooms')
       } else if (location.pathname === '/my-bookings') {
@@ -429,11 +421,7 @@ export default function TopNav({
 
     // ADMIN SEARCH
     if (isAdmin) {
-      if (location.pathname.includes('/admin/booking-management')) {
-        navigate(`/admin/booking-management?search=${encodeURIComponent(query)}`)
-      } else {
-        navigate(`/admin/room-management?search=${encodeURIComponent(query)}`)
-      }
+      navigate(`/admin/room-management?search=${encodeURIComponent(query)}`)
     }
     // EMPLOYEE SEARCH
     else {
@@ -493,11 +481,10 @@ export default function TopNav({
   function handleClearSearch() {
     setSearchInput('')
     setShowSearchResults(false)
-
     if (location.pathname === '/admin/room-management') {
       navigate('/admin/room-management')
-    } else if (location.pathname === '/admin/booking-management') {
-      navigate('/admin/booking-management')
+    } else if (location.pathname === '/admin/reports') {
+      navigate('/admin/reports')
     } else if (location.pathname === '/search-rooms') {
       navigate('/search-rooms')
     } else if (location.pathname === '/my-bookings') {
@@ -550,7 +537,7 @@ export default function TopNav({
           onClick={() =>
             navigate(
               isAdmin
-                ? '/admin/dashboard'
+                ? '/admin/reports'
                 : '/dashboard'
             )
           }

@@ -228,6 +228,15 @@ export default function Notifications() {
     }
   }, [user, isAdmin])
 
+  const clearAllNotifications = () => {
+    const currentIds = notifications.map((n, idx) =>
+      String(n.notificationId ?? n.id ?? n._id ?? idx)
+    )
+    saveReadNotificationIds(currentIds)
+    setNotifications([])
+    window.dispatchEvent(new Event('notificationsRead'))
+  }
+
   // =====================================================
   // Unread Count
   // =====================================================
@@ -273,15 +282,27 @@ export default function Notifications() {
           </p>
         </div>
 
-        {unreadCount > 0 && (
-          <button
-            type="button"
-            onClick={markAllAsRead}
-            className="rounded-xl bg-[#17324D] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
-          >
-            Mark all as read
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={markAllAsRead}
+              className="rounded-xl bg-[#17324D] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
+            >
+              Mark all as read
+            </button>
+          )}
+
+          {notifications.length > 0 && (
+            <button
+              type="button"
+              onClick={clearAllNotifications}
+              className="rounded-xl border border-line bg-white px-4 py-2 text-xs font-semibold text-ink transition hover:bg-portal-bg"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
 
       </div>
 

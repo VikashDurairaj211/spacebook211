@@ -65,7 +65,7 @@ const GUIDE_SECTIONS = [
         steps: [
           'Select your desired Date and Start/End times (between 10:00 AM and 10:00 PM).',
           'Filter by required amenities (e.g. Video Conferencing, Smart TV, Whiteboard, Projector).',
-          'Review real-time room cards showing room capacity, module location, and current availability status.',
+          'Review real-time room cards showing room capacity, standard room codes (e.g. CBE-05-EO1-001), module location, and current availability status.',
         ],
       },
       {
@@ -90,7 +90,7 @@ const GUIDE_SECTIONS = [
       {
         title: '1. Navigating the Office Floor Plan',
         content:
-          'Go to "Hotseat Booking" in the sidebar to open the interactive office floor map. You can toggle between Module 1 and Module 2 floor layouts.',
+          'Go to "Hotseat Reservation" in the sidebar to open the interactive office floor map. You can toggle between Module 1 and Module 2 floor layouts.',
       },
       {
         title: '2. Understanding Desk Color Codes',
@@ -125,7 +125,7 @@ const GUIDE_SECTIONS = [
       {
         title: '1. Viewing Active & Upcoming Reservations',
         content:
-          'Visit "My Bookings" to see all your reservations organized in tabs: Active (upcoming meetings), Completed (past meetings), and Cancelled. Filter by date or search by meeting title.',
+          'Visit "My Bookings" to see all your reservations organized in tabs: Active (upcoming meetings), Completed (past meetings), and Cancelled. Filter by date, search by meeting title, and inspect clean numeric Booking IDs.',
       },
       {
         title: '2. Rescheduling / Editing Booking Time',
@@ -187,31 +187,44 @@ const GUIDE_SECTIONS = [
   },
   {
     id: 'admin-portal',
-    title: 'Admin Tools & Analytics',
+    title: 'Admin Tools & Intelligence',
     icon: ShieldCheck,
     badge: 'Admin Only',
-    description: 'Room inventory, master booking management, and workplace reports.',
+    description: 'Workspace Dashboard, executive analytics, reservation audit records, and room inventory management.',
     topics: [
       {
-        title: '1. Workspace Administration',
+        title: '1. Workspace Dashboard & Reservation Records',
         content:
-          'Admins can add new meeting rooms, update room capacity, set floor/module location, configure equipment amenities, and toggle rooms into maintenance mode when unavailable.',
-      },
-      {
-        title: '2. Master Booking Management',
-        content:
-          'The Master Booking Management page gives administrators complete visibility into all employee reservations across the organization. Admins can search by employee or room, filter by date, and perform administrative overrides when needed.',
-      },
-      {
-        title: '3. Workplace Analytics & Executive Reports',
-        content:
-          'The Reports page provides deep visual business intelligence:',
+          'The Workspace Dashboard gives administrators a unified control center combining high-level visual analytics with live reservation audit logs:',
         steps: [
-          'Top KPI Cards: Total Reservations, Confirmed Rate %, Cancelled Rate %, Workforce Engagement.',
-          'Visual Charts: Employee Booking vs Cancel Ratio, Reservation Outcome Donut, Volume Trendline (Monthly/Weekly), Room Demand Rankings.',
-          'Cancellation Drivers: Visual breakdown of reasons why employees cancel rooms.',
-          'Peak Hours Chart: Demand distribution across office hours (10:00 AM – 10:00 PM).',
-          'Excel Export: Download a 4-sheet formatted Excel workbook (.xlsx) including detailed audits, employee breakdowns, and cancellation insights.',
+          'Top Executive KPI Cards: Real-time metrics for Total Reservations, Confirmed Rate %, Cancelled Rate %, Workforce Engagement, and Average Reservations per Person.',
+          'Workplace Reservation Records & Audit Table: Complete data grid positioned beneath KPIs displaying Booking ID, Meeting Title, Room, Module, Date, Time (HH:mm - HH:mm), Requester, and Status.',
+          'Dynamic Global Filter Bar: Instantly filter all metrics and the audit table by Timeframe (All Time, Today, Past 7 Days, Past 30 Days, Past, Upcoming), Module (Module 1 / Module 2), and Status (Confirmed / Cancelled).',
+          'In-Table Quick Search & Reset: Search reservations in real-time and use "Reset all filters" to return to all records at any time.',
+          'Multi-Format Exports: Download clean CSV audit files or comprehensive 4-sheet formatted Excel workbooks (.xlsx) with a single click.',
+        ],
+      },
+      {
+        title: '2. Workspace Administration & Inventory',
+        content:
+          'The Workspace Administration page allows administrators to manage room inventory and operational states across Module 1 and Module 2:',
+        steps: [
+          'Inventory Summary: Monitor Total Rooms, Available Rooms, Maintenance Rooms, and the live "Reserved" count showing how many rooms are currently occupied.',
+          'Status Controls: Easily toggle room operational states between "Available" and "Maintenance" with automatic persistence.',
+          'Standardized Room Naming: Room numbers consistently follow the standard format (e.g. CBE-05-EO1-001).',
+          'Add & Edit Workspaces: Create new meeting rooms or update capacities, module locations, and multimedia facilities.',
+          'TopNav Search Integration: Searching a room in the top navigation bar immediately filters the workspace administration table.',
+        ],
+      },
+      {
+        title: '3. Visual Analytics & Usage Intelligence',
+        content:
+          'Deep visual business intelligence charts included on the Workspace Dashboard:',
+        steps: [
+          'Booking Volume Trends: Interactive line charts tracking monthly and weekly reservation growth.',
+          'Outcome Distribution: Donut charts illustrating confirmed vs cancelled reservation proportions.',
+          'Room Popularity & Demand: Vertical bar rankings identifying the most frequently reserved workspaces.',
+          'Cancellation Drivers: Comprehensive analysis of top reasons provided for meeting cancellations.',
         ],
       },
     ],
@@ -237,6 +250,11 @@ const GUIDE_SECTIONS = [
         title: 'How do I know if my booking was approved?',
         content:
           'All reservations are auto-approved instantly. You will receive an on-screen confirmation and your booking will immediately show in your "My Bookings" list.',
+      },
+      {
+        title: 'How do administrators manage bookings and rooms?',
+        content:
+          'Administrators use "Workspace Dashboard" to monitor executive KPIs, search live reservation audit records, and export reports. Room inventory, capacities, and maintenance modes are managed under "Workspace Administration".',
       },
       {
         title: 'How do I mark all notifications as read?',

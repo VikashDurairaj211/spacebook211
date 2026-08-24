@@ -241,7 +241,7 @@ export default function AdminDashboard() {
           title="Total Active Bookings"
           value={activeAndEarlyBookings.length}
           description="Confirmed upcoming bookings"
-          to="/admin/booking-management"
+          to="/admin/reports"
         />
 
         <DashboardCard
@@ -286,7 +286,7 @@ export default function AdminDashboard() {
             </div>
 
             <Link
-              to="/admin/booking-management"
+              to="/admin/reports"
               className="text-xs text-brand-blue underline hover:opacity-80"
             >
               Manage all
@@ -381,21 +381,12 @@ export default function AdminDashboard() {
             </Button>
           </Link>
 
-          <Link to="/admin/booking-management">
-            <Button
-              variant="ghost"
-              className="w-full"
-            >
-              Manage Bookings
-            </Button>
-          </Link>
-
           <Link to="/admin/reports">
             <Button
               variant="ghost"
               className="w-full"
             >
-              View Reports
+              View Reports & Bookings
             </Button>
           </Link>
 

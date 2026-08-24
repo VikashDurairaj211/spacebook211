@@ -318,7 +318,7 @@ export default function Dashboard() {
   }, [hotseatBookings]);
 
   if (user?.role === "Admin") {
-    return <Navigate to="/admin/dashboard" replace />;
+    return <Navigate to="/admin/reports" replace />;
   }
 
   if (loading) {

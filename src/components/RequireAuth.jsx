@@ -8,7 +8,7 @@ export default function RequireAuth({ children, allowedRoles }) {
     return <Navigate to="/login" replace />
   }
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to={user.role === 'Admin' ? '/admin/dashboard' : '/dashboard'} replace />
+    return <Navigate to={user.role === 'Admin' ? '/admin/reports' : '/dashboard'} replace />
   }
   return children
 }

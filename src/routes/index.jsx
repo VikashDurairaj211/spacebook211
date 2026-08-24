@@ -20,7 +20,6 @@ import NotificationsPage from '../pages/Notifications'
 import ProfilePage from '../pages/Profile'
 import HotseatBookingPage from '../components/HotseatMap/HotseatBooking'
 
-import AdminDashboardPage from '../pages/Admin/Dashboard'
 import AdminRoomManagementPage from '../pages/Admin/RoomManagement'
 import AdminBookingManagementPage from '../pages/Admin/BookingManagement'
 import AdminReportsPage from '../pages/Admin/Reports'
@@ -103,12 +102,13 @@ export default function AppRoutes() {
 
             {/* ADMIN */}
             <Route
+              path="/admin"
+              element={<Navigate to="/admin/reports" replace />}
+            />
+
+            <Route
               path="/admin/dashboard"
-              element={
-                <RequireAuth allowedRoles={['Admin']}>
-                  <AdminDashboardPage />
-                </RequireAuth>
-              }
+              element={<Navigate to="/admin/reports" replace />}
             />
 
             <Route
@@ -122,11 +122,7 @@ export default function AppRoutes() {
 
             <Route
               path="/admin/booking-management"
-              element={
-                <RequireAuth allowedRoles={['Admin']}>
-                  <AdminBookingManagementPage />
-                </RequireAuth>
-              }
+              element={<Navigate to="/admin/reports" replace />}
             />
 
             <Route
@@ -134,6 +130,15 @@ export default function AppRoutes() {
               element={
                 <RequireAuth allowedRoles={['Admin']}>
                   <AdminReportsPage />
+                </RequireAuth>
+              }
+            />
+
+            <Route
+              path="/admin/notifications"
+              element={
+                <RequireAuth allowedRoles={['Admin']}>
+                  <NotificationsPage />
                 </RequireAuth>
               }
             />

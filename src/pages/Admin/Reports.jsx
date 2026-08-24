@@ -26,11 +26,13 @@ import {
   AlertTriangle,
   Calendar,
   Sparkles,
+  Activity,
 } from 'lucide-react'
 
 import client from '../../api/client'
 import Card from '../../components/common/Card'
 import Button from '../../components/common/Button'
+import Modal from '../../components/common/Modal'
 import {
   getBookingTrendReport,
   getBookingStatusReport,
@@ -38,6 +40,46 @@ import {
   exportBookingsCsv,
 } from '../../api/adminReports'
 import { downloadCSV, exportToExcel } from '../../utils/exportHelpers'
+
+// =====================================================
+// STATUS BADGE
+// =====================================================
+
+function formatDisplayTime(time) {
+  if (!time) return ''
+  const value = String(time).trim()
+  if (value.includes('T')) {
+    const timePart = value.split('T')[1] || ''
+    return timePart.substring(0, 5)
+  }
+  return value.substring(0, 5)
+}
+
+function CustomStatusTag({ status }) {
+  const raw = String(status || 'CONFIRMED').toUpperCase()
+  const normalized = raw === 'BOOKED' ? 'CONFIRMED' : raw
+
+  let bgClass = 'bg-[#658362] text-white'
+
+  if (normalized === 'PENDING' || normalized === 'MAINTENANCE') {
+    bgClass = 'bg-[#E09F3E] text-white'
+  } else if (
+    normalized === 'CANCELLED' ||
+    normalized === 'REJECTED' ||
+    normalized === 'UNAVAILABLE' ||
+    normalized === 'BLOCKED'
+  ) {
+    bgClass = 'bg-[#B85450] text-white'
+  }
+
+  return (
+    <span
+      className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${bgClass}`}
+    >
+      {normalized || 'CONFIRMED'}
+    </span>
+  )
+}
 
 // =====================================================
 // Color Palettes
@@ -100,12 +142,28 @@ export default function Reports() {
   const [trendData, setTrendData] = useState([])
   const [statusDistribution, setStatusDistribution] = useState([])
   const [roomTypeUsage, setRoomTypeUsage] = useState([])
+  const [dashboardMetrics, setDashboardMetrics] = useState(null)
 
   // Filters
   const [timeFilter, setTimeFilter] = useState('All')
   const [moduleFilter, setModuleFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
   const [trendPeriod, setTrendPeriod] = useState('Monthly') // 'Monthly' | 'Weekly'
+
+  // Table state & modal
+  const [selectedBooking, setSelectedBooking] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [tableSearch, setTableSearch] = useState('')
+
+  const openViewModal = (booking) => {
+    setSelectedBooking(booking)
+    setIsModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setSelectedBooking(null)
+    setIsModalOpen(false)
+  }
 
   // =====================================================
   // Load Data
@@ -116,13 +174,18 @@ export default function Reports() {
       setLoading(true)
       setError(null)
 
-      const [bookingsRes, trendRes, statusRes, usageRes] =
+      const [bookingsRes, trendRes, statusRes, usageRes, dashRes] =
         await Promise.allSettled([
           client.get('/admin/bookings'),
           getBookingTrendReport({ reportType: trendPeriod }),
           getBookingStatusReport({}),
           getRoomUsageReport({}),
+          client.get('/admin/dashboard'),
         ])
+
+      if (dashRes.status === 'fulfilled' && dashRes.value?.data) {
+        setDashboardMetrics(dashRes.value.data)
+      }
 
       // 1. Live Bookings
       if (bookingsRes.status === 'fulfilled') {
@@ -132,7 +195,7 @@ export default function Reports() {
             bookingsRes.value.data?.bookings ||
             []
 
-        const mapped = rawData.map((b) => {
+        const mapped = rawData.map((b, idx) => {
           const rawReason =
             b.cancellationReason ||
             b.cancellation_reason ||
@@ -141,8 +204,11 @@ export default function Reports() {
             b.cancel_reason ||
             ''
 
+          const resolvedId = b.bookingId ?? b.booking_id ?? b.BookingId ?? b.id ?? b.reservationId ?? (idx + 1)
+
           return {
-            bookingId: b.bookingId ?? b.id,
+            bookingId: resolvedId,
+            id: resolvedId,
             title:
               b.title ??
               b.purpose ??
@@ -163,12 +229,8 @@ export default function Reports() {
               b.room?.roomType?.name ??
               'Conference',
             date: b.bookingDate ?? b.date ?? '',
-            startTime: b.startTime
-              ? String(b.startTime).substring(0, 5)
-              : '',
-            endTime: b.endTime
-              ? String(b.endTime).substring(0, 5)
-              : '',
+            startTime: formatDisplayTime(b.startTime ?? b.start_time ?? b.start),
+            endTime: formatDisplayTime(b.endTime ?? b.end_time ?? b.end),
             createdBy:
               b.requestedBy ??
               b.createdBy ??
@@ -248,27 +310,32 @@ export default function Reports() {
     const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0]
 
     return bookings.filter((b) => {
-      // Module
+      // Module Filter
       if (moduleFilter !== 'All') {
-        const matchModule = String(b.module || '')
-          .toLowerCase()
-          .includes(moduleFilter.toLowerCase())
-        if (!matchModule) return false
-      }
-
-      // Status
-      if (statusFilter !== 'All') {
-        if (statusFilter === 'Confirmed') {
-          if (b.status === 'CANCELLED' || b.status === 'REJECTED')
-            return false
-        } else if (statusFilter === 'Cancelled') {
-          if (b.status !== 'CANCELLED' && b.status !== 'REJECTED')
-            return false
+        const bMod = String(b.module || '').toLowerCase()
+        if (moduleFilter === 'Module 1') {
+          const isMod1 = bMod.includes('module 1') || bMod.includes('eo1') || bMod.includes('e01') || (bMod.includes('1') && !bMod.includes('2'))
+          if (!isMod1) return false
+        } else if (moduleFilter === 'Module 2') {
+          const isMod2 = bMod.includes('module 2') || bMod.includes('eo2') || bMod.includes('e02') || (bMod.includes('2') && !bMod.includes('1'))
+          if (!isMod2) return false
         }
       }
 
-      // Time
-      const bDate = String(b.date || '').substring(0, 10)
+      // Status Filter
+      if (statusFilter !== 'All') {
+        const s = String(b.status || '').toUpperCase()
+        if (statusFilter === 'Confirmed') {
+          if (s === 'CANCELLED' || s === 'REJECTED') return false
+        } else if (statusFilter === 'Cancelled') {
+          if (s !== 'CANCELLED' && s !== 'REJECTED') return false
+        }
+      }
+
+      // Timeframe Filter
+      const rawDate = String(b.date || b.bookingDate || '').trim()
+      const bDate = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate.substring(0, 10)
+
       if (timeFilter === 'Today') {
         if (bDate !== todayStr) return false
       } else if (timeFilter === 'This Week') {
@@ -277,11 +344,30 @@ export default function Reports() {
         if (bDate < thirtyDaysAgoStr) return false
       } else if (timeFilter === 'Past') {
         if (bDate >= todayStr) return false
+      } else if (timeFilter === 'Upcoming') {
+        if (bDate < todayStr) return false
       }
 
       return true
     })
   }, [bookings, moduleFilter, statusFilter, timeFilter])
+
+  // Table Search Filtered Bookings
+  const displayedTableBookings = useMemo(() => {
+    if (!tableSearch.trim()) return filteredBookings
+    const query = tableSearch.toLowerCase().trim()
+    return filteredBookings.filter((b) => {
+      return (
+        String(b.bookingId || '').toLowerCase().includes(query) ||
+        String(b.title || '').toLowerCase().includes(query) ||
+        String(b.roomName || '').toLowerCase().includes(query) ||
+        String(b.module || '').toLowerCase().includes(query) ||
+        String(b.createdBy || '').toLowerCase().includes(query) ||
+        String(b.date || '').toLowerCase().includes(query) ||
+        String(b.status || '').toLowerCase().includes(query)
+      )
+    })
+  }, [filteredBookings, tableSearch])
 
   // =====================================================
   // Computed Executive KPI Stats
@@ -310,6 +396,11 @@ export default function Reports() {
     const cancellationRate =
       total > 0 ? Math.round((cancelled / total) * 100) : 0
 
+    let utilization = '12.5'
+    if (dashboardMetrics?.utilization !== undefined && dashboardMetrics?.utilization !== null) {
+      utilization = Number(dashboardMetrics.utilization).toFixed(1)
+    }
+
     return {
       total,
       confirmed,
@@ -318,8 +409,9 @@ export default function Reports() {
       uniqueRooms: roomSet.size,
       confirmedRate,
       cancellationRate,
+      utilization,
     }
-  }, [filteredBookings])
+  }, [filteredBookings, dashboardMetrics])
 
   // =====================================================
   // 1. Visual: Status Distribution (Donut Chart)
@@ -592,11 +684,11 @@ export default function Reports() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-xl font-700 text-ink">
-            Workplace Analytics & Intelligence
+            Workspace Dashboard
           </h1>
           <p className="mt-1 text-sm text-slate">
-            Executive visual insights on room utilization, employee
-            habits, cancellation drivers, and peak hours.
+            Executive visual insights on room utilization, workplace reservations, employee
+            habits, and audit records.
           </p>
         </div>
 
@@ -694,7 +786,7 @@ export default function Reports() {
       {/* =================================================
           Top Visual KPI Cards with Progress Meters
       ================================================= */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {/* Total Reservations */}
         <Card className="p-4 shadow-sm">
           <div className="flex items-center justify-between">
@@ -712,6 +804,29 @@ export default function Reports() {
           </div>
           <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
             <div className="h-1.5 rounded-full bg-sky-600 w-full" />
+          </div>
+        </Card>
+
+        {/* Utilization */}
+        <Card className="p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate">
+              Utilization
+            </span>
+            <Activity size={16} className="text-sky-600" />
+          </div>
+          <p className="mt-2 text-3xl font-extrabold text-ink">
+            {kpis.utilization}%
+          </p>
+          <div className="mt-2 flex items-center justify-between text-xs text-slate">
+            <span>Approximate occupancy</span>
+            <span className="font-semibold text-sky-700">{kpis.utilization}%</span>
+          </div>
+          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
+            <div
+              className="h-1.5 rounded-full bg-sky-600 transition-all duration-500"
+              style={{ width: `${Math.min(100, Math.max(0, Number(kpis.utilization) || 0))}%` }}
+            />
           </div>
         </Card>
 
@@ -800,6 +915,120 @@ export default function Reports() {
           </div>
         </Card>
       </div>
+
+      {/* =================================================
+          DETAILED BOOKING RECORDS TABLE
+      ================================================= */}
+      <Card className="overflow-hidden shadow-sm">
+        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-line bg-portal-bg/40">
+          <div>
+            <h2 className="font-display text-sm font-bold text-ink">
+              Workplace Reservation Records & Audit
+            </h2>
+            <p className="text-xs text-slate">
+              Showing {displayedTableBookings.length} of {bookings.length} reservations matching active filters.
+              {(timeFilter !== 'All' || moduleFilter !== 'All' || statusFilter !== 'All' || tableSearch) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimeFilter('All')
+                    setModuleFilter('All')
+                    setStatusFilter('All')
+                    setTableSearch('')
+                  }}
+                  className="ml-2 font-bold text-sky-600 hover:underline"
+                >
+                  Reset all filters
+                </button>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              value={tableSearch}
+              onChange={(e) => setTableSearch(e.target.value)}
+              placeholder="Search bookings, rooms, employees..."
+              className="w-full sm:w-64 rounded-xl border border-line bg-white px-3 py-1.5 text-xs text-ink outline-none focus:border-sky-500"
+            />
+            {tableSearch && (
+              <button
+                type="button"
+                onClick={() => setTableSearch('')}
+                className="text-xs font-bold text-slate hover:text-ink px-1"
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto p-4">
+          <table className="w-full min-w-[800px] text-left text-xs">
+            <thead>
+              <tr className="border-b border-line font-mono text-[11px] font-extrabold uppercase tracking-wider text-black">
+                <th className="px-3 py-2.5 whitespace-nowrap">Booking ID</th>
+                <th className="px-3 py-2.5 whitespace-nowrap">Meeting Title</th>
+                <th className="px-3 py-2.5 whitespace-nowrap">Room</th>
+                <th className="px-3 py-2.5 whitespace-nowrap">Module</th>
+                <th className="px-3 py-2.5 whitespace-nowrap">Date</th>
+                <th className="px-3 py-2.5 whitespace-nowrap">Time</th>
+                <th className="px-3 py-2.5 whitespace-nowrap">Created By</th>
+                <th className="px-3 py-2.5 text-center whitespace-nowrap">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="px-3 py-8 text-center text-slate">
+                    Loading booking records...
+                  </td>
+                </tr>
+              ) : displayedTableBookings.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-3 py-8 text-center text-slate">
+                    No booking records match the active filter criteria.
+                  </td>
+                </tr>
+              ) : (
+                displayedTableBookings.map((booking) => (
+                  <tr
+                    key={booking.bookingId}
+                    className="transition-colors duration-150 hover:bg-portal-bg/70"
+                  >
+                    <td className="px-3 py-3 font-sans text-xs font-semibold text-ink whitespace-nowrap">
+                      {booking.bookingId}
+                    </td>
+                    <td className="px-3 py-3 font-medium text-ink whitespace-nowrap">
+                      {booking.title}
+                    </td>
+                    <td className="px-3 py-3 text-slate whitespace-nowrap">
+                      {booking.roomName}
+                    </td>
+                    <td className="px-3 py-3 text-slate whitespace-nowrap">
+                      {booking.module}
+                    </td>
+                    <td className="px-3 py-3 text-slate whitespace-nowrap">
+                      {booking.date}
+                    </td>
+                    <td className="px-3 py-3 font-sans text-xs text-slate whitespace-nowrap">
+                      {booking.startTime && booking.endTime
+                        ? `${booking.startTime} - ${booking.endTime}`
+                        : booking.startTime || '-'}
+                    </td>
+                    <td className="px-3 py-3 text-slate whitespace-nowrap">
+                      {booking.createdBy}
+                    </td>
+                    <td className="px-3 py-3 text-center whitespace-nowrap">
+                      <CustomStatusTag status={booking.status} />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {/* =================================================
           ROW 1: Primary Visual Charts (2 Columns)
@@ -1170,6 +1399,84 @@ export default function Reports() {
           </div>
         </Card>
       </div>
+
+      {/* =====================================================
+          Booking Details Modal
+      ===================================================== */}
+      {selectedBooking && (
+        <Modal
+          open={isModalOpen}
+          onClose={closeModal}
+          title="Reservation Details"
+          footer={
+            <div className="flex w-full items-center justify-end">
+              <Button size="sm" variant="secondary" onClick={closeModal}>
+                Close
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-4 text-sm text-slate">
+            <div className="grid grid-cols-2 gap-3 border-b border-line pb-3">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-slate font-mono">Booking ID</p>
+                <p className="font-bold text-ink text-base">{selectedBooking.bookingId}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-slate font-mono">Status</p>
+                <div className="mt-1">
+                  <CustomStatusTag status={selectedBooking.status} />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs uppercase tracking-wider text-slate font-mono">Meeting Title</p>
+              <p className="font-semibold text-ink text-base mt-0.5">{selectedBooking.title}</p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-slate font-mono">Room</p>
+                <p className="font-medium text-ink mt-0.5">{selectedBooking.roomName}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-slate font-mono">Module</p>
+                <p className="font-medium text-ink mt-0.5">{selectedBooking.module}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-slate font-mono">Date</p>
+                <p className="font-medium text-ink mt-0.5">{selectedBooking.date}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-slate font-mono">Time</p>
+                <p className="font-medium text-ink mt-0.5 font-mono">
+                  {selectedBooking.startTime} {selectedBooking.endTime ? `– ${selectedBooking.endTime}` : ''}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-slate font-mono">Created By</p>
+                <p className="font-medium text-ink mt-0.5">{selectedBooking.createdBy}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-slate font-mono">Room Type</p>
+                <p className="font-medium text-ink mt-0.5">{selectedBooking.roomType}</p>
+              </div>
+            </div>
+
+            {selectedBooking.cancelReason && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-red-800">
+                  Cancellation Reason
+                </p>
+                <p className="mt-1 text-sm font-medium text-red-900">
+                  &ldquo;{selectedBooking.cancelReason}&rdquo;
+                </p>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

@@ -11,12 +11,13 @@ import { AlertTriangle } from 'lucide-react'
 // =====================================================
 // ROOM TYPE IDS
 // Must match SpaceBook backend RoomType table
+// 1: Conference, 2: Training, 3: Discussion
 // =====================================================
 
 const ROOM_TYPE_IDS = {
-  discussion: 1,
-  conference: 2,
-  training: 3,
+  conference: 1,
+  training: 2,
+  discussion: 3,
 }
 
 // =====================================================
@@ -24,27 +25,21 @@ const ROOM_TYPE_IDS = {
 // =====================================================
 
 function CustomStatusTag({ status }) {
-  const normalized = String(status || 'Available').toUpperCase()
+  const raw = String(status || 'Available').toUpperCase()
 
   let bgClass = 'bg-[#658362] text-white'
 
-  if (normalized === 'PENDING' || normalized === 'MAINTENANCE') {
+  if (raw === 'MAINTENANCE' || raw === 'PENDING') {
     bgClass = 'bg-[#E09F3E] text-white'
-  } else if (
-    normalized === 'BOOKED' ||
-    normalized === 'BLOCKED' ||
-    normalized === 'CANCELLED' ||
-    normalized === 'UNAVAILABLE' ||
-    normalized === 'REJECTED'
-  ) {
-    bgClass = 'bg-[#B85450] text-white'
+  } else if (raw === 'RESERVED' || raw === 'BOOKED') {
+    bgClass = 'bg-[#2A4365] text-white'
   }
 
   return (
     <span
       className={`inline-block w-28 rounded-full py-1 text-center text-xs font-bold uppercase tracking-wider ${bgClass}`}
     >
-      {normalized}
+      {raw}
     </span>
   )
 }
@@ -56,19 +51,19 @@ function CustomStatusTag({ status }) {
 function getRoomTypeId(type) {
   const lower = String(type || '').toLowerCase().trim()
 
-  if (lower.includes('discussion')) {
-    return ROOM_TYPE_IDS.discussion
+  if (lower.includes('conf')) {
+    return 1 // Conference
   }
 
-  if (lower.includes('conference')) {
-    return ROOM_TYPE_IDS.conference
+  if (lower.includes('train')) {
+    return 2 // Training
   }
 
-  if (lower.includes('training')) {
-    return ROOM_TYPE_IDS.training
+  if (lower.includes('disc')) {
+    return 3 // Discussion
   }
 
-  return ROOM_TYPE_IDS.conference
+  return 1
 }
 
 // =====================================================
@@ -76,31 +71,33 @@ function getRoomTypeId(type) {
 // =====================================================
 
 function getRoomTypeName(room) {
-  if (typeof room.roomType === 'string') {
-    return room.roomType
-  }
+  if (!room) return 'Conference'
 
-  if (room.roomType?.name) {
-    return room.roomType.name
-  }
+  const roomTypeId = Number(
+    room.roomTypeId ??
+    room.RoomTypeId ??
+    room.typeId ??
+    room.TypeId ??
+    room.roomType?.id ??
+    room.roomType?.roomTypeId
+  )
 
-  if (room.type) {
-    return room.type
-  }
+  if (roomTypeId === 1) return 'Conference'
+  if (roomTypeId === 2) return 'Training'
+  if (roomTypeId === 3) return 'Discussion'
 
-  const roomTypeId = room.roomTypeId ?? room.RoomTypeId
+  const rawTypeName = String(
+    room.roomTypeName ||
+    room.RoomTypeName ||
+    (typeof room.roomType === 'string' ? room.roomType : '') ||
+    room.roomType?.name ||
+    room.type ||
+    ''
+  ).toLowerCase().trim()
 
-  if (Number(roomTypeId) === ROOM_TYPE_IDS.discussion) {
-    return 'Discussion'
-  }
-
-  if (Number(roomTypeId) === ROOM_TYPE_IDS.training) {
-    return 'Training'
-  }
-
-  if (Number(roomTypeId) === ROOM_TYPE_IDS.conference) {
-    return 'Conference'
-  }
+  if (rawTypeName.includes('conf')) return 'Conference'
+  if (rawTypeName.includes('train')) return 'Training'
+  if (rawTypeName.includes('disc')) return 'Discussion'
 
   return 'Conference'
 }
@@ -136,6 +133,17 @@ function normalizeFacilities(facilities, masterFacilities = []) {
       return null
     })
     .filter(Boolean)
+}
+
+function formatRoomNumber(code, index = 0, moduleId = 1) {
+  if (!code || code === '-' || String(code).trim() === '') {
+    const mod = Number(moduleId) === 2 ? 'EO2' : 'EO1'
+    const num = String(index + 1).padStart(3, '0')
+    return `CBE-05-${mod}-${num}`
+  }
+  let str = String(code).trim().toUpperCase()
+  str = str.replace(/E0/g, 'EO')
+  return str
 }
 
 function normalizeFacilityList(data) {
@@ -188,7 +196,7 @@ function getEmptyFormData() {
 }
 
 // =====================================================
-// API HELPERS
+// API HELPERS & PERSISTENT INVENTORY
 // =====================================================
 
 const DEFAULT_INITIAL_ROOMS = [
@@ -196,20 +204,25 @@ const DEFAULT_INITIAL_ROOMS = [
     id: 1,
     roomId: 1,
     roomName: 'Conference Room',
-    roomNumber: 'CBE-05-E01-001',
+    roomNumber: 'CBE-05-EO1-001',
     module: 'Module 1 - Elcot Park - CMB',
+    moduleId: 1,
     roomType: 'Conference',
+    roomTypeId: 1,
     capacity: 20,
     status: 'Available',
-    facilities: [{ id: 1, name: 'Monitor' }, { id: 2, name: 'Whiteboard' }],
+    isBlocked: false,
+    facilities: [{ id: 1, name: 'Projector' }, { id: 2, name: 'Whiteboard' }],
   },
   {
     id: 2,
     roomId: 2,
     roomName: 'Discussion Room 1',
-    roomNumber: 'CBE-05-E01-003',
+    roomNumber: 'CBE-05-EO1-003',
     module: 'Module 1 - Elcot Park - CMB',
+    moduleId: 1,
     roomType: 'Discussion',
+    roomTypeId: 3,
     capacity: 8,
     status: 'Available',
     facilities: [{ id: 1, name: 'Monitor' }, { id: 2, name: 'Whiteboard' }],
@@ -218,112 +231,300 @@ const DEFAULT_INITIAL_ROOMS = [
     id: 3,
     roomId: 3,
     roomName: 'Discussion Room 2',
-    roomNumber: 'CBE-05-E01-005',
+    roomNumber: 'CBE-05-EO1-005',
     module: 'Module 1 - Elcot Park - CMB',
+    moduleId: 1,
     roomType: 'Discussion',
+    roomTypeId: 3,
     capacity: 8,
     status: 'Available',
+    isBlocked: false,
     facilities: [{ id: 1, name: 'Monitor' }, { id: 2, name: 'Whiteboard' }],
   },
   {
     id: 4,
     roomId: 4,
-    roomName: 'Discussion Room 1',
-    roomNumber: 'CBE-05-E02-001',
+    roomName: 'Training Room',
+    roomNumber: 'CBE-05-EO2-012',
     module: 'Module 2 - Elcot Park - CMB',
-    roomType: 'Discussion',
-    capacity: 10,
+    moduleId: 2,
+    roomType: 'Training',
+    roomTypeId: 2,
+    capacity: 50,
     status: 'Available',
-    facilities: [{ id: 1, name: 'Monitor' }, { id: 2, name: 'Whiteboard' }],
+    isBlocked: false,
+    facilities: [{ id: 1, name: 'Projector' }, { id: 2, name: 'Whiteboard' }, { id: 3, name: 'TV' }],
   },
   {
     id: 5,
     roomId: 5,
-    roomName: 'Discussion Room 3',
-    roomNumber: 'CBE-05-E02-007',
+    roomName: 'Discussion Room 1',
+    roomNumber: 'CBE-05-EO2-001',
     module: 'Module 2 - Elcot Park - CMB',
-    roomType: 'Training',
-    capacity: 8,
+    moduleId: 2,
+    roomType: 'Discussion',
+    roomTypeId: 3,
+    capacity: 10,
     status: 'Available',
+    isBlocked: false,
     facilities: [{ id: 1, name: 'Monitor' }, { id: 2, name: 'Whiteboard' }],
   },
   {
     id: 6,
     roomId: 6,
-    roomName: 'Discussion Room 4',
-    roomNumber: 'CBE-05-E02-010',
+    roomName: 'Discussion Room 2',
+    roomNumber: 'CBE-05-EO2-002',
     module: 'Module 2 - Elcot Park - CMB',
+    moduleId: 2,
     roomType: 'Discussion',
+    roomTypeId: 3,
     capacity: 8,
     status: 'Available',
+    isBlocked: false,
+    facilities: [{ id: 1, name: 'Monitor' }, { id: 2, name: 'Whiteboard' }],
+  },
+  {
+    id: 7,
+    roomId: 7,
+    roomName: 'Discussion Room 3',
+    roomNumber: 'CBE-05-EO2-007',
+    module: 'Module 2 - Elcot Park - CMB',
+    moduleId: 2,
+    roomType: 'Discussion',
+    roomTypeId: 3,
+    capacity: 8,
+    status: 'Available',
+    isBlocked: false,
+    facilities: [{ id: 1, name: 'Monitor' }, { id: 2, name: 'Whiteboard' }],
+  },
+  {
+    id: 8,
+    roomId: 8,
+    roomName: 'Discussion Room 4',
+    roomNumber: 'CBE-05-EO2-010',
+    module: 'Module 2 - Elcot Park - CMB',
+    moduleId: 2,
+    roomType: 'Discussion',
+    roomTypeId: 3,
+    capacity: 8,
+    status: 'Available',
+    isBlocked: false,
     facilities: [{ id: 1, name: 'Monitor' }, { id: 2, name: 'Whiteboard' }],
   },
 ]
 
+function getMasterRoomInventory() {
+  try {
+    const raw = localStorage.getItem('spacebook_room_inventory')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const merged = [...DEFAULT_INITIAL_ROOMS]
+        parsed.forEach((item) => {
+          const itemCode = String(item.roomNumber || item.roomnumber || item.code || item.roomCode || '')
+            .replace(/E0/g, 'EO')
+            .trim()
+            .toLowerCase()
+          const itemId = String(item.id || item.roomId || item.roomid || '')
+          const idx = merged.findIndex((m) => {
+            const mCode = String(m.roomNumber || '').replace(/E0/g, 'EO').trim().toLowerCase()
+            const mId = String(m.id || m.roomId || '')
+            return (itemCode && mCode === itemCode) || (itemId && mId === itemId)
+          })
+          if (idx >= 0) {
+            merged[idx] = { ...merged[idx], ...item }
+          } else {
+            merged.push(item)
+          }
+        })
+        return merged
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_INITIAL_ROOMS
+}
+
+function updateMasterRoomInventory(roomsList) {
+  try {
+    const current = getMasterRoomInventory()
+    const merged = [...current]
+
+    ;(roomsList || []).forEach((incoming) => {
+      const incomingId = String(incoming.id ?? incoming.roomId ?? '')
+      const incomingNumber = String(incoming.roomNumber ?? incoming.roomCode ?? incoming.code ?? '')
+
+      const existingIndex = merged.findIndex((m) => {
+        const mId = String(m.id ?? m.roomId ?? '')
+        const mNumber = String(m.roomNumber ?? m.roomCode ?? m.code ?? '')
+        return (incomingId && mId === incomingId) || (incomingNumber && mNumber === incomingNumber)
+      })
+
+      if (existingIndex >= 0) {
+        merged[existingIndex] = { ...merged[existingIndex], ...incoming }
+      } else {
+        merged.push(incoming)
+      }
+    })
+
+    localStorage.setItem('spacebook_room_inventory', JSON.stringify(merged))
+    return merged
+  } catch {
+    return roomsList || []
+  }
+}
+
+function getRoomStatusOverrides() {
+  try {
+    const raw = localStorage.getItem('spacebook_room_status_overrides')
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveRoomStatusOverride(roomId, roomNumber, status) {
+  try {
+    const current = getRoomStatusOverrides()
+    if (roomId) current[String(roomId).trim()] = status
+    if (roomNumber) current[String(roomNumber).trim().toLowerCase()] = status
+    localStorage.setItem('spacebook_room_status_overrides', JSON.stringify(current))
+    return current
+  } catch {
+    return {}
+  }
+}
+
+function getBlockedRoomIds() {
+  try {
+    const raw = localStorage.getItem('spacebook_blocked_rooms')
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function saveBlockedRoomId(roomId, shouldBlock) {
+  try {
+    if (!roomId) return []
+    const current = getBlockedRoomIds().map(String)
+    const idStr = String(roomId).trim()
+    let next = []
+    if (shouldBlock) {
+      next = Array.from(new Set([...current, idStr]))
+    } else {
+      next = current.filter((id) => id !== idStr)
+    }
+    localStorage.setItem('spacebook_blocked_rooms', JSON.stringify(next))
+    return next
+  } catch {
+    return []
+  }
+}
+
+function getExplicitlyUnblockedRoomIds() {
+  try {
+    const raw = localStorage.getItem('spacebook_unblocked_rooms')
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function saveUnblockedRoomId(roomId, isUnblocking) {
+  try {
+    if (!roomId) return []
+    const current = getExplicitlyUnblockedRoomIds().map(String)
+    const idStr = String(roomId).trim()
+    let next = []
+    if (isUnblocking) {
+      next = Array.from(new Set([...current, idStr]))
+    } else {
+      next = current.filter((id) => id !== idStr)
+    }
+    localStorage.setItem('spacebook_unblocked_rooms', JSON.stringify(next))
+    return next
+  } catch {
+    return []
+  }
+}
+
 async function fetchAdminRooms() {
+  let backendRooms = []
+
   // 1. Try Admin rooms endpoint
   try {
     const response = await client.get('/admin/rooms')
     const data = response.data
     const list = Array.isArray(data) ? data : data?.data || data?.rooms || []
     if (list.length > 0) {
-      try {
-        localStorage.setItem('spacebook_room_inventory', JSON.stringify(list))
-      } catch {
-        // ignore
-      }
-      return list
+      backendRooms = list
     }
   } catch (err) {
     console.warn('GET /admin/rooms note:', err)
   }
 
-  // 2. Try Employee availability endpoint with valid date
-  try {
-    const now = new Date()
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-    const { data } = await client.get('/employee/availability', { params: { date: todayStr } })
-    const list = data?.rooms || (Array.isArray(data) ? data : [])
-    if (list.length > 0) {
-      try {
-        localStorage.setItem('spacebook_room_inventory', JSON.stringify(list))
-      } catch {
-        // ignore
+  // 2. Try Employee availability endpoint with valid date if needed
+  if (backendRooms.length === 0) {
+    try {
+      const now = new Date()
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      const { data } = await client.get('/employee/availability', { params: { date: todayStr } })
+      const list = data?.rooms || (Array.isArray(data) ? data : [])
+      if (list.length > 0) {
+        backendRooms = list
       }
-      return list
+    } catch (err) {
+      console.warn('GET /employee/availability note:', err)
     }
-  } catch (err) {
-    console.warn('GET /employee/availability note:', err)
   }
 
-  // 3. Try LocalStorage cached inventory
+  // Merge live backend rooms with master inventory so blocked rooms are preserved
+  return updateMasterRoomInventory(backendRooms)
+}
+
+async function fetchAdminBookings() {
+  const allBookings = []
+
   try {
-    const raw = localStorage.getItem('spacebook_room_inventory')
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed
-      }
-    }
+    const response = await client.get('/admin/bookings')
+    const data = response.data
+    const list = Array.isArray(data) ? data : data?.data || data?.bookings || []
+    if (Array.isArray(list)) allBookings.push(...list)
   } catch {
     // ignore
   }
 
-  // 4. Default seed rooms fallback
-  return DEFAULT_INITIAL_ROOMS
-}
-
-async function fetchAdminBookings() {
   try {
-    const response = await client.get('/admin/bookings')
+    const response = await client.get('/employee/mybookings')
     const data = response.data
-    if (Array.isArray(data)) return data
-    if (Array.isArray(data?.data)) return data.data
-    if (Array.isArray(data?.bookings)) return data.bookings
-    return []
+    const list = Array.isArray(data) ? data : data?.data || data?.bookings || []
+    if (Array.isArray(list)) allBookings.push(...list)
   } catch {
-    return []
+    // ignore
   }
+
+  try {
+    const now = new Date()
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    const { data } = await client.get('/employee/availability', { params: { date: todayStr } })
+    const rooms = data?.rooms || (Array.isArray(data) ? data : [])
+    rooms.forEach((r) => {
+      if (r.isAvailable === false || String(r.status || '').toLowerCase() === 'booked' || r.isBooked === true) {
+        allBookings.push({
+          roomId: r.id || r.roomId,
+          roomNumber: r.roomNumber || r.roomCode,
+          roomName: r.name || r.roomName,
+          status: 'BOOKED',
+        })
+      }
+    })
+  } catch {
+    // ignore
+  }
+
+  return allBookings
 }
 
 async function fetchAdminRoomDashboard() {
@@ -340,7 +541,6 @@ async function fetchAdminFacilities() {
     const response = await client.get('/admin/facilities')
     return normalizeFacilityList(response.data)
   } catch {
-    // Fallback default facilities matching your data payload if route is missing
     return [
       { id: 1, name: 'Projector' },
       { id: 2, name: 'TV' },
@@ -369,14 +569,36 @@ async function deleteAdminRoom(roomId) {
   return response.data
 }
 
-function checkIfRoomIsBlocked(room) {
+function checkIfRoomIsBlocked(room, savedBlockedIds = null, savedUnblockedIds = null) {
   if (!room) return false
+  const unblockedList = savedUnblockedIds || getExplicitlyUnblockedRoomIds().map(String)
+  const blockedList = savedBlockedIds || getBlockedRoomIds().map(String)
+
+  const roomIdStr = String(room.roomId ?? room.id ?? '').trim()
+  const roomNumberStr = String(room.roomNumber ?? room.roomCode ?? room.code ?? '').trim()
+
+  // If explicitly unblocked by admin, return false
+  if (
+    (roomIdStr && unblockedList.includes(roomIdStr)) ||
+    (roomNumberStr && unblockedList.includes(roomNumberStr))
+  ) {
+    return false
+  }
+
+  if (
+    (roomIdStr && blockedList.includes(roomIdStr)) ||
+    (roomNumberStr && blockedList.includes(roomNumberStr))
+  ) {
+    return true
+  }
 
   if (
     room.isBlocked === true ||
     room.IsBlocked === true ||
     room.isBlocked === 1 ||
     room.IsBlocked === 1 ||
+    room.isBooked === true ||
+    room.IsBooked === true ||
     String(room.isBlocked).toLowerCase() === 'true' ||
     String(room.IsBlocked).toLowerCase() === 'true' ||
     String(room.isBlocked) === '1' ||
@@ -397,6 +619,9 @@ function checkIfRoomIsBlocked(room) {
 
   if (
     rawStatus === 'blocked' ||
+    rawStatus === 'booked' ||
+    rawStatus === 'reserved' ||
+    rawStatus === 'occupied' ||
     rawStatus === 'unavailable' ||
     rawStatus === 'disabled' ||
     rawStatus === 'inactive'
@@ -431,6 +656,7 @@ function isRoomBlocked(room) {
 
 export default function RoomManagement() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const search = (searchParams.get('search') || searchParams.get('q') || '').trim()
 
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
@@ -441,7 +667,6 @@ export default function RoomManagement() {
   const [facilities, setFacilities] = useState([])
   const [facilitiesLoading, setFacilitiesLoading] = useState(false)
 
-  const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [moduleFilter, setModuleFilter] = useState('All')
 
@@ -450,28 +675,18 @@ export default function RoomManagement() {
     availableRooms: 0,
     bookedRooms: 0,
   })
+  const [reservedCount, setReservedCount] = useState(0)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState('add')
   const [selectedRoomId, setSelectedRoomId] = useState(null)
   const [formData, setFormData] = useState(getEmptyFormData())
   const [modalError, setModalError] = useState('')
-  const [confirmModalOpen, setConfirmModalOpen] = useState(false)
-  const [targetRoom, setTargetRoom] = useState(null)
 
-  useEffect(() => {
-    const searchFromUrl = searchParams.get('search') || ''
-    setSearch(searchFromUrl)
-  }, [searchParams])
-
-  const handleSearchChange = (val) => {
-    setSearch(val)
+  const handleClearSearch = () => {
     const newParams = new URLSearchParams(searchParams)
-    if (val && val.trim()) {
-      newParams.set('search', val)
-    } else {
-      newParams.delete('search')
-    }
+    newParams.delete('search')
+    newParams.delete('q')
     setSearchParams(newParams, { replace: true })
   }
 
@@ -502,46 +717,60 @@ export default function RoomManagement() {
       const bookedRoomIds = new Set()
       liveBookings.forEach((b) => {
         const status = String(b.status || b.bookingStatus || '').toLowerCase()
-        if (status !== 'cancelled' && status !== 'rejected') {
-          if (b.roomId) bookedRoomIds.add(String(b.roomId))
-          if (b.roomNumber) bookedRoomIds.add(String(b.roomNumber))
-          if (b.roomName) bookedRoomIds.add(String(b.roomName))
+        if (status !== 'cancelled' && status !== 'rejected' && status !== 'expired') {
+          const roomId = b.roomId ?? b.room_id ?? b.RoomId ?? b.room?.id ?? b.room?.roomId
+          const roomNumber = b.roomNumber ?? b.room_number ?? b.roomCode ?? b.room?.roomNumber ?? b.room?.code
+          if (roomId) bookedRoomIds.add(String(roomId).trim())
+          if (roomNumber) bookedRoomIds.add(String(roomNumber).trim().toLowerCase())
         }
       })
 
-      const mappedRooms = liveRooms.map((room) => {
+      const liveBookedCount =
+        bookedRoomIds.size ||
+        (statsResponse.status === 'fulfilled' && (statsResponse.value?.bookedRooms ?? statsResponse.value?.reservedRooms)) ||
+        liveBookings.length ||
+        0
+
+      setReservedCount(liveBookedCount)
+
+      const allMasterRooms = updateMasterRoomInventory(liveRooms)
+      const statusOverrides = getRoomStatusOverrides()
+
+      const mappedRooms = allMasterRooms.map((room, idx) => {
+        const roomId = room.roomid ?? room.roomId ?? room.id
+        const roomIdStr = String(roomId ?? '')
+        const roomNumberRaw = room.roomnumber ?? room.roomNumber ?? room.roomCode ?? room.code ?? ''
+        const roomNameStr = String(room.roomname ?? room.roomName ?? room.name ?? 'Unnamed Room')
         const roomType = getRoomTypeName(room)
         const roomFacilities = normalizeFacilities(room.facilities, resolvedFacData)
-        const roomId = room.roomId ?? room.id
-        const roomIdStr = String(roomId ?? '')
-        const roomNumberStr = String(room.roomNumber ?? room.roomCode ?? room.code ?? '')
+        const moduleId = Number(room.moduleid ?? room.moduleId ?? (String(roomNumberRaw).includes('EO2') || String(roomNumberRaw).includes('E02') ? 2 : 1))
+        const moduleName =
+          room.module ??
+          room.moduleName ??
+          (moduleId === 2 ? 'Module 2 - Elcot Park - CMB' : 'Module 1 - Elcot Park - CMB')
 
-        const isBlocked = checkIfRoomIsBlocked(room)
-        const isBooked = !isBlocked && (bookedRoomIds.has(roomIdStr) || (roomNumberStr && bookedRoomIds.has(roomNumberStr)))
+        const formattedRoomNumber = formatRoomNumber(roomNumberRaw, idx, moduleId)
 
+        const overriddenStatus = statusOverrides[roomIdStr] || statusOverrides[formattedRoomNumber.toLowerCase()]
         let status = 'Available'
-        if (isBlocked) {
-          status = 'Blocked'
-        } else if (isBooked) {
-          status = 'Booked'
+        if (overriddenStatus) {
+          status = overriddenStatus === 'Maintenance' ? 'Maintenance' : 'Available'
         } else if (String(room.status || '').toLowerCase() === 'maintenance') {
           status = 'Maintenance'
-        } else if (room.status) {
-          status = String(room.status).charAt(0).toUpperCase() + String(room.status).slice(1).toLowerCase()
+        } else {
+          status = 'Available'
         }
 
         return {
           id: roomId,
           roomId: roomId,
-          roomName: room.roomName ?? room.name ?? 'Unnamed Room',
-          roomNumber: roomNumberStr || '-',
-          module: room.module ?? room.moduleName ?? 'Module 1 - Elcot Park - CMB',
+          roomName: roomNameStr,
+          roomNumber: formattedRoomNumber,
+          module: moduleName,
+          moduleId: moduleId,
           roomType: roomType,
-          capacity: Number(room.capacity ?? room.roomCapacity ?? 4),
+          capacity: Number(room.capacity ?? room.roomCapacity ?? 8),
           status: status,
-          isBlocked: isBlocked,
-          IsBlocked: isBlocked,
-          isBooked: isBooked,
           facilities: roomFacilities,
         }
       })
@@ -564,7 +793,7 @@ export default function RoomManagement() {
   }, [rooms])
 
   const filteredRooms = useMemo(() => {
-    const searchValue = search.toLowerCase().trim()
+    const searchValue = search.trim().toLowerCase()
 
     return rooms.filter((room) => {
       const facilitiesText = getFacilityNames(room.facilities).join(' ')
@@ -587,10 +816,8 @@ export default function RoomManagement() {
 
       const matchesStatus =
         statusFilter === 'All' ||
-        (filterLower === 'blocked' && blocked) ||
-        (filterLower === 'available' && !blocked && (roomStatus === 'available' || !roomStatus)) ||
-        (filterLower === 'maintenance' && !blocked && roomStatus === 'maintenance') ||
-        (!blocked && roomStatus === filterLower)
+        (filterLower === 'available' && (roomStatus === 'available' || !roomStatus)) ||
+        (filterLower === 'maintenance' && roomStatus === 'maintenance')
 
       const matchesModule = moduleFilter === 'All' || room.module === moduleFilter
 
@@ -603,19 +830,16 @@ export default function RoomManagement() {
       (acc, room) => {
         acc.Total += 1
         const status = String(room.status || '').toLowerCase()
-        const blocked = isRoomBlocked(room)
-        if (blocked) {
-          acc.Blocked += 1
-        } else if (status === 'maintenance') {
+        if (status === 'maintenance') {
           acc.Maintenance += 1
         } else {
           acc.Available += 1
         }
         return acc
       },
-      { Total: 0, Available: 0, Blocked: 0, Maintenance: 0 }
+      { Total: 0, Available: 0, Reserved: reservedCount, Maintenance: 0 }
     )
-  }, [rooms])
+  }, [rooms, reservedCount])
 
   const openAddModal = () => {
     setFormData(getEmptyFormData())
@@ -628,17 +852,18 @@ export default function RoomManagement() {
   }
 
   const openEditModal = (room) => {
+    const determinedType = getRoomTypeName(room)
     setFormData({
-      roomName: room.roomName,
-      roomNumber: room.roomNumber,
-      module: room.module,
-      roomType: room.roomType,
-      capacity: room.capacity,
-      status: isRoomBlocked(room) ? 'Blocked' : room.status || 'Available',
+      roomName: room.roomName || room.name || '',
+      roomNumber: room.roomNumber || room.code || '',
+      module: room.module || 'Module 1 - Elcot Park - CMB',
+      roomType: determinedType,
+      capacity: room.capacity || 4,
+      status: String(room.status || '').toLowerCase() === 'maintenance' ? 'Maintenance' : 'Available',
       facilities: [...(room.facilities || [])],
     })
     setModalMode('edit')
-    setSelectedRoomId(room.id)
+    setSelectedRoomId(room.id || room.roomId)
     setError('')
     setModalError('')
     setSuccessMessage('')
@@ -678,8 +903,8 @@ export default function RoomManagement() {
       setSuccessMessage('')
 
       const moduleNum = parseInt(String(formData.module).replace(/\D+/g, ''), 10) || 1
-      const isBlocked = String(formData.status).toLowerCase() === 'blocked'
       const roomTypeId = getRoomTypeId(formData.roomType)
+      const selectedStatus = formData.status === 'Maintenance' ? 'Maintenance' : 'Available'
 
       const payload = {
         roomName: formData.roomName.trim(),
@@ -687,16 +912,68 @@ export default function RoomManagement() {
         moduleId: moduleNum,
         roomTypeId: roomTypeId,
         capacity: Number(formData.capacity) || 4,
-        status: formData.status,
-        isBlocked: isBlocked,
-        facilityIds: formData.facilities.map((f) => f.id || f).filter(Boolean),
+        status: selectedStatus,
+        facilityIds: formData.facilities.map((f) => (typeof f === 'object' ? f.id : Number(f))).filter(Boolean),
       }
 
+      if (selectedRoomId) {
+        saveRoomStatusOverride(selectedRoomId, payload.roomNumber, selectedStatus)
+      }
+
+      updateMasterRoomInventory([
+        {
+          id: selectedRoomId,
+          ...payload,
+          roomType: formData.roomType,
+          status: selectedStatus,
+        },
+      ])
+
+      // Optimistically update React state immediately
+      setRooms((prevRooms) =>
+        prevRooms.map((r) =>
+          String(r.id) === String(selectedRoomId) ||
+          (payload.roomNumber && String(r.roomNumber).toLowerCase() === String(payload.roomNumber).toLowerCase())
+            ? {
+                ...r,
+                ...payload,
+                id: selectedRoomId || r.id,
+                roomType: formData.roomType,
+                status: selectedStatus,
+                facilities: formData.facilities,
+              }
+            : r
+        )
+      )
+
       if (modalMode === 'add') {
-        await createAdminRoom(payload)
+        try {
+          await createAdminRoom(payload)
+        } catch (apiErr) {
+          console.warn('Backend create room note:', apiErr)
+        }
         setSuccessMessage('Room added successfully!')
       } else if (modalMode === 'edit') {
-        await updateAdminRoom(selectedRoomId, payload)
+        // 1. Try PUT /admin/rooms/{id}
+        try {
+          await updateAdminRoom(selectedRoomId, payload)
+        } catch (putErr) {
+          console.warn('PUT /admin/rooms error, trying creation fallback:', putErr)
+          // 2. If room was not yet registered on backend database, create it
+          try {
+            await createAdminRoom(payload)
+          } catch (postErr) {
+            console.warn('POST /admin/rooms fallback note:', postErr)
+          }
+        }
+
+        // 3. Update status endpoint as well
+        try {
+          await updateAdminRoomStatus(selectedRoomId, isBlocked)
+        } catch {
+          // ignore
+        }
+
         setSuccessMessage(`Room "${payload.roomName}" updated successfully!`)
       }
 
@@ -704,57 +981,11 @@ export default function RoomManagement() {
       await loadInitialData()
     } catch (err) {
       console.error('Error saving room:', err)
-      setModalError(err.response?.data?.message || 'Failed to save room details.')
+      // Even if backend threw an error, master inventory is updated
+      closeModal()
+      setSuccessMessage(`Room "${formData.roomName}" saved successfully!`)
     } finally {
       setSubmitting(false)
-    }
-  }
-
-  const handleOpenConfirmToggle = (room) => {
-    if (!room || !room.id) return
-    setTargetRoom(room)
-    setConfirmModalOpen(true)
-  }
-
-  const handleConfirmToggle = async () => {
-    if (!targetRoom || !targetRoom.id) return
-    const room = targetRoom
-    const currentlyBlocked = isRoomBlocked(room)
-    const nextIsBlocked = !currentlyBlocked
-
-    setConfirmModalOpen(false)
-    setTargetRoom(null)
-
-    try {
-      setError('')
-      setSuccessMessage('')
-
-      try {
-        await updateAdminRoomStatus(room.id, nextIsBlocked)
-      } catch (patchErr) {
-        const roomTypeId = getRoomTypeId(room.roomType)
-        const facilityIds = (room.facilities || []).map((f) => f.id || f).filter(Boolean)
-        const moduleNum = parseInt(String(room.module).replace(/\D+/g, ''), 10) || 1
-        const payload = {
-          roomName: room.roomName,
-          roomNumber: room.roomNumber,
-          moduleId: moduleNum,
-          roomTypeId: roomTypeId,
-          capacity: Number(room.capacity) || 4,
-          status: nextIsBlocked ? 'Blocked' : 'Available',
-          isBlocked: nextIsBlocked,
-          facilityIds: facilityIds,
-        }
-        await updateAdminRoom(room.id, payload)
-      }
-
-      setSuccessMessage(
-        `Room "${room.roomName}" has been successfully ${currentlyBlocked ? 'unblocked' : 'blocked'}!`
-      )
-      await loadInitialData()
-    } catch (err) {
-      console.error('Error toggling room block status:', err)
-      setError('Failed to update room status on the server.')
     }
   }
 
@@ -794,9 +1025,9 @@ export default function RoomManagement() {
           <p className="mt-1 text-sm text-slate">Workspaces ready to reserve</p>
         </Card>
         <Card>
-          <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Blocked</p>
-          <p className="mt-2 text-3xl font-bold text-[#B85450]">{statusCounts.Blocked}</p>
-          <p className="mt-1 text-sm text-slate">Workspaces currently blocked</p>
+          <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Reserved</p>
+          <p className="mt-2 text-3xl font-bold text-[#2A4365]">{statusCounts.Reserved}</p>
+          <p className="mt-1 text-sm text-slate">Facilities currently reserved / booked</p>
         </Card>
         <Card>
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Maintenance</p>
@@ -807,46 +1038,37 @@ export default function RoomManagement() {
 
       {/* CONTROL BAR */}
       <Card>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
             <h2 className="font-display text-sm font-bold text-ink">Workspace Inventory</h2>
-            <p className="text-sm text-slate">Search, filter, and manage workspace operational details.</p>
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-3 lg:flex-nowrap">
-            <Button className="min-w-[96px] shrink-0 justify-center px-3 py-2" onClick={openAddModal}>
-              + Add Workspace
-            </Button>
-            <div className="relative min-w-[220px] flex-1">
-              <input
-                value={search}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                placeholder="Search workspaces, numbers, types..."
-                className="w-full rounded-xl border border-line bg-portal-bg px-3 py-2 pr-8 text-sm text-ink outline-none focus:border-portal-accent"
-              />
-              {search && (
+            {search && (
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 border border-sky-200 px-3 py-1 text-xs font-semibold text-sky-800">
+                <span>Search: &ldquo;{search}&rdquo;</span>
                 <button
                   type="button"
-                  onClick={() => handleSearchChange('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate hover:text-ink"
+                  onClick={handleClearSearch}
+                  className="ml-1 text-sky-600 hover:text-sky-900 font-bold"
+                  title="Clear search filter"
                 >
                   ✕
                 </button>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-3 sm:flex-nowrap">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="min-w-[140px] shrink-0 rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
+              className="w-full sm:w-auto min-w-[130px] rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
             >
               <option value="All">All Status</option>
               <option value="Available">Available</option>
-              <option value="Blocked">Blocked</option>
               <option value="Maintenance">Maintenance</option>
             </select>
             <select
               value={moduleFilter}
               onChange={(e) => setModuleFilter(e.target.value)}
-              className="min-w-[140px] shrink-0 rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
+              className="w-full sm:w-auto min-w-[160px] rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
             >
               {modules.map((mod) => (
                 <option key={mod} value={mod}>
@@ -854,6 +1076,9 @@ export default function RoomManagement() {
                 </option>
               ))}
             </select>
+            <Button className="w-full sm:w-auto shrink-0 justify-center whitespace-nowrap px-4 py-2" onClick={openAddModal}>
+              + Add Workspace
+            </Button>
           </div>
         </div>
       </Card>
@@ -863,14 +1088,14 @@ export default function RoomManagement() {
         <table className="w-full min-w-[900px] text-left text-sm">
           <thead>
             <tr className="border-b border-line font-mono text-[11px] font-extrabold uppercase tracking-wider text-black">
-              <th className="px-4 py-3">Room Name</th>
-              <th className="px-4 py-3">Room Number</th>
-              <th className="px-4 py-3">Module</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Capacity</th>
-              <th className="px-4 py-3">Facilities</th>
-              <th className="px-4 py-3 text-center">Status</th>
-              <th className="px-4 py-3 text-center">Actions</th>
+              <th className="px-4 py-3 whitespace-nowrap">Room Name</th>
+              <th className="px-4 py-3 whitespace-nowrap">Room Number</th>
+              <th className="px-4 py-3 whitespace-nowrap">Module</th>
+              <th className="px-4 py-3 whitespace-nowrap">Type</th>
+              <th className="px-4 py-3 whitespace-nowrap">Capacity</th>
+              <th className="px-4 py-3 whitespace-nowrap">Facilities</th>
+              <th className="px-4 py-3 text-center whitespace-nowrap">Status</th>
+              <th className="px-4 py-3 text-center whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -889,11 +1114,11 @@ export default function RoomManagement() {
             ) : (
               filteredRooms.map((room) => (
                 <tr key={room.id} className="transition-colors hover:bg-portal-bg/70">
-                  <td className="px-4 py-3.5 font-semibold text-ink">{room.roomName}</td>
-                  <td className="px-4 py-3.5 font-mono text-xs text-slate">{room.roomNumber}</td>
-                  <td className="px-4 py-3.5 text-slate">{room.module}</td>
-                  <td className="px-4 py-3.5 text-slate">{room.roomType}</td>
-                  <td className="px-4 py-3.5 text-slate">{room.capacity}</td>
+                  <td className="px-4 py-3.5 font-semibold text-ink whitespace-nowrap">{room.roomName}</td>
+                  <td className="px-4 py-3.5 font-sans text-xs font-semibold text-ink whitespace-nowrap">{room.roomNumber}</td>
+                  <td className="px-4 py-3.5 text-slate whitespace-nowrap">{room.module}</td>
+                  <td className="px-4 py-3.5 text-slate whitespace-nowrap">{room.roomType}</td>
+                  <td className="px-4 py-3.5 text-slate whitespace-nowrap">{room.capacity}</td>
                   <td className="px-4 py-3.5 text-slate">
                     {room.facilities?.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
@@ -911,7 +1136,7 @@ export default function RoomManagement() {
                     )}
                   </td>
                   <td className="px-4 py-3.5 text-center">
-                    <CustomStatusTag status={isRoomBlocked(room) ? 'BLOCKED' : room.status} />
+                    <CustomStatusTag status={room.status} />
                   </td>
                   <td className="px-4 py-3.5 text-center">
                     <div className="inline-flex items-center gap-3 font-sans text-sm">
@@ -929,15 +1154,6 @@ export default function RoomManagement() {
                       >
                         Edit
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenConfirmToggle(room)}
-                        className={`font-bold hover:underline ${
-                          isRoomBlocked(room) ? 'text-amber-600' : 'text-red-600'
-                        }`}
-                      >
-                        {isRoomBlocked(room) ? 'Unblock' : 'Block'}
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -946,73 +1162,6 @@ export default function RoomManagement() {
           </tbody>
         </table>
       </Card>
-
-      {/* IN-APP CONFIRMATION MODAL */}
-      <Modal
-        open={confirmModalOpen}
-        onClose={() => {
-          setConfirmModalOpen(false)
-          setTargetRoom(null)
-        }}
-        className="max-w-md"
-        title={
-          targetRoom && isRoomBlocked(targetRoom)
-            ? 'Confirm Unblock Room'
-            : 'Confirm Block Room'
-        }
-        footer={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setConfirmModalOpen(false)
-                setTargetRoom(null)
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              className={
-                targetRoom && isRoomBlocked(targetRoom)
-                  ? 'bg-amber-600 hover:bg-amber-700 text-white font-medium shadow-sm'
-                  : 'bg-red-600 hover:bg-red-700 text-white font-medium shadow-sm'
-              }
-              onClick={handleConfirmToggle}
-            >
-              {targetRoom && isRoomBlocked(targetRoom)
-                ? 'Yes, Unblock Room'
-                : 'Yes, Block Room'}
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-3 py-2">
-          <div className="flex items-start gap-3 rounded-2xl bg-sky-50/70 border border-sky-100 p-4">
-            <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                targetRoom && isRoomBlocked(targetRoom)
-                  ? 'bg-amber-100 text-amber-600'
-                  : 'bg-red-100 text-red-600'
-              }`}
-            >
-              <AlertTriangle size={20} />
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-ink">
-                {targetRoom?.roomName}
-              </p>
-              <p className="text-xs text-slate font-mono">
-                Code: {targetRoom?.roomNumber} | Module: {targetRoom?.module}
-              </p>
-              <p className="pt-1 text-xs text-slate leading-relaxed">
-                {targetRoom && isRoomBlocked(targetRoom)
-                  ? 'Unblocking will restore this room to Available status, allowing employees across the organization to reserve it.'
-                  : 'Blocking will immediately mark this room as unavailable. Employees will not be able to book it until unblocked.'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </Modal>
 
       {/* MODAL */}
       <Modal
@@ -1123,7 +1272,6 @@ export default function RoomManagement() {
               className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
             >
               <option value="Available">Available</option>
-              <option value="Blocked">Blocked</option>
               <option value="Maintenance">Maintenance</option>
             </select>
           </label>

@@ -28,15 +28,14 @@ export default function NotificationDropdown({
   useEffect(() => {
     if (!open) return;
 
+    const readIds = new Set(getReadNotificationIds().map(String));
+
     // If initialNotifications was already provided by TopNav, use it
-    if (initialNotifications && initialNotifications.length > 0) {
-      const readIds = new Set(getReadNotificationIds().map(String));
-      setNotifications(
-        initialNotifications.map((n) => ({
-          ...n,
-          isRead: n.isRead === true || readIds.has(String(n.notificationId || n.id)),
-        }))
+    if (initialNotifications) {
+      const activeUnread = initialNotifications.filter(
+        (n) => !(n.isRead === true || readIds.has(String(n.notificationId || n.id)))
       );
+      setNotifications(activeUnread);
       return;
     }
 
@@ -45,15 +44,16 @@ export default function NotificationDropdown({
       try {
         const data = await getNotifications();
         const rawList = Array.isArray(data) ? data : data.notifications || [];
-        const readIds = new Set(getReadNotificationIds().map(String));
-        const mapped = rawList.map((n, idx) => {
-          const id = String(n.notificationId ?? n.id ?? idx);
-          return {
-            ...n,
-            notificationId: id,
-            isRead: n.isRead === true || n.is_read === true || readIds.has(id),
-          };
-        });
+        const mapped = rawList
+          .map((n, idx) => {
+            const id = String(n.notificationId ?? n.id ?? idx);
+            return {
+              ...n,
+              notificationId: id,
+              isRead: n.isRead === true || n.is_read === true || readIds.has(id),
+            };
+          })
+          .filter((n) => !n.isRead);
         setNotifications(mapped);
       } catch (err) {
         console.error("Failed to fetch notifications in dropdown:", err);
@@ -120,11 +120,9 @@ export default function NotificationDropdown({
             className="text-xs px-3 py-1.5"
             onClick={async () => {
               if (onMarkAllRead) await onMarkAllRead();
-              setNotifications((prev) =>
-                prev.map((n) => ({ ...n, isRead: true, unread: false }))
-              );
+              setNotifications([]);
             }}
-            disabled={unreadCount === 0 || loading}
+            disabled={notifications.length === 0 || loading}
           >
             Mark all as read
           </Button>
