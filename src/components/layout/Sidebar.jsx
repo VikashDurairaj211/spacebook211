@@ -1,18 +1,19 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Search, CalendarRange, MapPin, ShieldCheck, Building2, BookOpenCheck, BarChart3, Clock } from 'lucide-react'
+import { LayoutDashboard, Search, CalendarRange, MapPin, ShieldCheck, Building2, BookOpenCheck, Armchair, BarChart3, Clock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/search-rooms', label: 'Search Rooms', icon: Search },
+  { to: '/search-rooms', label: 'Workspace Search', icon: Search },
   { to: '/availability-calendar', label: 'Availability Calendar', icon: CalendarRange },
   { to: '/office-map', label: 'Hotseat Reservation', icon: MapPin },
 ]
 
 const ADMIN_ITEMS = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: ShieldCheck },
-  { to: '/admin/room-management', label: 'Room Management', icon: Building2 },
+  { to: '/admin/room-management', label: 'Workspace Administration', icon: Building2 },
   { to: '/admin/booking-management', label: 'Booking Management', icon: BookOpenCheck },
+  { to: '/admin/hotseat-management', label: 'Hotseat Management', icon: Armchair },
   { to: '/admin/reports', label: 'Reports', icon: BarChart3 },
 ]
 
@@ -36,10 +37,9 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
                       to={to}
                       end={end}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-all duration-200 ${
-                          isActive
-                            ? 'bg-sky-600 text-white font-medium shadow-sm'
-                            : 'text-sky-950 hover:bg-sky-200/60 hover:text-sky-900'
+                        `flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-all duration-200 ${isActive
+                          ? 'bg-sky-600 text-white font-medium shadow-sm'
+                          : 'text-sky-950 hover:bg-sky-200/60 hover:text-sky-900'
                         } ${collapsed ? 'justify-center px-2' : ''}`
                       }
                     >
@@ -53,6 +53,33 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
 
             {!collapsed && (
               <div className="pt-2 space-y-4">
+                {/* Facility Overview Card */}
+                <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-800">
+                      Facility Overview
+                    </span>
+                    <Building2 size={14} className="text-sky-600" />
+                  </div>
+
+                  <div className="space-y-2 pt-1">
+                    <div className="text-[11px] leading-snug">
+                      <p className="font-bold text-sky-950">Discussion Rooms:</p>
+                      <p className="text-slate-600">8 to 10 People (Monitor, Speaker, Video Conferencing, Whiteboard, Wi-Fi)</p>
+                    </div>
+
+                    <div className="text-[11px] leading-snug">
+                      <p className="font-bold text-sky-950">Conference Rooms:</p>
+                      <p className="text-slate-600">Up to 20 People (Monitor, Speaker, Video Conferencing, Wi-Fi)</p>
+                    </div>
+
+                    <div className="text-[11px] leading-snug">
+                      <p className="font-bold text-sky-950">Training Rooms:</p>
+                      <p className="text-slate-600">Up to 50 People (Mike, Projector, Speaker, Wi-Fi)</p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Office Policy Card */}
                 <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">
@@ -63,7 +90,7 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
                   </div>
 
                   <div className="flex items-baseline justify-between pt-1">
-                    <span className="text-sm font-semibold text-sky-950">10:00 - 19:00 IST</span>
+                    <span className="text-sm font-semibold text-sky-950">10:00 - 22:00 IST</span>
                     <span className="text-[10px] text-sky-800 font-medium bg-sky-100 px-2 py-0.5 rounded-full">
                       Active Hours
                     </span>
@@ -87,10 +114,9 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
                   <NavLink
                     to={to}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-all duration-200 ${
-                        isActive
-                          ? 'bg-sky-600 text-white font-medium shadow-sm'
-                          : 'text-sky-950 hover:bg-sky-200/60 hover:text-sky-900'
+                      `flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-all duration-200 ${isActive
+                        ? 'bg-sky-600 text-white font-medium shadow-sm'
+                        : 'text-sky-950 hover:bg-sky-200/60 hover:text-sky-900'
                       } ${collapsed ? 'justify-center px-2' : ''}`
                     }
                   >
@@ -113,13 +139,13 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
                   </div>
 
                   <div className="flex items-baseline justify-between pt-1">
-                    <span className="text-sm font-semibold text-sky-950">10:00 - 19:00 IST</span>
+                    <span className="text-sm font-semibold text-sky-950">10:00 - 22:00 IST</span>
                     <span className="text-[10px] text-sky-800 font-medium bg-sky-100 px-2 py-0.5 rounded-full">
                       Active Hours
                     </span>
                   </div>
                   <p className="text-[11px] text-sky-900/70 leading-tight">
-                    Ensure standard booking approvals comply with operational office time slots.
+                    Ensure standard room reservations comply with operational office time slots.
                   </p>
                 </div>
               </div>

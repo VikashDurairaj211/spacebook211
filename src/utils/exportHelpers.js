@@ -2,24 +2,56 @@ import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import * as XLSX from 'xlsx'
 
+export async function exportSectionsToPDF(pageElements, fileName = 'report.pdf') {
+  if (!Array.isArray(pageElements) || pageElements.length === 0) return
+
+  try {
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    const pageWidth = pdf.internal.pageSize.getWidth() // 210mm
+    const pageHeight = pdf.internal.pageSize.getHeight() // 297mm
+    const margin = 10
+    const usableWidth = pageWidth - margin * 2 // 190mm
+    const usableHeight = pageHeight - margin * 2 // 277mm
+
+    for (let i = 0; i < pageElements.length; i++) {
+      const el = pageElements[i]
+      if (!el) continue
+
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: 1200,
+      })
+
+      const imgData = canvas.toDataURL('image/png')
+      const imgHeight = (canvas.height * usableWidth) / canvas.width
+
+      if (i > 0) {
+        pdf.addPage()
+      }
+
+      // Check if image height fits in usable page height
+      if (imgHeight > usableHeight) {
+        const scaledWidth = (usableHeight * canvas.width) / canvas.height
+        const xOffset = (pageWidth - scaledWidth) / 2
+        pdf.addImage(imgData, 'PNG', xOffset, margin, scaledWidth, usableHeight)
+      } else {
+        pdf.addImage(imgData, 'PNG', margin, margin, usableWidth, imgHeight)
+      }
+    }
+
+    pdf.save(fileName)
+  } catch (error) {
+    console.error('Error generating multi-page PDF report:', error)
+    throw error
+  }
+}
+
 export async function exportElementToPDF(element, fileName = 'report.pdf') {
-  if (!element) return
-
-  const canvas = await html2canvas(element, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: '#ffffff',
-  })
-
-  const imageData = canvas.toDataURL('image/png')
-  const pdf = new jsPDF({
-    orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-    unit: 'px',
-    format: [canvas.width, canvas.height],
-  })
-
-  pdf.addImage(imageData, 'PNG', 0, 0, canvas.width, canvas.height)
-  pdf.save(fileName)
+  return exportSectionsToPDF([element], fileName)
 }
 
 export function downloadCSV(data, fileName = 'report.csv') {

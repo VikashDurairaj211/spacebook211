@@ -1,10 +1,13 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { searchRooms } from "../api/rooms";
+import { searchRooms, getRoomAvailability } from "../api/rooms";
 import { getMyBookings } from "../api/bookings";
+import client from "../api/client";
 
 import { Field, Input, Select } from "../components/common/Input";
+import BusinessDatePicker from "../components/common/BusinessDatePicker";
+import ScrollableTimePicker from "../components/common/ScrollableTimePicker";
 import Button from "../components/common/Button";
 import Card from "../components/common/Card";
 import Loader from "../components/common/Loader";
@@ -21,11 +24,192 @@ const ROOM_TYPES = [
   { id: 3, name: "Discussion" },
 ];
 
+function computeRoomTypeGuides(rooms) {
+  if (!Array.isArray(rooms) || rooms.length === 0) {
+    try {
+      const raw = localStorage.getItem("spacebook_room_inventory");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          rooms = parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!Array.isArray(rooms) || rooms.length === 0) {
+    return [];
+  }
+
+  // Group rooms by their room type
+  const groups = {};
+
+  rooms.forEach((room) => {
+    const rawType =
+      room.roomType?.name ||
+      room.roomType ||
+      room.type ||
+      room.roomTypeName ||
+      "";
+    const typeName = String(rawType).trim();
+    if (!typeName) return;
+
+    const key =
+      typeName.charAt(0).toUpperCase() + typeName.slice(1);
+
+    if (!groups[key]) {
+      groups[key] = {
+        name: key,
+        capacities: [],
+        facilities: new Set(),
+      };
+    }
+
+    const cap = Number(room.capacity ?? room.Capacity);
+    if (!Number.isNaN(cap) && cap > 0) {
+      groups[key].capacities.push(cap);
+    }
+
+    const rawFacs =
+      room.facilities ||
+      room.roomFacilities ||
+      room.Facilities ||
+      [];
+
+    if (Array.isArray(rawFacs)) {
+      rawFacs.forEach((f) => {
+        const facName =
+          typeof f === "string"
+            ? f
+            : f?.name || f?.facilityName || f?.FacilityName;
+        if (facName && String(facName).trim()) {
+          groups[key].facilities.add(String(facName).trim());
+        }
+      });
+    }
+  });
+
+  const preferredOrder = ["Discussion", "Conference", "Training"];
+  const keys = Object.keys(groups).sort((a, b) => {
+    const idxA = preferredOrder.indexOf(a);
+    const idxB = preferredOrder.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
+  return keys.map((key) => {
+    const g = groups[key];
+    const caps = g.capacities;
+    let capacityText = "Standard Capacity";
+    if (caps.length > 0) {
+      const minCap = Math.min(...caps);
+      const maxCap = Math.max(...caps);
+      if (minCap === maxCap) {
+        capacityText = `Up to ${maxCap} People`;
+      } else {
+        capacityText = `${minCap} to ${maxCap} People`;
+      }
+    }
+
+    const facilitiesArr = Array.from(g.facilities);
+    const facilitiesText =
+      facilitiesArr.length > 0 ? facilitiesArr.join(", ") : "";
+
+    const label =
+      key.toLowerCase().endsWith("room") ||
+      key.toLowerCase().endsWith("rooms")
+        ? `${key}:`
+        : `${key} Rooms:`;
+
+    return {
+      type: key,
+      label,
+      capacityText,
+      facilitiesText,
+    };
+  });
+}
+
+function getMaxCapacityForType(selectedRoomTypeId, rooms = []) {
+  const roomTypeObj = ROOM_TYPES.find(
+    (t) =>
+      String(t.id) === String(selectedRoomTypeId) ||
+      t.name.toLowerCase() === String(selectedRoomTypeId).toLowerCase()
+  );
+  const targetTypeName = roomTypeObj ? roomTypeObj.name.toLowerCase() : "";
+
+  let inventory = Array.isArray(rooms) && rooms.length > 0 ? rooms : [];
+  if (inventory.length === 0) {
+    try {
+      const raw = localStorage.getItem("spacebook_room_inventory");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          inventory = parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  let inventoryMax = 0;
+  if (inventory.length > 0) {
+    const matching = inventory.filter((r) => {
+      const rType = String(
+        r.roomType?.name || r.roomType || r.type || r.roomTypeName || ""
+      ).toLowerCase();
+      return targetTypeName ? rType.includes(targetTypeName) : true;
+    });
+    if (matching.length > 0) {
+      const caps = matching
+        .map((r) => Number(r.capacity ?? r.Capacity ?? 0))
+        .filter((c) => !Number.isNaN(c) && c > 0);
+      if (caps.length > 0) inventoryMax = Math.max(...caps);
+    }
+  }
+
+  // Facility standard limits: Discussion: 10, Conference: 20, Training: 50
+  let standardMax = 50;
+  if (targetTypeName.includes("discussion")) standardMax = 10;
+  else if (targetTypeName.includes("conference")) standardMax = 20;
+  else if (targetTypeName.includes("training")) standardMax = 50;
+
+  return Math.max(standardMax, inventoryMax);
+}
+
+const isWeekendDate = (dateStr) => {
+  if (!dateStr) return false;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return false;
+  const dt = new Date(y, m - 1, d);
+  const day = dt.getDay();
+  return day === 0 || day === 6;
+};
+
+const getNextBusinessDayFormatted = () => {
+  const next = new Date();
+  const day = next.getDay();
+  if (day === 6) {
+    next.setDate(next.getDate() + 2);
+  } else if (day === 0) {
+    next.setDate(next.getDate() + 1);
+  }
+  const year = next.getFullYear();
+  const month = String(next.getMonth() + 1).padStart(2, "0");
+  const d = String(next.getDate()).padStart(2, "0");
+  return `${year}-${month}-${d}`;
+};
+
 const INITIAL_FILTERS = {
   module: "",
   roomTypeId: "",
   capacity: "",
-  date: "",
+  date: getNextBusinessDayFormatted(),
   startTime: "",
   endTime: "",
 };
@@ -35,7 +219,7 @@ const INITIAL_FILTERS = {
 // =====================================================
 
 const OFFICE_START_TIME = "10:00";
-const OFFICE_END_TIME = "19:00";
+const OFFICE_END_TIME = "22:00";
 
 // =====================================================
 // HELPER FUNCTIONS
@@ -76,395 +260,7 @@ function isBookingActive(status) {
   ].includes(value);
 }
 
-// =====================================================
-// SCROLLABLE TIME PICKER
-// =====================================================
 
-function ScrollableTimePicker({
-  label,
-  value,
-  onChange,
-  selectedDate,
-  minTime,
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const containerRef = useRef(null);
-
-  const currentValue = normalizeTime(value);
-
-  const [selectedHour, selectedMinute] =
-    currentValue
-      ? currentValue.split(":")
-      : ["", ""];
-
-  const hoursList = Array.from(
-    { length: 10 },
-    (_, index) =>
-      String(index + 10).padStart(2, "0")
-  );
-
-  const minutesList = Array.from(
-    { length: 60 },
-    (_, index) =>
-      String(index).padStart(2, "0")
-  );
-
-  // ===================================================
-  // CURRENT DATE/TIME
-  // ===================================================
-
-  const now = new Date();
-
-  const todayStr = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-  ].join("-");
-
-  const isToday =
-    selectedDate === todayStr;
-
-  const currentHour =
-    now.getHours();
-
-  const currentMinute =
-    now.getMinutes();
-
-  // ===================================================
-  // MINIMUM TIME
-  // ===================================================
-
-  const minimumTimeMinutes =
-    timeToMinutes(minTime);
-
-  // ===================================================
-  // CHECK HOUR DISABLED
-  // ===================================================
-
-  function isHourDisabled(hour) {
-    const numericHour = Number(hour);
-
-    // Office hours
-    if (
-      numericHour < 10 ||
-      numericHour > 19
-    ) {
-      return true;
-    }
-
-    // Today - don't allow past hour
-    if (
-      isToday &&
-      numericHour < currentHour
-    ) {
-      return true;
-    }
-
-    // If this is the END time,
-    // don't allow hour before START time.
-    if (
-      minimumTimeMinutes !== null &&
-      minimumTimeMinutes !== undefined
-    ) {
-      const hourStart =
-        numericHour * 60;
-
-      if (
-        hourStart <
-        minimumTimeMinutes
-      ) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  // ===================================================
-  // CHECK MINUTE DISABLED
-  // ===================================================
-
-  function isMinuteDisabled(
-    hour,
-    minute
-  ) {
-    const numericHour = Number(hour);
-    const numericMinute = Number(minute);
-
-    const selectedMinutes =
-      numericHour * 60 +
-      numericMinute;
-
-    // Office hours
-    if (
-      selectedMinutes <
-        timeToMinutes(OFFICE_START_TIME) ||
-      selectedMinutes >
-        timeToMinutes(OFFICE_END_TIME)
-    ) {
-      return true;
-    }
-
-    // Today - don't allow past time
-    if (isToday) {
-      const currentTotalMinutes =
-        currentHour * 60 +
-        currentMinute;
-
-      if (
-        selectedMinutes <=
-        currentTotalMinutes
-      ) {
-        return true;
-      }
-    }
-
-    // End time must be after start time
-    if (
-      minimumTimeMinutes !== null &&
-      minimumTimeMinutes !== undefined
-    ) {
-      if (
-        selectedMinutes <=
-        minimumTimeMinutes
-      ) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  // ===================================================
-  // HANDLE HOUR
-  // ===================================================
-
-  function handleHourClick(hour) {
-    if (isHourDisabled(hour)) {
-      return;
-    }
-
-    const minuteToUse =
-      selectedMinute || "00";
-
-    if (
-      isMinuteDisabled(
-        hour,
-        minuteToUse
-      )
-    ) {
-      // If selected minute is invalid,
-      // find first available minute.
-      const firstAvailableMinute =
-        minutesList.find(
-          (minute) =>
-            !isMinuteDisabled(
-              hour,
-              minute
-            )
-        );
-
-      if (!firstAvailableMinute) {
-        return;
-      }
-
-      onChange(
-        `${hour}:${firstAvailableMinute}`
-      );
-
-      return;
-    }
-
-    onChange(
-      `${hour}:${minuteToUse}`
-    );
-  }
-
-  // ===================================================
-  // HANDLE MINUTE
-  // ===================================================
-
-  function handleMinuteClick(minute) {
-    const hour =
-      selectedHour || "10";
-
-    if (
-      isMinuteDisabled(
-        hour,
-        minute
-      )
-    ) {
-      return;
-    }
-
-    onChange(
-      `${hour}:${minute}`
-    );
-  }
-
-  // ===================================================
-  // CLOSE OUTSIDE CLICK
-  // ===================================================
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(
-          event.target
-        )
-      ) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener(
-      "mousedown",
-      handleClickOutside
-    );
-
-    return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside
-      );
-    };
-  }, []);
-
-  return (
-    <div
-      className="relative"
-      ref={containerRef}
-    >
-      <Field label={label}>
-        <div
-          onClick={() =>
-            setIsOpen((current) => !current)
-          }
-          className="flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border border-slate-300 bg-white px-3 text-sm shadow-sm hover:border-slate-400"
-        >
-          <span
-            className={
-              value
-                ? "text-slate-900"
-                : "text-slate-400"
-            }
-          >
-            {value
-              ? normalizeTime(value)
-              : "Select time"}
-          </span>
-
-          <svg
-            className={`h-4 w-4 text-slate-500 transition-transform ${
-              isOpen
-                ? "rotate-180"
-                : ""
-            }`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
-        </div>
-      </Field>
-
-      {isOpen && (
-        <div className="absolute z-50 mt-1 flex w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
-
-          {/* HOURS */}
-
-          <div className="max-h-60 flex-1 overflow-y-auto border-r border-slate-100 p-1 text-center">
-
-            <div className="sticky top-0 z-10 bg-slate-50 py-2 text-xs font-semibold text-slate-500">
-              Hour
-            </div>
-
-            {hoursList.map((hour) => {
-              const disabled =
-                isHourDisabled(hour);
-
-              const selected =
-                selectedHour === hour;
-
-              return (
-                <button
-                  key={hour}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() =>
-                    handleHourClick(hour)
-                  }
-                  className={`block w-full rounded px-2 py-1.5 text-sm ${
-                    disabled
-                      ? "cursor-not-allowed bg-slate-100 text-slate-300"
-                      : selected
-                      ? "bg-blue-600 font-bold text-white"
-                      : "text-slate-700 hover:bg-blue-50"
-                  }`}
-                >
-                  {hour}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* MINUTES */}
-
-          <div className="max-h-60 flex-1 overflow-y-auto p-1 text-center">
-
-            <div className="sticky top-0 z-10 bg-slate-50 py-2 text-xs font-semibold text-slate-500">
-              Min
-            </div>
-
-            {minutesList.map((minute) => {
-              const hour =
-                selectedHour || "10";
-
-              const disabled =
-                isMinuteDisabled(
-                  hour,
-                  minute
-                );
-
-              const selected =
-                selectedMinute === minute;
-
-              return (
-                <button
-                  key={minute}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() =>
-                    handleMinuteClick(
-                      minute
-                    )
-                  }
-                  className={`block w-full rounded px-2 py-1.5 text-sm ${
-                    disabled
-                      ? "cursor-not-allowed bg-slate-100 text-slate-300"
-                      : selected
-                      ? "bg-blue-600 font-bold text-white"
-                      : "text-slate-700 hover:bg-blue-50"
-                  }`}
-                >
-                  {minute}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // =====================================================
 // SEARCH ROOMS PAGE
@@ -565,13 +361,82 @@ export default function SearchRooms() {
   const [pendingRoomId, setPendingRoomId] =
     useState(null);
 
+  const [knownRooms, setKnownRooms] =
+    useState([]);
+
+  const [roomTypeGuides, setRoomTypeGuides] =
+    useState(() => computeRoomTypeGuides([]));
+
   // ===================================================
-  // LOAD BOOKINGS
+  // LOAD BOOKINGS & ROOM SPECS FROM BACKEND
   // ===================================================
 
   useEffect(() => {
     loadBookings();
+    loadRoomSpecs();
   }, []);
+
+  async function loadRoomSpecs() {
+    try {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      const todayDate = `${year}-${month}-${day}`;
+
+      let roomsList = [];
+
+      // 1. Fetch live employee availability for today
+      try {
+        const availData = await getRoomAvailability(todayDate);
+        const arr = Array.isArray(availData)
+          ? availData
+          : availData?.rooms || availData?.data || [];
+        if (arr.length > 0) {
+          roomsList = arr;
+        }
+      } catch (e) {
+        console.warn("Availability endpoint note:", e);
+      }
+
+      // 2. Fetch admin rooms if available
+      if (roomsList.length === 0) {
+        try {
+          const { data: adminData } = await client.get("/admin/rooms");
+          const arr = Array.isArray(adminData)
+            ? adminData
+            : adminData?.data || adminData?.rooms || [];
+          if (arr.length > 0) {
+            roomsList = arr;
+          }
+        } catch (e) {
+          console.warn("Admin rooms endpoint note:", e);
+        }
+      }
+
+      // 3. Check master inventory from storage
+      if (roomsList.length === 0) {
+        try {
+          const raw = localStorage.getItem("spacebook_room_inventory");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              roomsList = parsed;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (roomsList.length > 0) {
+        setKnownRooms(roomsList);
+        setRoomTypeGuides(computeRoomTypeGuides(roomsList));
+      }
+    } catch (err) {
+      console.warn("Unable to load room availability specs from backend:", err);
+    }
+  }
 
   async function loadBookings() {
     try {
@@ -749,17 +614,35 @@ export default function SearchRooms() {
     }
 
     // =================================================
-    // PARTICIPANT VALIDATION
+    // PARTICIPANT VALIDATION & CAPACITY CHECK
     // =================================================
 
-    if (
-      filters.capacity &&
-      Number(filters.capacity) < 1
-    ) {
+    const requestedCapacity = filters.capacity
+      ? Number(filters.capacity)
+      : 0;
+
+    if (filters.capacity && requestedCapacity < 1) {
       setError(
         "Number of participants must be at least 1."
       );
       return;
+    }
+
+    if (requestedCapacity > 0) {
+      const maxCap = getMaxCapacityForType(
+        filters.roomTypeId,
+        knownRooms
+      );
+
+      if (maxCap !== null && requestedCapacity > maxCap) {
+        setCapacityExceeded(true);
+        setSearchMessage(
+          "No room can accommodate the selected number of participants."
+        );
+        setResults([]);
+        setResultsOpen(true);
+        return;
+      }
     }
 
     // =================================================
@@ -788,7 +671,7 @@ export default function SearchRooms() {
         OFFICE_START_TIME
     ) {
       setError(
-        "Bookings are allowed only during office hours: 10:00 AM to 07:00 PM."
+        "Bookings are allowed only during office hours: 10:00 AM to 10:00 PM."
       );
       return;
     }
@@ -799,7 +682,7 @@ export default function SearchRooms() {
         OFFICE_END_TIME
     ) {
       setError(
-        "Bookings are allowed only during office hours: 10:00 AM to 07:00 PM."
+        "Bookings are allowed only during office hours: 10:00 AM to 10:00 PM."
       );
       return;
     }
@@ -961,6 +844,8 @@ export default function SearchRooms() {
       // =================================================
 
       let searchResults = [];
+      let backendMessage = "";
+      let isCapacityExceeded = false;
 
       if (
         Array.isArray(data)
@@ -973,38 +858,43 @@ export default function SearchRooms() {
         searchResults =
           data.rooms;
 
-        setSearchMessage(
-          data.message || ""
-        );
+        backendMessage =
+          data.message || "";
 
-        setCapacityExceeded(
-          data.capacityExceeded === true
-        );
-      } else {
+        isCapacityExceeded =
+          data.capacityExceeded === true;
+      } else if (data) {
         searchResults = [];
 
-        if (data?.message) {
-          setSearchMessage(
-            data.message
-          );
-        }
+        backendMessage =
+          data.message || "";
 
-        if (
-          data?.capacityExceeded === true
-        ) {
-          setCapacityExceeded(
-            true
-          );
-        }
+        isCapacityExceeded =
+          data.capacityExceeded === true;
       }
 
+      // Check if backend message indicates capacity failure
+      const lowerBackendMsg = String(backendMessage).toLowerCase();
+      if (
+        isCapacityExceeded ||
+        lowerBackendMsg.includes("accommodate") ||
+        (lowerBackendMsg.includes("capacity") &&
+          lowerBackendMsg.includes("participant"))
+      ) {
+        isCapacityExceeded = true;
+        backendMessage =
+          "No room can accommodate the selected number of participants.";
+      }
+
+      let finalMessage = backendMessage;
+
       // =================================================
-      // BETTER NO-RESULT MESSAGE
+      // NO-RESULT MESSAGE (Availability vs Capacity)
       // =================================================
 
       if (
         searchResults.length === 0 &&
-        !searchMessage
+        !finalMessage
       ) {
         const roomType =
           getRoomTypeName();
@@ -1014,23 +904,28 @@ export default function SearchRooms() {
           filters.module ===
             "Module 2 - Elcot Park - CMB"
         ) {
-          setSearchMessage(
-            "Conference rooms are available only in Module 1 - Elcot Park - CMB."
-          );
+          finalMessage =
+            "Conference rooms are available only in Module 1 - Elcot Park - CMB.";
         } else if (
           roomType === "Training" &&
           filters.module ===
             "Module 1 - Elcot Park - CMB"
         ) {
-          setSearchMessage(
-            "Training rooms are available only in Module 2 - Elcot Park - CMB."
-          );
+          finalMessage =
+            "Training rooms are available only in Module 2 - Elcot Park - CMB.";
         } else {
-          setSearchMessage(
-            "No rooms are available for the selected date and time. The rooms may already be booked or unavailable."
-          );
+          finalMessage =
+            "No rooms are available for the selected date and time. The rooms may already be booked or unavailable.";
         }
       }
+
+      setCapacityExceeded(
+        isCapacityExceeded
+      );
+
+      setSearchMessage(
+        finalMessage
+      );
 
       setResults(
         searchResults
@@ -1346,7 +1241,7 @@ export default function SearchRooms() {
 
       <div>
         <h1 className="font-display text-3xl font-bold">
-          Search Rooms
+          Workspace Search
         </h1>
 
         <p className="mt-2 text-slate-600">
@@ -1354,15 +1249,7 @@ export default function SearchRooms() {
         </p>
       </div>
 
-      {/* CAPACITY & FACILITY GUIDE CARD */}
-      <div className="rounded-xl border border-line bg-white p-4 shadow-sm text-sm text-ink">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-medium">
-          <div> <strong className="text-ink">Discussion Rooms:</strong> 8 to 10 People 
-           (TV, Whiteboard)</div>
-          <div> <strong className="text-ink">Conference Rooms:</strong> Up to 20 People (TV)</div>
-          <div> <strong className="text-ink">Training Rooms:</strong> Up to 50 People (Projector)</div>
-        </div>
-      </div>
+
 
       {/* SEARCH FORM */}
 
@@ -1473,20 +1360,15 @@ export default function SearchRooms() {
 
             {/* DATE */}
 
-            <Field label="4. Booking Date">
-              <Input
-                type="date"
-                min={todayStr}
-                max={maxDateStr}
-                value={filters.date}
-                onChange={(e) =>
-                  updateFilter(
-                    "date",
-                    e.target.value
-                  )
-                }
-              />
-            </Field>
+            <BusinessDatePicker
+              label="4. Booking Date"
+              min={todayStr}
+              max={maxDateStr}
+              value={filters.date}
+              onChange={(value) =>
+                updateFilter("date", value)
+              }
+            />
 
             {/* START TIME */}
 

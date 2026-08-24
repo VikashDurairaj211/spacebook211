@@ -21,7 +21,6 @@ export default function Login() {
     e.preventDefault();
 
     const ok = await login(email, password);
-
     if (!ok) return;
 
     const user = JSON.parse(localStorage.getItem("spacebook_user"));
@@ -86,7 +85,8 @@ export default function Login() {
         {/* Login Card */}
         <div className="w-full max-w-md">
           <div className="overflow-hidden rounded-2xl bg-white/95 shadow-2xl backdrop-blur-md border border-sky-100">
-            <div className="border-b border-sky-100 bg-sky-50/80 px-6 py-3.5">
+            {/* Header */}
+            <div className="border-b border-sky-100 bg-sky-50/80 px-6 py-3">
               <h2 className="text-sm font-semibold text-sky-900">
                 Log in to SpaceBook
               </h2>

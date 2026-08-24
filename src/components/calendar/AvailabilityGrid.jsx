@@ -331,7 +331,7 @@ export default function AvailabilityGrid({
           return (
             <article
               key={`${room.id}-${slot.start}`}
-              className="group flex min-h-[350px] flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg"
+              className="group flex min-h-[350px] flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
             >
               {/* HEADER */}
 

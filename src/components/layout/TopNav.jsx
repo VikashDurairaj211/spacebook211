@@ -6,6 +6,8 @@ import {
   PanelLeftOpen,
   Home,
   X,
+  HelpCircle,
+  BookOpen,
 } from 'lucide-react'
 
 import { useAuth } from '../../context/AuthContext'
@@ -13,12 +15,6 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useState, useMemo, useRef, useEffect } from 'react'
 
 import client from '../../api/client'
-
-import {
-  rooms as ROOMS,
-  bookings as BOOKINGS,
-} from '../../services/mockData'
-
 import NotificationDropdown from '../common/NotificationDropdown'
 
 export default function TopNav({
@@ -126,11 +122,22 @@ export default function TopNav({
             setLiveBookings(list)
           }
         } else {
-          const todayStr = new Date().toISOString().split("T")[0];
+          const now = new Date()
+          const day = now.getDay()
+          const target = new Date(now)
+          // If Saturday (+2) or Sunday (+1), use Monday
+          if (day === 6) target.setDate(now.getDate() + 2)
+          else if (day === 0) target.setDate(now.getDate() + 1)
+
+          const year = target.getFullYear()
+          const month = String(target.getMonth() + 1).padStart(2, '0')
+          const d = String(target.getDate()).padStart(2, '0')
+          const targetDateStr = `${year}-${month}-${d}`
+
           const [availRes, myBookingsRes] = await Promise.allSettled([
-          client.get('/employee/availability', {
-    params: { date: todayStr } // <-- Pass the required date parameter here
-  }),
+            client.get('/employee/availability', {
+              params: { date: targetDateStr },
+            }),
             client.get('/employee/mybookings'),
           ])
 
@@ -158,6 +165,26 @@ export default function TopNav({
     loadSearchData()
   }, [publicOnly, user, isAdmin])
 
+  // Helper to get locally marked read notification IDs
+  const getReadNotificationIds = () => {
+    try {
+      const raw = localStorage.getItem('spacebook_read_notifications')
+      return raw ? JSON.parse(raw) : []
+    } catch (e) {
+      return []
+    }
+  }
+
+  const saveReadNotificationIds = (ids) => {
+    try {
+      const existing = getReadNotificationIds()
+      const merged = Array.from(new Set([...existing, ...ids]))
+      localStorage.setItem('spacebook_read_notifications', JSON.stringify(merged))
+    } catch (e) {
+      // ignore
+    }
+  }
+
   // =====================================================
   // Fetch Notifications
   // =====================================================
@@ -178,11 +205,30 @@ export default function TopNav({
         : '/employee/notifications'
 
       const response = await client.get(endpoint)
+      const rawList = Array.isArray(response.data)
+        ? response.data
+        : response.data?.notifications || []
 
-      setNotifications(response.data || [])
+      const readIds = new Set(getReadNotificationIds().map(String))
+
+      const mapped = rawList.map((n, idx) => {
+        const id = String(n.notificationId ?? n.id ?? n._id ?? idx)
+        const isRead =
+          n.isRead === true ||
+          n.is_read === true ||
+          n.read === true ||
+          readIds.has(id)
+
+        return {
+          ...n,
+          notificationId: id,
+          isRead,
+        }
+      })
+
+      setNotifications(mapped)
     } catch (error) {
       console.error('Failed to fetch notifications in TopNav:', error)
-
       setNotifications([])
     } finally {
       setLoadingNotifications(false)
@@ -205,7 +251,22 @@ export default function TopNav({
         ? '/admin/notifications/read-all'
         : '/employee/notifications/read-all'
 
-      await client.patch(endpoint, {})
+      // Call backend
+      try {
+        await client.patch(endpoint, {})
+      } catch (err) {
+        try {
+          await client.put(endpoint, {})
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // Persist read IDs locally
+      const currentIds = notifications.map((n, idx) =>
+        String(n.notificationId ?? n.id ?? n._id ?? idx)
+      )
+      saveReadNotificationIds(currentIds)
 
       setNotifications((previous) =>
         previous.map((notification) => ({
@@ -264,8 +325,8 @@ export default function TopNav({
 
     const query = searchInput.trim().toLowerCase()
 
-    const roomDataSource = liveRooms.length > 0 ? liveRooms : ROOMS
-    const bookingDataSource = liveBookings.length > 0 ? liveBookings : BOOKINGS
+    const roomDataSource = liveRooms
+    const bookingDataSource = liveBookings
 
     const matchedRooms = roomDataSource
       .filter((room) => {
@@ -718,6 +779,18 @@ export default function TopNav({
             />
           </div>
 
+          {/* User Guide & Help Button */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event('openSpaceBookGuide'))}
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-sky-900 border border-sky-300/80 bg-white/70 hover:bg-sky-200/80 hover:border-sky-400 transition shadow-xs"
+            title="Open SpaceBook User Guide & Help"
+            aria-label="User Guide"
+          >
+            <HelpCircle size={14} className="text-sky-700" />
+            <span className="hidden sm:inline">Guide</span>
+          </button>
+
           {/* User Menu */}
 
           <div className="relative">
@@ -743,15 +816,13 @@ export default function TopNav({
 
             {menuOpen && (
               <div className="absolute right-0 top-full z-50 mt-1 w-32 rounded-lg border border-slate-200 bg-white py-1 font-sans text-sm text-ink shadow-md">
-
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="block w-full px-3 py-2 text-left font-medium text-clay transition-colors hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left font-medium text-clay transition-colors hover:bg-slate-50 text-xs"
                 >
                   Sign out
                 </button>
-
               </div>
             )}
           </div>

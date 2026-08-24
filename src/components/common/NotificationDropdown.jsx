@@ -14,15 +14,47 @@ export default function NotificationDropdown({
   const [notifications, setNotifications] = useState(initialNotifications || []);
   const [loading, setLoading] = useState(false);
 
+  // Helper to get locally marked read notification IDs
+  const getReadNotificationIds = () => {
+    try {
+      const raw = localStorage.getItem('spacebook_read_notifications')
+      return raw ? JSON.parse(raw) : []
+    } catch (e) {
+      return []
+    }
+  }
+
   // Fetch API data when dropdown opens
   useEffect(() => {
     if (!open) return;
+
+    // If initialNotifications was already provided by TopNav, use it
+    if (initialNotifications && initialNotifications.length > 0) {
+      const readIds = new Set(getReadNotificationIds().map(String));
+      setNotifications(
+        initialNotifications.map((n) => ({
+          ...n,
+          isRead: n.isRead === true || readIds.has(String(n.notificationId || n.id)),
+        }))
+      );
+      return;
+    }
 
     const fetchAlerts = async () => {
       setLoading(true);
       try {
         const data = await getNotifications();
-        setNotifications(Array.isArray(data) ? data : data.notifications || []);
+        const rawList = Array.isArray(data) ? data : data.notifications || [];
+        const readIds = new Set(getReadNotificationIds().map(String));
+        const mapped = rawList.map((n, idx) => {
+          const id = String(n.notificationId ?? n.id ?? idx);
+          return {
+            ...n,
+            notificationId: id,
+            isRead: n.isRead === true || n.is_read === true || readIds.has(id),
+          };
+        });
+        setNotifications(mapped);
       } catch (err) {
         console.error("Failed to fetch notifications in dropdown:", err);
       } finally {
@@ -31,14 +63,7 @@ export default function NotificationDropdown({
     };
 
     fetchAlerts();
-  }, [open]);
-
-  // Sync external props if provided
-  useEffect(() => {
-    if (initialNotifications && initialNotifications.length > 0) {
-      setNotifications(initialNotifications);
-    }
-  }, [initialNotifications]);
+  }, [open, initialNotifications]);
 
   // Click outside and escape listeners
   useEffect(() => {

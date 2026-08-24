@@ -17,3 +17,18 @@ export async function getRoomUsageReport(filterDto = {}) {
   const { data } = await client.post("/admin/reports/roomusage", filterDto);
   return data;
 }
+
+// GET or POST /api/admin/reports/analytics
+export async function getAnalyticsReport(params = {}) {
+  const { data } = await client.get("/admin/reports/analytics", { params });
+  return data;
+}
+
+// GET /api/admin/reports/export-csv
+export async function exportBookingsCsv(params = {}) {
+  const response = await client.get("/admin/reports/export-csv", {
+    params,
+    responseType: "blob",
+  });
+  return response.data;
+}

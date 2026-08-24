@@ -206,7 +206,7 @@ export default function FloorMapModule1({
     <div className="m1-map-wrapper">
 
       <div className="m1-title">
-        TRAINING ROOM – MODULE 1 FLOOR MAP
+        MODULE 1 FLOOR MAP
       </div>
 
       <div className="m1-floor-map">

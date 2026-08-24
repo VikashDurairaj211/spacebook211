@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import client from '../../api/client'
+import { deleteAdminBooking } from '../../api/adminBookings'
 
 import Card from '../../components/common/Card'
 import Button from '../../components/common/Button'
@@ -41,7 +42,6 @@ export default function BookingManagement() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState('')
 
   const [search, setSearch] = useState('')
@@ -67,12 +67,6 @@ export default function BookingManagement() {
 
   const [selectedBooking, setSelectedBooking] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-
-  // =====================================================
-  // Confirmation Dialog
-  // =====================================================
-
-  const [confirmAction, setConfirmAction] = useState(null)
 
   // =====================================================
   // Status Counts
@@ -354,155 +348,31 @@ export default function BookingManagement() {
   // =====================================================
 
   function closeModal() {
-    if (actionLoading) {
-      return
-    }
-
     setIsModalOpen(false)
     setSelectedBooking(null)
   }
 
   // =====================================================
-  // Open Confirmation Dialog
+  // Delete / Cancel Booking (Admin Override)
   // =====================================================
 
-  function requestAction(booking, action) {
-    setConfirmAction({
-      booking,
-      action,
-    })
-  }
-
-  // =====================================================
-  // Close Confirmation Dialog
-  // =====================================================
-
-  function closeConfirmation() {
-    if (actionLoading) {
+  async function handleDeleteBooking(bookingId) {
+    if (!bookingId) return
+    const id = String(bookingId).replace(/^#/, '')
+    if (!window.confirm(`Are you sure you want to cancel and remove booking #${id}?`)) {
       return
     }
 
-    setConfirmAction(null)
-  }
-
-  // =====================================================
-  // Confirm Selected Action
-  // =====================================================
-
-  async function confirmActionHandler() {
-    if (!confirmAction) {
-      return
-    }
-
-    const {
-      booking,
-      action,
-    } = confirmAction
-
-    if (action === 'approve') {
-      await handleApprove(booking.bookingId)
-    } else if (action === 'reject') {
-      await handleReject(booking.bookingId)
-    }
-
-    setConfirmAction(null)
-  }
-
-  // =====================================================
-  // Approve Booking
-  // =====================================================
-
-  async function handleApprove(bookingId) {
     try {
-      setActionLoading(true)
-
-      console.log(
-        'Approving booking:',
-        bookingId
-      )
-
-      await client.patch(
-        `/admin/bookings/${bookingId}/approve`
-      )
-
+      setLoading(true)
+      await deleteAdminBooking(id)
+      closeModal()
       await fetchBookingData()
-
-      // Update selected booking if modal is open
-      if (
-        selectedBooking &&
-        selectedBooking.bookingId === bookingId
-      ) {
-        setSelectedBooking((prev) =>
-          prev
-            ? {
-                ...prev,
-                status: 'Confirmed',
-              }
-            : null
-        )
-      }
-
     } catch (err) {
-      console.error(
-        'Failed to approve booking:',
-        err
-      )
-
-      alert(
-        err.response?.data?.message ||
-        'Failed to approve booking.'
-      )
+      console.error('Failed to delete booking:', err)
+      alert(err.response?.data?.message || 'Failed to delete booking.')
     } finally {
-      setActionLoading(false)
-    }
-  }
-
-  // =====================================================
-  // Reject Booking
-  // =====================================================
-
-  async function handleReject(bookingId) {
-    try {
-      setActionLoading(true)
-
-      console.log(
-        'Rejecting booking:',
-        bookingId
-      )
-
-      await client.patch(
-        `/admin/bookings/${bookingId}/reject`
-      )
-
-      await fetchBookingData()
-
-      // Update selected booking if modal is open
-      if (
-        selectedBooking &&
-        selectedBooking.bookingId === bookingId
-      ) {
-        setSelectedBooking((prev) =>
-          prev
-            ? {
-                ...prev,
-                status: 'Cancelled',
-              }
-            : null
-        )
-      }
-
-    } catch (err) {
-      console.error(
-        'Failed to reject booking:',
-        err
-      )
-
-      alert(
-        err.response?.data?.message ||
-        'Failed to reject booking.'
-      )
-    } finally {
-      setActionLoading(false)
+      setLoading(false)
     }
   }
 
@@ -532,21 +402,7 @@ export default function BookingManagement() {
           Summary Cards
       ================================================= */}
 
-      <div className="grid gap-3 md:grid-cols-3">
-
-        <Card>
-          <p className="font-mono text-[11px] uppercase tracking-wider text-slate">
-            Pending Requests
-          </p>
-
-          <p className="mt-2 text-3xl font-700 text-[#E09F3E]">
-            {statusCounts.Pending}
-          </p>
-
-          <p className="mt-1 text-sm text-slate">
-            Awaiting admin approval
-          </p>
-        </Card>
+      <div className="grid gap-3 sm:grid-cols-2">
 
         <Card>
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">
@@ -591,8 +447,7 @@ export default function BookingManagement() {
             </h2>
 
             <p className="text-sm text-slate">
-              Filter requests to approve, reject,
-              or inspect booking details.
+              Filter and inspect workplace room bookings.
             </p>
           </div>
 
@@ -792,47 +647,14 @@ export default function BookingManagement() {
                   </td>
 
                   <td className="px-2 py-3 text-center whitespace-nowrap">
-                    <div className="inline-flex items-center gap-2 font-sans text-sm">
-                      <button
-                        onClick={() =>
-                          openViewModal(booking)
-                        }
-                        className="text-sky-600 hover:text-sky-800 font-bold text-sm hover:underline"
-                      >
-                        View
-                      </button>
-
-                      {booking.status?.toLowerCase() ===
-                        'pending' && (
-                        <>
-                          <button
-                            disabled={actionLoading}
-                            onClick={() =>
-                              requestAction(
-                                booking,
-                                'approve'
-                              )
-                            }
-                            className="text-emerald-600 hover:text-emerald-800 font-bold text-sm hover:underline disabled:opacity-50"
-                          >
-                            Approve
-                          </button>
-
-                          <button
-                            disabled={actionLoading}
-                            onClick={() =>
-                              requestAction(
-                                booking,
-                                'reject'
-                              )
-                            }
-                            className="text-red-600 hover:text-red-800 font-bold text-sm hover:underline disabled:opacity-50"
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    <button
+                      onClick={() =>
+                        openViewModal(booking)
+                      }
+                      className="text-sky-600 hover:text-sky-800 font-bold text-sm hover:underline"
+                    >
+                      View
+                    </button>
                   </td>
                 </tr>
               ))
@@ -854,47 +676,14 @@ export default function BookingManagement() {
           onClose={closeModal}
           title="Booking Details"
           footer={
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full items-center justify-end">
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={closeModal}
-                disabled={actionLoading}
               >
                 Close
               </Button>
-
-              {selectedBooking.status?.toLowerCase() ===
-                'pending' && (
-                <>
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      requestAction(
-                        selectedBooking,
-                        'approve'
-                      )
-                    }
-                    disabled={actionLoading}
-                  >
-                    Approve
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() =>
-                      requestAction(
-                        selectedBooking,
-                        'reject'
-                      )
-                    }
-                    disabled={actionLoading}
-                  >
-                    Reject
-                  </Button>
-                </>
-              )}
             </div>
           }
         >
@@ -972,121 +761,6 @@ export default function BookingManagement() {
                 <CustomStatusTag
                   status={selectedBooking.status}
                 />
-              </div>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* =====================================================
-          Approve / Reject Confirmation Modal
-      ===================================================== */}
-
-      {confirmAction && (
-        <Modal
-          open={true}
-          onClose={closeConfirmation}
-          title={
-            confirmAction.action === 'approve'
-              ? 'Approve Booking'
-              : 'Reject Booking'
-          }
-          footer={
-            <div className="flex justify-end gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={closeConfirmation}
-                disabled={actionLoading}
-              >
-                No
-              </Button>
-
-              <Button
-                size="sm"
-                variant={
-                  confirmAction.action === 'approve'
-                    ? undefined
-                    : 'danger'
-                }
-                onClick={confirmActionHandler}
-                disabled={actionLoading}
-              >
-                {actionLoading
-                  ? 'Processing...'
-                  : 'Yes'}
-              </Button>
-            </div>
-          }
-        >
-          <div className="space-y-4 py-2">
-            <p className="text-sm text-slate">
-              Are you sure you want to{' '}
-              <span className="font-semibold text-ink">
-                {confirmAction.action === 'approve'
-                  ? 'approve'
-                  : 'reject'}
-              </span>{' '}
-              this booking?
-            </p>
-
-            <div className="rounded-xl bg-portal-bg p-3">
-              <div className="grid gap-2 text-sm">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate">
-                    Booking ID
-                  </span>
-                  <span className="font-semibold text-ink">
-                    {confirmAction.booking.bookingId}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate">
-                    Meeting
-                  </span>
-                  <span className="font-semibold text-ink text-right">
-                    {confirmAction.booking.title}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate">
-                    Room
-                  </span>
-                  <span className="font-semibold text-ink text-right">
-                    {confirmAction.booking.roomName}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate">
-                    Module
-                  </span>
-                  <span className="font-semibold text-ink text-right">
-                    {confirmAction.booking.module}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate">
-                    Date
-                  </span>
-                  <span className="font-semibold text-ink">
-                    {confirmAction.booking.date}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate">
-                    Time
-                  </span>
-                  <span className="font-semibold text-ink">
-                    {confirmAction.booking.startTime}
-                    {' – '}
-                    {confirmAction.booking.endTime}
-                  </span>
-                </div>
               </div>
             </div>
           </div>

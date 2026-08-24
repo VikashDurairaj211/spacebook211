@@ -12,6 +12,7 @@ import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import Modal from "../../components/common/Modal";
 import { Field, Input } from "../../components/common/Input";
+import ScrollableTimePicker from "../../components/common/ScrollableTimePicker";
 import { useToast } from "../../components/common/ToastProvider";
 import {
   getMyBookings,
@@ -134,172 +135,7 @@ function Select({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Dual Column Time Picker (Starts at 10:00 AM)
-// ---------------------------------------------------------------------------
 
-function CustomTimePicker({ value, onChange, selectedDate }) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef(null);
-
-  const now = new Date();
-  const todayKey = getTodayKey();
-  const isToday = selectedDate === todayKey;
-
-  const currentHour = now.getHours();
-  const currentMin = now.getMinutes();
-
-  const [selectedHour, selectedMin] = value && value.includes(":")
-    ? value.split(":")
-    : ["", ""];
-
-  const hours = Array.from(
-    { length: 10 },
-    (_, i) => String(i + 10).padStart(2, "0")
-  );
-
-  const minutes = Array.from(
-    { length: 60 },
-    (_, i) => String(i).padStart(2, "0")
-  );
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target)
-      ) {
-        setOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleHourSelect = (hr) => {
-    if (isToday && parseInt(hr, 10) < currentHour) {
-      return;
-    }
-
-    onChange(`${hr}:${selectedMin || "00"}`);
-  };
-
-  const handleMinSelect = (mn) => {
-    if (
-      isToday &&
-      parseInt(selectedHour, 10) === currentHour &&
-      parseInt(mn, 10) < currentMin
-    ) {
-      return;
-    }
-
-    onChange(`${selectedHour || "10"}:${mn}`);
-  };
-
-  const displayTime = () => {
-    if (!value || !value.includes(":")) {
-      return "Select time";
-    }
-
-    return value;
-  };
-
-  return (
-    <div className="relative w-full" ref={containerRef}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 focus:border-[#2F6FE0] focus:outline-none transition-colors"
-      >
-        <span>{displayTime()}</span>
-
-        <ChevronDown size={16} className="text-slate-500" />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-full mt-1 w-full z-50 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
-          <div className="grid grid-cols-2 gap-2">
-
-            {/* HOURS */}
-            <div>
-              <div className="text-[11px] font-semibold text-slate-600 text-center py-1 border-b border-slate-100">
-                Hour
-              </div>
-
-              <div className="max-h-44 overflow-y-auto pr-1 flex flex-col gap-1 mt-1 scrollbar-thin">
-                {hours.map((hr) => {
-                  const isPast =
-                    isToday &&
-                    parseInt(hr, 10) < currentHour;
-
-                  const isSelected = hr === selectedHour;
-
-                  return (
-                    <button
-                      key={hr}
-                      type="button"
-                      disabled={isPast}
-                      onClick={() => handleHourSelect(hr)}
-                      className={`w-full py-1.5 rounded text-xs font-semibold transition-colors text-center ${
-                        isSelected
-                          ? "bg-[#2F6FE0] text-white"
-                          : isPast
-                          ? "text-slate-300 bg-slate-50 cursor-not-allowed opacity-50"
-                          : "text-slate-700 hover:bg-slate-100"
-                      }`}
-                    >
-                      {hr}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* MINUTES */}
-            <div>
-              <div className="text-[11px] font-semibold text-slate-600 text-center py-1 border-b border-slate-100">
-                Min
-              </div>
-
-              <div className="max-h-44 overflow-y-auto pr-1 flex flex-col gap-1 mt-1 scrollbar-thin">
-                {minutes.map((mn) => {
-                  const isPast =
-                    isToday &&
-                    parseInt(selectedHour, 10) === currentHour &&
-                    parseInt(mn, 10) < currentMin;
-
-                  const isSelected = mn === selectedMin;
-
-                  return (
-                    <button
-                      key={mn}
-                      type="button"
-                      disabled={isPast}
-                      onClick={() => handleMinSelect(mn)}
-                      className={`w-full py-1.5 rounded text-xs font-semibold transition-colors text-center ${
-                        isSelected
-                          ? "bg-[#2F6FE0] text-white"
-                          : isPast
-                          ? "text-slate-300 bg-slate-50 cursor-not-allowed opacity-50"
-                          : "text-slate-700 hover:bg-slate-100"
-                      }`}
-                    >
-                      {mn}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Toast Notification
@@ -430,8 +266,8 @@ export default function HotseatBookingApp() {
   const [conflictData, setConflictData] = useState(null);
   const toast = useToast();
 
-  const tomorrow = getTomorrowKey();
-  const [targetDate, setTargetDate] = useState(isWeekend(tomorrow) ? getTodayKey() : tomorrow);
+  const today = getTodayKey();
+  const [targetDate, setTargetDate] = useState(today);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem("spacebook_token") || "";
@@ -527,6 +363,45 @@ export default function HotseatBookingApp() {
         ? targetDate.substring(0, 10)
         : targetDate;
 
+      // Always fetch the freshest office seats right before attempting to reserve.
+      const latestSeatsResponse = await fetch(
+        `${API_BASE}/seats?date=${formattedBookingDate}`,
+        {
+          headers: getAuthHeaders(),
+        }
+      );
+
+      if (latestSeatsResponse.ok) {
+        const latestSeatsData = await latestSeatsResponse.json();
+        const latestSeats = Array.isArray(latestSeatsData)
+          ? latestSeatsData
+          : latestSeatsData?.seats || [];
+
+        const latestSeat = latestSeats.find(
+          (seat) =>
+            String(seat.seatNumber || "").toLowerCase() ===
+            String(item.id || "").toLowerCase()
+        );
+
+        const latestStatus = String(
+          latestSeat?.status || ""
+        ).toLowerCase();
+
+        if (
+          latestStatus === "booked" ||
+          latestStatus === "occupied" ||
+          latestStatus === "reserved"
+        ) {
+          await fetchOfficeData();
+
+          return {
+            ok: false,
+            message:
+              "This seat was just booked by another user. Please choose another seat.",
+          };
+        }
+      }
+
       const payload = {
         seatId: actualSeatId,
         seatNumber: item.id,
@@ -598,6 +473,24 @@ export default function HotseatBookingApp() {
       window.dispatchEvent(new Event("booking-updated"));
       await fetchOfficeData();
 
+      // Some API responses expose the booking immediately in /my-bookings
+      // while the seat endpoint can briefly return its old status. Reconcile
+      // the just-booked seat locally so the map becomes RED immediately.
+      setModules((currentModules) =>
+        currentModules.map((module) => ({
+          ...module,
+          seats: (module.seats || []).map((seat) =>
+            seat.id === item.id
+              ? {
+                  ...seat,
+                  status: "occupied",
+                  isMyBooking: true,
+                }
+              : seat
+          ),
+        }))
+      );
+
       return { ok: true };
     } catch (err) {
       console.error("BOOKING ERROR:", err);
@@ -644,6 +537,19 @@ export default function HotseatBookingApp() {
       }
 
       if (!response.ok) {
+        if (response.status === 409) {
+          await fetchOfficeData();
+
+          const conflictMessage =
+            responseData?.message ||
+            "This booking conflicts with another reservation.";
+
+          return {
+            ok: false,
+            message: conflictMessage,
+          };
+        }
+
         let errorMessage = "Failed to update booking.";
         if (responseData?.errors) {
           errorMessage = Object.entries(responseData.errors)
@@ -868,7 +774,7 @@ function OfficeMapTab({
       </p>
 
       {/* FILTERS */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mb-6">
+      <Card className="p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           <Select
             step="1"
@@ -935,23 +841,23 @@ function OfficeMapTab({
             placeholder="Select date"
           />
         </div>
-      </div>
+      </Card>
 
       {!readyForModule && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center text-sm text-slate-400">
+        <Card className="p-10 text-center text-sm text-slate-400">
           Select a location and zone to load the Hotseat reservation.
-        </div>
+        </Card>
       )}
 
       {readyForModule && !currentModule && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center text-sm text-slate-400">
+        <Card className="p-10 text-center text-sm text-slate-400">
           Select a module to view seats and rooms.
-        </div>
+        </Card>
       )}
 
       {/* FLOOR MAP */}
       {currentModule && (
-        <div className="office-map-active">
+        <Card className="office-map-active p-6">
           {moduleId === "module1" && (
             <FloorMapModule1
               seats={currentSeats}
@@ -1061,7 +967,7 @@ function OfficeMapTab({
             </span>
 
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );
@@ -1232,7 +1138,7 @@ function BookingDialog({
               Expected check-in time
             </label>
 
-            <CustomTimePicker
+            <ScrollableTimePicker
               value={expectedCheckIn}
               onChange={setExpectedCheckIn}
               selectedDate={date}

@@ -26,6 +26,26 @@ const formatTime = (value) => {
   return text.substring(0, 5);
 };
 
+const padNumber = (value) => String(value).padStart(2, "0");
+
+const getTodayDateString = (date = new Date()) => {
+  return `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())}`;
+};
+
+const isBookingToday = (booking) => {
+  if (!booking) return false;
+  const rawDate = String(
+    booking.bookingDate ||
+    booking.date ||
+    ""
+  );
+  const datePart = rawDate.includes("T")
+    ? rawDate.split("T")[0]
+    : rawDate.substring(0, 10);
+  const today = getTodayDateString(new Date());
+  return datePart === today;
+};
+
 const HOTSEAT_API_BASE = "https://spacebook-505h.onrender.com/api/Hotseat";
 
 export default function Dashboard() {
@@ -83,7 +103,7 @@ export default function Dashboard() {
   const normalizeStatus = (status) =>
     String(status || "")
       .toLowerCase()
-      .replace(/\\s+/g, "");
+      .replace(/[\s_-]+/g, "");
 
   const getCheckInDeadline = (booking) => {
     const rawExpected =
@@ -144,17 +164,20 @@ export default function Dashboard() {
   };
 
   async function handleCheckIn(booking) {
-    if (checkingInId) return;
     if (!booking?.isHotseat) return;
+    if (checkingInId) return;
 
     const bookingId = booking.rawId || booking.bookingId;
     if (!bookingId) return;
 
     const status = normalizeStatus(booking.status);
-
     if (status === "checkedin") return;
-
     if (!["confirmed", "approved"].includes(status)) return;
+
+    if (!isBookingToday(booking)) {
+      alert("Check-in is only permitted on the day of the reservation.");
+      return;
+    }
 
     const deadline = getCheckInDeadline(booking);
 
@@ -210,7 +233,24 @@ export default function Dashboard() {
         return;
       }
 
+      // Optimistically update hotseat booking status in local state
+      setHotseatBookings((prev) =>
+        prev.map((b) => {
+          const bId = b.bookingId || b.id;
+          if (String(bId) === String(bookingId) || `hotseat-${bId}` === String(bookingId)) {
+            return {
+              ...b,
+              status: "CHECKED IN",
+              isCheckedIn: true,
+              checkInTime: new Date().toISOString(),
+            };
+          }
+          return b;
+        })
+      );
+
       alert("Checked in successfully!");
+      window.dispatchEvent(new Event("booking-updated"));
       await loadDashboard();
     } catch (err) {
       console.error("CHECK-IN ERROR:", err);
@@ -497,7 +537,7 @@ export default function Dashboard() {
   const getDisplayStatus = (booking) => {
     const status = String(booking?.status || "")
       .toLowerCase()
-      .replace(/\s+/g, "");
+      .replace(/[\s_-]+/g, "");
 
     if (
       status === "cancelled" ||
@@ -508,9 +548,14 @@ export default function Dashboard() {
 
     if (
       status === "checkedin" ||
+      status === "checkin" ||
       booking?.checkInTime ||
+      booking?.checkedInTime ||
+      booking?.checkedInAt ||
+      booking?.checkInDate ||
       booking?.checkedIn === true ||
-      booking?.isCheckedIn === true
+      booking?.isCheckedIn === true ||
+      booking?.isCheckIn === true
     ) {
       return "CHECKED IN";
     }
@@ -525,7 +570,27 @@ export default function Dashboard() {
     return booking?.status || "APPROVED";
   };
 
-  const recentReservations = upcomingBookings
+  // =====================================================
+  // ACTIVE & UPCOMING RESERVATIONS (ASCENDING CHRONOLOGICAL ORDER)
+  // =====================================================
+
+  /*
+   * Shows all active reservations (rooms and hotseats) scheduled for today
+   * and upcoming dates, sorted in ascending order (earliest first).
+   */
+  const activeAndEarlyReservations = allBookings
+    .filter((booking) => {
+      if (isInactiveStatus(booking.status)) {
+        return false;
+      }
+
+      const bookingDateStr = String(booking.date || "").substring(0, 10);
+      if (!bookingDateStr || bookingDateStr < today) {
+        return false;
+      }
+
+      return true;
+    })
     .map((booking) => ({
       bookingId: booking.isHotseat
         ? `hotseat-${booking.bookingId}`
@@ -546,22 +611,15 @@ export default function Dashboard() {
       isHotseat: booking.isHotseat,
     }))
     .sort((a, b) => {
-      const dateA = parseBookingDateTime({
-        date: a.bookingDate,
-        time: a.startTime,
-      });
+      const dateA = String(a.bookingDate || "").substring(0, 10);
+      const dateB = String(b.bookingDate || "").substring(0, 10);
+      const dateCompare = dateA.localeCompare(dateB);
+      if (dateCompare !== 0) return dateCompare;
 
-      const dateB = parseBookingDateTime({
-        date: b.bookingDate,
-        time: b.startTime,
-      });
-
-      if (!dateA) return 1;
-      if (!dateB) return -1;
-
-      return dateA - dateB;
-    })
-    .slice(0, 5);
+      const timeA = a.startTime || "";
+      const timeB = b.startTime || "";
+      return timeA.localeCompare(timeB);
+    });
 
   return (
     <div className="space-y-8">
@@ -585,13 +643,7 @@ export default function Dashboard() {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <DashboardCard
-          title="Total Bookings"
-          value={totalBookings}
-          tone="warning"
-        />
-
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
         <DashboardCard
           title="Upcoming"
           value={upcomingCount}
@@ -608,11 +660,11 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Recent Reservations */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      {/* Active & Upcoming Reservations */}
+      <Card className="p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">
-            Recent Reservations
+            Active & Upcoming Reservations
           </h2>
 
           <Link
@@ -631,25 +683,25 @@ export default function Dashboard() {
                 <th className="py-3">DATE</th>
                 <th className="py-3">TIME</th>
                 <th className="py-3">STATUS</th>
-                <th className="py-3 text-right">ACTION</th>
+                <th className="py-3">ACTION</th>
               </tr>
             </thead>
 
             <tbody>
-              {recentReservations.length === 0 ? (
+              {activeAndEarlyReservations.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
                     className="py-6 text-center text-slate-500 text-sm"
                   >
-                    No upcoming reservations found.
+                    No active or upcoming reservations found.
                   </td>
                 </tr>
               ) : (
-                recentReservations.map((booking) => (
+                activeAndEarlyReservations.map((booking) => (
                   <tr
                     key={booking.bookingId}
-                    className="border-b hover:bg-slate-50 text-sm"
+                    className="border-b hover:bg-slate-50 text-sm transition-colors"
                   >
                     <td className="py-4 font-medium text-slate-900">
                       {booking.roomName ||
@@ -682,7 +734,7 @@ export default function Dashboard() {
                       </span>
                     </td>
 
-                    <td className="py-4 text-right">
+                    <td className="py-4">
                       {booking.isHotseat ? (
                         normalizeStatus(booking.status) === "checkedin" ? (
                           <span className="text-xs font-semibold text-[#658362]">
@@ -690,17 +742,23 @@ export default function Dashboard() {
                           </span>
                         ) : ["confirmed", "approved"].includes(
                             normalizeStatus(booking.status)
-                          ) ? (
+                          ) && isBookingToday(booking) ? (
                           <button
                             type="button"
-                            disabled={checkingInId === booking.rawId}
+                            disabled={checkingInId === (booking.rawId || booking.bookingId)}
                             onClick={() => handleCheckIn(booking)}
                             className="rounded-lg bg-[#2F6FE0] px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
                           >
-                            {checkingInId === booking.rawId
+                            {checkingInId === (booking.rawId || booking.bookingId)
                               ? "Checking in..."
                               : "Check-In"}
                           </button>
+                        ) : ["confirmed", "approved"].includes(
+                            normalizeStatus(booking.status)
+                          ) ? (
+                          <span className="text-xs text-slate-400 font-medium select-none">
+                            Available on day
+                          </span>
                         ) : null
                       ) : null}
                     </td>
@@ -710,7 +768,7 @@ export default function Dashboard() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

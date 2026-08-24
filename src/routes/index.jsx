@@ -23,12 +23,18 @@ import HotseatBookingPage from '../components/HotseatMap/HotseatBooking'
 import AdminDashboardPage from '../pages/Admin/Dashboard'
 import AdminRoomManagementPage from '../pages/Admin/RoomManagement'
 import AdminBookingManagementPage from '../pages/Admin/BookingManagement'
+import AdminHotseatManagementPage from '../pages/Admin/HotseatManagement'
 import AdminReportsPage from '../pages/Admin/Reports'
 
 export default function AppRoutes() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <Routes>
 
           {/* PUBLIC ROUTES */}
@@ -120,6 +126,15 @@ export default function AppRoutes() {
               element={
                 <RequireAuth allowedRoles={['Admin']}>
                   <AdminBookingManagementPage />
+                </RequireAuth>
+              }
+            />
+
+            <Route
+              path="/admin/hotseat-management"
+              element={
+                <RequireAuth allowedRoles={['Admin']}>
+                  <AdminHotseatManagementPage />
                 </RequireAuth>
               }
             />

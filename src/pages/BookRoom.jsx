@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { createBooking } from '../api/bookings'
 import { getRoomAvailability } from '../api/rooms'
 import { Field, Input, Select } from '../components/common/Input'
+import BusinessDatePicker from '../components/common/BusinessDatePicker'
+import ScrollableTimePicker from '../components/common/ScrollableTimePicker'
 import { useToast } from '../components/common/ToastProvider'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
@@ -20,6 +22,26 @@ function getLocalDateStr(dateObj = new Date()) {
   )
     .toISOString()
     .slice(0, 10)
+}
+
+function isWeekendDate(dateStr) {
+  if (!dateStr) return false
+  const [y, m, d] = dateStr.split('-').map(Number)
+  if (!y || !m || !d) return false
+  const dt = new Date(y, m - 1, d)
+  const day = dt.getDay()
+  return day === 0 || day === 6
+}
+
+function getNextBusinessDayStr(dateObj = new Date()) {
+  const next = new Date(dateObj)
+  const day = next.getDay()
+  if (day === 6) {
+    next.setDate(next.getDate() + 2)
+  } else if (day === 0) {
+    next.setDate(next.getDate() + 1)
+  }
+  return getLocalDateStr(next)
 }
 
 // =====================================================
@@ -109,8 +131,117 @@ function normalizeRooms(data) {
       room.facilities ||
       room.roomFacilities ||
       [],
+
+    // ===============================================
+    // TIME SLOTS & BOOKINGS
+    // ===============================================
+
+    timeSlots:
+      room.timeSlots ||
+      room.slots ||
+      room.availabilitySlots ||
+      [],
+
+    bookings:
+      room.bookings ||
+      [],
   }))
 }
+
+// =====================================================
+// HELPER - CHECK ROOM TIME OVERLAP CONFLICT
+// =====================================================
+
+function checkRoomBookingConflict(room, requestedStart, requestedEnd) {
+  if (!room || !requestedStart || !requestedEnd) return false
+
+  const reqStart =
+    requestedStart.length === 5
+      ? `${requestedStart}:00`
+      : requestedStart
+
+  const reqEnd =
+    requestedEnd.length === 5
+      ? `${requestedEnd}:00`
+      : requestedEnd
+
+  // 1. Check timeSlots / slots / availabilitySlots
+  const rawSlots =
+    room.timeSlots ||
+    room.slots ||
+    room.availabilitySlots ||
+    []
+
+  for (const slot of rawSlots) {
+    const isBooked =
+      slot.isBooked === true ||
+      slot.booked === true ||
+      String(slot.status || '').toLowerCase() === 'booked' ||
+      String(slot.status || '').toLowerCase() === 'pending' ||
+      String(slot.status || '').toLowerCase() === 'confirmed'
+
+    if (isBooked) {
+      const slotStart =
+        slot.start ||
+        slot.startTime ||
+        slot.fromTime ||
+        slot.timeSlot?.start ||
+        slot.timeSlot?.startTime
+
+      const slotEnd =
+        slot.end ||
+        slot.endTime ||
+        slot.toTime ||
+        slot.timeSlot?.end ||
+        slot.timeSlot?.endTime
+
+      if (slotStart && slotEnd) {
+        const sStart =
+          slotStart.length === 5
+            ? `${slotStart}:00`
+            : slotStart
+
+        const sEnd =
+          slotEnd.length === 5
+            ? `${slotEnd}:00`
+            : slotEnd
+
+        if (reqStart < sEnd && reqEnd > sStart) {
+          return true
+        }
+      }
+    }
+  }
+
+  // 2. Check bookings array if present
+  const bookings = room.bookings || []
+  for (const b of bookings) {
+    const status = String(b.status || '').toLowerCase()
+    if (status !== 'cancelled' && status !== 'rejected') {
+      const bStart = b.startTime || b.start
+      const bEnd = b.endTime || b.end
+      if (bStart && bEnd) {
+        const sStart =
+          bStart.length === 5
+            ? `${bStart}:00`
+            : bStart
+
+        const sEnd =
+          bEnd.length === 5
+            ? `${bEnd}:00`
+            : bEnd
+
+        if (reqStart < sEnd && reqEnd > sStart) {
+          return true
+        }
+      }
+    }
+  }
+
+  return false
+}
+
+
 
 // =====================================================
 // BOOK ROOM
@@ -124,10 +255,11 @@ export default function BookRoom() {
     searchParams.get('roomId')
 
   const todayStr = getLocalDateStr()
+  const defaultBusinessDay = getNextBusinessDayStr()
 
   const prefillDate =
     searchParams.get('date') ||
-    todayStr
+    defaultBusinessDay
 
   const prefillStart =
     searchParams.get('startTime') || ''
@@ -312,6 +444,14 @@ export default function BookRoom() {
       [key]: value,
     }))
 
+    if (key === 'date' && isWeekendDate(value)) {
+      setErrors((prev) => ({
+        ...prev,
+        date: 'Room reservations are only permitted on business working days (Monday to Friday). Saturdays and Sundays are unavailable.',
+      }))
+      return
+    }
+
     setErrors((prev) => ({
       ...prev,
       [key]: '',
@@ -379,6 +519,9 @@ export default function BookRoom() {
     if (!form.date) {
       newErrors.date =
         'Date is required.'
+    } else if (isWeekendDate(form.date)) {
+      newErrors.date =
+        'Room reservations are only permitted on business working days (Monday to Friday). Saturdays and Sundays are unavailable.'
     }
 
     if (!form.startTime) {
@@ -477,7 +620,7 @@ export default function BookRoom() {
       '10:00'
 
     const OFFICE_END_TIME =
-      '19:01'
+      '22:01'
 
     if (
       form.startTime <
@@ -485,7 +628,7 @@ export default function BookRoom() {
     ) {
       setErrors({
         startTime:
-          'Bookings are allowed only between 10:00 AM and 07:00 PM.',
+          'Bookings are allowed only between 10:00 AM and 10:00 PM.',
       })
 
       return
@@ -497,7 +640,27 @@ export default function BookRoom() {
     ) {
       setErrors({
         endTime:
-          'Bookings are allowed only between 10:00 AM and 07:00 PM.',
+          'Bookings are allowed only between 10:00 AM and 10:00 PM.',
+      })
+
+      return
+    }
+
+    // -------------------------------------------------
+    // ROOM BOOKING OVERLAP PRE-VALIDATION
+    // -------------------------------------------------
+
+    if (
+      selectedRoomDetails &&
+      checkRoomBookingConflict(
+        selectedRoomDetails,
+        form.startTime,
+        form.endTime
+      )
+    ) {
+      setErrors({
+        startTime:
+          'The selected room is already booked for the selected time period. Please choose another room or time.',
       })
 
       return
@@ -520,8 +683,17 @@ export default function BookRoom() {
 
     try {
       const payload = {
+        meetingTitle:
+          form.title.trim(),
+
+        purpose:
+          form.title.trim(),
+
         roomId:
           Number(form.roomId),
+
+        participantCount:
+          Number(form.attendees),
 
         bookingDate:
           form.date,
@@ -535,12 +707,6 @@ export default function BookRoom() {
           form.endTime.length === 5
             ? `${form.endTime}:00`
             : form.endTime,
-
-        purpose:
-          form.title.trim(),
-
-        participantCount:
-          Number(form.attendees),
 
         facilityIds: [],
       }
@@ -579,6 +745,20 @@ export default function BookRoom() {
         errorMessage =
           responseData.message ||
           responseData.title
+      }
+
+      // Intercept misleading backend capacity/participant errors for room time conflict
+      const lowerMsg = String(errorMessage).toLowerCase()
+      if (
+        (lowerMsg.includes('accommodate') ||
+          lowerMsg.includes('capacity') ||
+          lowerMsg.includes('overlap') ||
+          lowerMsg.includes('conflict') ||
+          lowerMsg.includes('no room can')) &&
+        (lowerMsg.includes('participant') || lowerMsg.includes('no room can'))
+      ) {
+        errorMessage =
+          'The selected room is already booked for the selected time period. Please choose another room or time.'
       }
 
       toast.addToast({
@@ -723,76 +903,32 @@ export default function BookRoom() {
 
           <div className="grid grid-cols-3 gap-4">
 
-            <Field label="Date">
+            <BusinessDatePicker
+              label="Date"
+              min={todayStr}
+              value={form.date}
+              error={errors.date}
+              onChange={(value) =>
+                update('date', value)
+              }
+            />
 
-              <Input
-                type="date"
-                min={todayStr}
-                value={form.date}
-                onChange={(e) =>
-                  update(
-                    'date',
-                    e.target.value
-                  )
-                }
-              />
+            <ScrollableTimePicker
+              label="Start Time"
+              value={form.startTime}
+              selectedDate={form.date}
+              onChange={(value) => update('startTime', value)}
+              error={errors.startTime}
+            />
 
-              {errors.date && (
-                <p className="mt-1 text-sm font-medium text-red-600">
-                  {errors.date}
-                </p>
-              )}
-
-            </Field>
-
-            <Field label="Start Time">
-
-              <Input
-                type="time"
-                min={minStartTime}
-                max="19:01"
-                value={form.startTime}
-                onChange={(e) =>
-                  update(
-                    'startTime',
-                    e.target.value
-                  )
-                }
-              />
-
-              {errors.startTime && (
-                <p className="mt-1 text-sm font-medium text-red-600">
-                  {errors.startTime}
-                </p>
-              )}
-
-            </Field>
-
-            <Field label="End Time">
-
-              <Input
-                type="time"
-                min={
-                  form.startTime ||
-                  minStartTime
-                }
-                max="19:01"
-                value={form.endTime}
-                onChange={(e) =>
-                  update(
-                    'endTime',
-                    e.target.value
-                  )
-                }
-              />
-
-              {errors.endTime && (
-                <p className="mt-1 text-sm font-medium text-red-600">
-                  {errors.endTime}
-                </p>
-              )}
-
-            </Field>
+            <ScrollableTimePicker
+              label="End Time"
+              value={form.endTime}
+              selectedDate={form.date}
+              minTime={form.startTime}
+              onChange={(value) => update('endTime', value)}
+              error={errors.endTime}
+            />
 
           </div>
 
@@ -844,7 +980,7 @@ export default function BookRoom() {
 
           <Button
             type="submit"
-            className="w-full"
+            className="w-full flex items-center justify-center gap-2"
             disabled={
               submitting ||
               (
@@ -856,10 +992,39 @@ export default function BookRoom() {
               )
             }
           >
-            {submitting
-              ? 'Confirming...'
-              : 'Confirm Booking'}
+            {submitting ? (
+              <>
+                <svg
+                  className="h-4 w-4 animate-spin text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                <span>Confirming...</span>
+              </>
+            ) : (
+              'Confirm Booking'
+            )}
           </Button>
+
+          {submitting && (
+            <p className="text-center text-xs text-sky-600 font-medium animate-pulse">
+              Connecting to server and reserving room...
+            </p>
+          )}
 
         </form>
 
@@ -884,9 +1049,10 @@ export default function BookRoom() {
             </Button>
 
             <Button
+              disabled={submitting}
               onClick={confirmBooking}
             >
-              Confirm Booking
+              {submitting ? 'Confirming...' : 'Confirm Booking'}
             </Button>
           </>
         }

@@ -16,6 +16,7 @@ import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import Modal from "../components/common/Modal";
 import { Field, Input } from "../components/common/Input";
+import ScrollableTimePicker from "../components/common/ScrollableTimePicker";
 import { useToast } from "../components/common/ToastProvider";
 
 export default function MyBookings() {
@@ -24,6 +25,8 @@ export default function MyBookings() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [mode, setMode] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
 
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("All");
@@ -168,7 +171,7 @@ export default function MyBookings() {
 
         const bookingList = Array.isArray(data)
           ? data
-          : data?.bookings || [];
+          : data?.bookings || data?.data || [];
 
         roomBookings = bookingList.map((booking) => ({
           ...booking,
@@ -177,6 +180,26 @@ export default function MyBookings() {
             booking.bookingId ??
             booking.id ??
             booking.Id,
+
+          bookingDate:
+            booking.bookingDate ??
+            booking.date ??
+            "",
+
+          startTime:
+            booking.startTime ??
+            booking.time ??
+            "",
+
+          endTime:
+            booking.endTime ??
+            "",
+
+          roomName:
+            booking.roomName ||
+            booking.room?.roomName ||
+            booking.room?.name ||
+            `Room ${getRoomId(booking) || ""}`,
 
           roomId: getRoomId(booking),
 
@@ -195,11 +218,6 @@ export default function MyBookings() {
 
       if (hotseatResult.status === "fulfilled") {
         const data = hotseatResult.value;
-
-        console.log(
-          "My Hotseat Bookings API Response:",
-          data
-        );
 
         const bookingList = Array.isArray(data)
           ? data
@@ -345,13 +363,28 @@ export default function MyBookings() {
   const canModifyBooking = (booking) => {
     if (!booking) return false;
 
-    const status =
-      booking.status?.toLowerCase() || "";
+    const displayStatus = getDisplayStatus(booking);
+    if (
+      displayStatus === "CANCELLED" ||
+      displayStatus === "CHECKED IN" ||
+      displayStatus === "REJECTED" ||
+      displayStatus === "EXPIRED"
+    ) {
+      return false;
+    }
+
+    const status = booking.status?.toLowerCase() || "";
 
     if (
       status === "cancelled" ||
+      status === "canceled" ||
       status === "rejected" ||
-      status === "expired"
+      status === "expired" ||
+      status === "checkedin" ||
+      status === "checked in" ||
+      booking.checkInTime ||
+      booking.checkedIn === true ||
+      booking.isCheckedIn === true
     ) {
       return false;
     }
@@ -536,7 +569,9 @@ export default function MyBookings() {
     if (
       s === "approved" ||
       s === "confirmed" ||
-      s === "available"
+      s === "available" ||
+      s === "checkedin" ||
+      s === "checked in"
     ) {
       return "bg-[#658362] text-white";
     }
@@ -548,6 +583,7 @@ export default function MyBookings() {
     if (
       s === "rejected" ||
       s === "cancelled" ||
+      s === "canceled" ||
       s === "expired"
     ) {
       return "bg-[#B85450] text-white";
@@ -559,7 +595,7 @@ export default function MyBookings() {
   const getDisplayStatus = (booking) => {
     const status = String(booking?.status || "")
       .toLowerCase()
-      .replace(/\s+/g, "");
+      .replace(/[\s_-]+/g, "");
 
     if (
       status === "cancelled" ||
@@ -570,9 +606,14 @@ export default function MyBookings() {
 
     if (
       status === "checkedin" ||
+      status === "checkin" ||
       booking?.checkInTime ||
+      booking?.checkedInTime ||
+      booking?.checkedInAt ||
+      booking?.checkInDate ||
       booking?.checkedIn === true ||
-      booking?.isCheckedIn === true
+      booking?.isCheckedIn === true ||
+      booking?.isCheckIn === true
     ) {
       return "CHECKED IN";
     }
@@ -620,6 +661,7 @@ export default function MyBookings() {
   const closeModal = () => {
     setMode(null);
     setSelected(null);
+    setCancelReason("");
   };
 
   // =====================================================
@@ -631,11 +673,31 @@ export default function MyBookings() {
       return;
     }
 
+    const cleanId = Number(
+      String(selected.bookingId).replace(/^#/, "").trim()
+    );
+
+    if (!cleanId || isNaN(cleanId)) {
+      toast.addToast({
+        type: "error",
+        title: "Invalid booking ID.",
+      });
+      return;
+    }
+
+    if (!selected?.isHotseat && (!cancelReason || !cancelReason.trim())) {
+      toast.addToast({
+        type: "error",
+        title: "Cancellation reason is required.",
+      });
+      return;
+    }
+
+    setCancelling(true);
+
     try {
       if (selected.isHotseat) {
-        await cancelHotseatBooking(
-          selected.bookingId
-        );
+        await cancelHotseatBooking(cleanId);
 
         toast.addToast({
           type: "success",
@@ -644,7 +706,8 @@ export default function MyBookings() {
         });
       } else {
         await cancelBooking(
-          selected.bookingId
+          cleanId,
+          { reason: cancelReason.trim() }
         );
 
         toast.addToast({
@@ -667,14 +730,19 @@ export default function MyBookings() {
         err
       );
 
+      const errorMsg =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.response?.data?.title ||
+        err.message ||
+        "Unable to cancel booking.";
+
       toast.addToast({
         type: "error",
-        title:
-          err.response?.data?.message ||
-          err.response?.data?.title ||
-          err.message ||
-          "Unable to cancel booking.",
+        title: errorMsg,
       });
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -743,7 +811,7 @@ export default function MyBookings() {
     }
 
     const OFFICE_START = "10:00";
-    const OFFICE_END = "19:00";
+    const OFFICE_END = "22:00";
 
     if (startTime < OFFICE_START) {
       toast.addToast({
@@ -759,7 +827,7 @@ export default function MyBookings() {
       toast.addToast({
         type: "error",
         title:
-          "End time cannot be after 7:00 PM.",
+          "End time cannot be after 10:00 PM.",
       });
 
       return false;
@@ -909,16 +977,6 @@ export default function MyBookings() {
       expectedCheckInTime:
         formattedTime,
     };
-
-    console.log(
-      "Updating Hotseat:",
-      selected.bookingId
-    );
-
-    console.log(
-      "Hotseat Update Payload:",
-      payload
-    );
 
     const token =
       localStorage.getItem(
@@ -1103,16 +1161,6 @@ export default function MyBookings() {
           ),
       };
 
-      console.log(
-        "Updating Room Booking:",
-        selected.bookingId
-      );
-
-      console.log(
-        "Room Update Payload:",
-        payload
-      );
-
       await updateBooking(
         selected.bookingId,
         payload
@@ -1137,13 +1185,28 @@ export default function MyBookings() {
         err
       );
 
+      let errorTitle =
+        err.response?.data?.message ||
+        err.response?.data?.title ||
+        err.message ||
+        "Unable to update booking.";
+
+      const lowerMsg = String(errorTitle).toLowerCase();
+      if (
+        (lowerMsg.includes("accommodate") ||
+          lowerMsg.includes("capacity") ||
+          lowerMsg.includes("overlap") ||
+          lowerMsg.includes("conflict") ||
+          lowerMsg.includes("no room can")) &&
+        (lowerMsg.includes("participant") || lowerMsg.includes("no room can"))
+      ) {
+        errorTitle =
+          "The selected room is already booked for the selected time period. Please choose another room or time.";
+      }
+
       toast.addToast({
         type: "error",
-        title:
-          err.response?.data?.message ||
-          err.response?.data?.title ||
-          err.message ||
-          "Unable to update booking.",
+        title: errorTitle,
       });
     }
   }
@@ -1214,7 +1277,7 @@ export default function MyBookings() {
         <select
           value={dateFilter}
           onChange={(e) => setDateFilter(e.target.value)}
-          className="rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-ink outline-none shadow-sm"
+          className="rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-ink outline-none shadow-sm transition-colors hover:border-sky-400"
         >
           <option value="All">All Dates</option>
           <option value="Today">Today</option>
@@ -1321,7 +1384,7 @@ export default function MyBookings() {
                       ? "hotseat"
                       : "room"
                   }-${b.bookingId}`}
-                  className="border-b border-line last:border-0"
+                  className="border-b border-line last:border-0 transition-colors duration-150 hover:bg-slate-50/90"
                 >
 
                   {/* BOOKING ID */}
@@ -1440,7 +1503,7 @@ export default function MyBookings() {
                               roomId:
                                 getRoomId(b),
                             });
-
+                            setCancelReason("");
                             setMode("cancel");
                           }}
                         >
@@ -1633,27 +1696,72 @@ export default function MyBookings() {
 
       <Modal
         open={mode === "cancel"}
-        title="Cancel Booking"
+        title={selected?.isHotseat ? "Cancel Hotseat Booking" : "Cancel Booking"}
         className="max-w-md h-fit"
         footer={
           <>
             <Button
               variant="secondary"
+              disabled={cancelling}
               onClick={closeModal}
             >
               No
             </Button>
 
-            <Button onClick={cancel}>
-              Yes
+            <Button
+              disabled={cancelling}
+              onClick={cancel}
+              className="flex items-center gap-2"
+            >
+              {cancelling ? (
+                <>
+                  <svg
+                    className="h-4 w-4 animate-spin text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  <span>Cancelling...</span>
+                </>
+              ) : (
+                "Yes, Cancel"
+              )}
             </Button>
           </>
         }
       >
 
-        <p>
-          Are you sure you want to cancel this booking?
-        </p>
+        <div className="space-y-4">
+          <p>
+            {selected?.isHotseat
+              ? "Are you sure you want to cancel this hotseat booking?"
+              : "Are you sure you want to cancel this booking?"}
+          </p>
+
+          {!selected?.isHotseat && (
+            <Field label="Reason for Cancellation *">
+              <Input
+                type="text"
+                placeholder="Enter reason here..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+              />
+            </Field>
+          )}
+        </div>
 
       </Modal>
 
@@ -1729,31 +1837,22 @@ export default function MyBookings() {
 
                 </Field>
 
-                <Field label="Expected Check-in Time">
-
-                  <Input
-                    type="time"
-                    value={formatDisplayTime(
-                      selected.expectedCheckIn ||
-                      selected.startTime
-                    )}
-                    onChange={(e) =>
-                      setSelected({
-                        ...selected,
-
-                        expectedCheckIn:
-                          e.target.value,
-
-                        startTime:
-                          e.target.value,
-
-                        endTime:
-                          e.target.value,
-                      })
-                    }
-                  />
-
-                </Field>
+                <ScrollableTimePicker
+                  label="Expected Check-in Time"
+                  value={formatDisplayTime(
+                    selected.expectedCheckIn ||
+                    selected.startTime
+                  )}
+                  onChange={(val) =>
+                    setSelected({
+                      ...selected,
+                      expectedCheckIn: val,
+                      startTime: val,
+                      endTime: val,
+                    })
+                  }
+                  selectedDate={selected.bookingDate || selected.date}
+                />
 
                 <p className="text-xs text-slate-500">
                   Change the date or expected check-in
@@ -1764,58 +1863,47 @@ export default function MyBookings() {
             ) : (
 
               /* =================================================
-                 ROOM EDIT
+                  ROOM EDIT
               ================================================= */
 
               <>
                 <div className="grid grid-cols-2 gap-3">
 
-                  <Field label="Start Time">
+                  <ScrollableTimePicker
+                    label="Start Time"
+                    value={formatDisplayTime(
+                      selected.startTime
+                    )}
+                    onChange={(val) =>
+                      setSelected({
+                        ...selected,
+                        startTime: val,
+                      })
+                    }
+                    selectedDate={selected.bookingDate || selected.date}
+                  />
 
-                    <Input
-                      type="time"
-                      min="10:00"
-                      max="19:00"
-                      value={formatDisplayTime(
-                        selected.startTime
-                      )}
-                      onChange={(e) =>
-                        setSelected({
-                          ...selected,
-                          startTime:
-                            e.target.value,
-                        })
-                      }
-                    />
-
-                  </Field>
-
-                  <Field label="End Time">
-
-                    <Input
-                      type="time"
-                      min="10:00"
-                      max="19:00"
-                      value={formatDisplayTime(
-                        selected.endTime
-                      )}
-                      onChange={(e) =>
-                        setSelected({
-                          ...selected,
-                          endTime:
-                            e.target.value,
-                        })
-                      }
-                    />
-
-                  </Field>
+                  <ScrollableTimePicker
+                    label="End Time"
+                    value={formatDisplayTime(
+                      selected.endTime
+                    )}
+                    onChange={(val) =>
+                      setSelected({
+                        ...selected,
+                        endTime: val,
+                      })
+                    }
+                    selectedDate={selected.bookingDate || selected.date}
+                    minTime={selected.startTime}
+                  />
 
                 </div>
 
                 <p className="text-xs text-slate-500">
                   Booking hours:{" "}
                   <span className="font-semibold">
-                    10:00 AM - 7:00 PM
+                    10:00 AM - 10:00 PM
                   </span>
                 </p>
 

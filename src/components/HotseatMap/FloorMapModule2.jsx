@@ -219,7 +219,7 @@ export default function FloorMapModule2({
     <div className="m2-map-wrapper">
 
       <div className="m2-title">
-        TRAINING ROOM – MODULE 2 FLOOR MAP
+        MODULE 2 FLOOR MAP
       </div>
 
       <div className="m2-floor-map">

@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import Button from "../components/common/Button";
 import Modal from "../components/common/Modal";
 import AvailabilityGrid from "../components/calendar/AvailabilityGrid";
+import BusinessDatePicker from "../components/common/BusinessDatePicker";
 import { getRoomAvailability } from "../api/rooms";
 import { Select } from "../components/common/Input";
 
@@ -809,17 +810,15 @@ export default function AvailabilityCalendar() {
 
           {/* DATE */}
 
-          <input
-            type="date"
-            min={today}
-            value={selectedDate}
-            onChange={(event) =>
-              handleDateChange(
-                event.target.value
-              )
-            }
-            className="min-w-[170px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
-          />
+          <div className="min-w-[190px]">
+            <BusinessDatePicker
+              min={today}
+              value={selectedDate}
+              onChange={(newDate) =>
+                handleDateChange(newDate)
+              }
+            />
+          </div>
 
           {/* NEXT DAY */}
 
@@ -843,7 +842,7 @@ export default function AvailabilityCalendar() {
                 event.target.value
               )
             }
-            className="w-auto min-w-[170px] max-w-[220px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink"
+            className="w-auto min-w-[170px] max-w-[220px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink transition-colors hover:border-sky-400"
           >
             {ROOM_TYPE_OPTIONS.map(
               (type) => (
