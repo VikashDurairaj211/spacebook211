@@ -687,7 +687,7 @@ export default function Reports() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-xl font-700 text-ink">
-            Workspace Dashboard
+            Dashboard
           </h1>
           <p className="mt-1 text-sm text-slate">
             Executive visual insights on room utilization, workplace reservations, employee

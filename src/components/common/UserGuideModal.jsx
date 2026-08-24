@@ -190,12 +190,12 @@ const GUIDE_SECTIONS = [
     title: 'Admin Tools & Intelligence',
     icon: ShieldCheck,
     badge: 'Admin Only',
-    description: 'Workspace Dashboard, executive analytics, reservation audit records, and room inventory management.',
+    description: 'Dashboard, executive analytics, reservation audit records, and room inventory management.',
     topics: [
       {
-        title: '1. Workspace Dashboard & Reservation Records',
+        title: '1. Dashboard & Reservation Records',
         content:
-          'The Workspace Dashboard gives administrators a unified control center combining high-level visual analytics with live reservation audit logs:',
+          'The Dashboard gives administrators a unified control center combining high-level visual analytics with live reservation audit logs:',
         steps: [
           'Top Executive KPI Cards: Real-time metrics for Total Reservations, Confirmed Rate %, Cancelled Rate %, Workforce Engagement, and Average Reservations per Person.',
           'Workplace Reservation Records & Audit Table: Complete data grid positioned beneath KPIs displaying Booking ID, Meeting Title, Room, Module, Date, Time (HH:mm - HH:mm), Requester, and Status.',
@@ -219,7 +219,7 @@ const GUIDE_SECTIONS = [
       {
         title: '3. Visual Analytics & Usage Intelligence',
         content:
-          'Deep visual business intelligence charts included on the Workspace Dashboard:',
+          'Deep visual business intelligence charts included on the Dashboard:',
         steps: [
           'Booking Volume Trends: Interactive line charts tracking monthly and weekly reservation growth.',
           'Outcome Distribution: Donut charts illustrating confirmed vs cancelled reservation proportions.',
@@ -254,7 +254,7 @@ const GUIDE_SECTIONS = [
       {
         title: 'How do administrators manage bookings and rooms?',
         content:
-          'Administrators use "Workspace Dashboard" to monitor executive KPIs, search live reservation audit records, and export reports. Room inventory, capacities, and maintenance modes are managed under "Workspace Administration".',
+          'Administrators use "Dashboard" to monitor executive KPIs, search live reservation audit records, and export reports. Room inventory, capacities, and maintenance modes are managed under "Workspace Administration".',
       },
       {
         title: 'How do I mark all notifications as read?',
