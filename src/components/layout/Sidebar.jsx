@@ -12,6 +12,7 @@ const NAV_ITEMS = [
 const ADMIN_ITEMS = [
   { to: '/admin/reports', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/room-management', label: 'Workspace Administration', icon: Building2 },
+  { to: '/admin/hotseat-management', label: 'Hotseat Management', icon: Armchair },
 ]
 
 export default function Sidebar({ collapsed = true, modules = [], bookings = [] }) {
