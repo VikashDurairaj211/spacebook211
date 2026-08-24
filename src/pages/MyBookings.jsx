@@ -556,7 +556,7 @@ export default function MyBookings() {
   const getDisplayStatus = (booking) => {
     const status = String(booking?.status || "")
       .toLowerCase()
-      .replace(/\s+/g, "");
+      .replace(/[\s_-]+/g, "");
 
     if (
       status === "cancelled" ||
@@ -567,9 +567,14 @@ export default function MyBookings() {
 
     if (
       status === "checkedin" ||
+      status === "checkin" ||
       booking?.checkInTime ||
+      booking?.checkedInTime ||
+      booking?.checkedInAt ||
+      booking?.checkInDate ||
       booking?.checkedIn === true ||
-      booking?.isCheckedIn === true
+      booking?.isCheckedIn === true ||
+      booking?.isCheckIn === true
     ) {
       return "CHECKED IN";
     }

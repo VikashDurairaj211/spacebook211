@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import Card from "../components/common/Card";
 import DashboardCard from "../components/cards/DashboardCard";
 import * as employeeApi from "../api/employee";
-import { getMyBookings, checkInRoomBooking } from "../api/bookings";
+import { getMyBookings } from "../api/bookings";
 import { getMyHotseatBookings } from "../api/hotseat";
 
 // Format a booking time for display.
@@ -103,7 +103,7 @@ export default function Dashboard() {
   const normalizeStatus = (status) =>
     String(status || "")
       .toLowerCase()
-      .replace(/\\s+/g, "");
+      .replace(/[\s_-]+/g, "");
 
   const getCheckInDeadline = (booking) => {
     const rawExpected =
@@ -164,6 +164,7 @@ export default function Dashboard() {
   };
 
   async function handleCheckIn(booking) {
+    if (!booking?.isHotseat) return;
     if (checkingInId) return;
 
     const bookingId = booking.rawId || booking.bookingId;
@@ -178,86 +179,84 @@ export default function Dashboard() {
       return;
     }
 
-    if (booking.isHotseat) {
-      const deadline = getCheckInDeadline(booking);
+    const deadline = getCheckInDeadline(booking);
 
-      if (deadline && new Date() > deadline) {
-        setCheckingInId(bookingId);
+    if (deadline && new Date() > deadline) {
+      setCheckingInId(bookingId);
+
+      try {
+        const released = await releaseHotseat(bookingId);
+
+        if (released) {
+          alert(
+            "The 30-minute check-in window has expired. The hotseat has been released."
+          );
+          await loadDashboard();
+        } else {
+          alert(
+            "The check-in window has expired, but the hotseat could not be released automatically."
+          );
+        }
+      } finally {
+        setCheckingInId(null);
+      }
+
+      return;
+    }
+
+    try {
+      setCheckingInId(bookingId);
+
+      const response = await fetch(
+        `${HOTSEAT_API_BASE}/${bookingId}/check-in`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        let errData = null;
 
         try {
-          const released = await releaseHotseat(bookingId);
-
-          if (released) {
-            alert(
-              "The 30-minute check-in window has expired. The hotseat has been released."
-            );
-            await loadDashboard();
-          } else {
-            alert(
-              "The check-in window has expired, but the hotseat could not be released automatically."
-            );
-          }
-        } finally {
-          setCheckingInId(null);
+          errData = await response.json();
+        } catch {
+          errData = null;
         }
+
+        alert(
+          errData?.message ||
+            errData?.title ||
+            "Failed to check in."
+        );
 
         return;
       }
 
-      try {
-        setCheckingInId(bookingId);
-
-        const response = await fetch(
-          `${HOTSEAT_API_BASE}/${bookingId}/check-in`,
-          {
-            method: "POST",
-            headers: getAuthHeaders(),
+      // Optimistically update hotseat booking status in local state
+      setHotseatBookings((prev) =>
+        prev.map((b) => {
+          const bId = b.bookingId || b.id;
+          if (String(bId) === String(bookingId) || `hotseat-${bId}` === String(bookingId)) {
+            return {
+              ...b,
+              status: "CHECKED IN",
+              isCheckedIn: true,
+              checkInTime: new Date().toISOString(),
+            };
           }
-        );
+          return b;
+        })
+      );
 
-        if (!response.ok) {
-          let errData = null;
-
-          try {
-            errData = await response.json();
-          } catch {
-            errData = null;
-          }
-
-          alert(
-            errData?.message ||
-              errData?.title ||
-              "Failed to check in."
-          );
-
-          return;
-        }
-
-        alert("Checked in successfully!");
-        await loadDashboard();
-      } catch (err) {
-        console.error("CHECK-IN ERROR:", err);
-        alert("Network error during check-in.");
-      } finally {
-        setCheckingInId(null);
-      }
-    } else {
-      // Meeting Room Check-In
-      try {
-        setCheckingInId(bookingId);
-        await checkInRoomBooking(bookingId);
-        alert("Checked in to meeting room successfully!");
-        await loadDashboard();
-      } catch (err) {
-        console.error("ROOM CHECK-IN ERROR:", err);
-        alert(
-          err.response?.data?.message ||
-            err.response?.data?.error ||
-            "Unable to check in to meeting room."
-        );
-      } finally {
-        setCheckingInId(null);
-      }
+      alert("Checked in successfully!");
+      window.dispatchEvent(new Event("booking-updated"));
+      await loadDashboard();
+    } catch (err) {
+      console.error("CHECK-IN ERROR:", err);
+      alert("Network error during check-in.");
+    } finally {
+      setCheckingInId(null);
     }
   }
 
@@ -538,7 +537,7 @@ export default function Dashboard() {
   const getDisplayStatus = (booking) => {
     const status = String(booking?.status || "")
       .toLowerCase()
-      .replace(/\s+/g, "");
+      .replace(/[\s_-]+/g, "");
 
     if (
       status === "cancelled" ||
@@ -549,9 +548,14 @@ export default function Dashboard() {
 
     if (
       status === "checkedin" ||
+      status === "checkin" ||
       booking?.checkInTime ||
+      booking?.checkedInTime ||
+      booking?.checkedInAt ||
+      booking?.checkInDate ||
       booking?.checkedIn === true ||
-      booking?.isCheckedIn === true
+      booking?.isCheckedIn === true ||
+      booking?.isCheckIn === true
     ) {
       return "CHECKED IN";
     }
@@ -737,29 +741,31 @@ export default function Dashboard() {
                     </td>
 
                     <td className="py-4">
-                      {normalizeStatus(booking.status) === "checkedin" ? (
-                        <span className="text-xs font-semibold text-[#658362]">
-                          ✓ Checked In
-                        </span>
-                      ) : ["confirmed", "approved"].includes(
-                          normalizeStatus(booking.status)
-                        ) && isBookingToday(booking) ? (
-                        <button
-                          type="button"
-                          disabled={checkingInId === (booking.rawId || booking.bookingId)}
-                          onClick={() => handleCheckIn(booking)}
-                          className="rounded-lg bg-[#2F6FE0] px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                        >
-                          {checkingInId === (booking.rawId || booking.bookingId)
-                            ? "Checking in..."
-                            : "Check-In"}
-                        </button>
-                      ) : ["confirmed", "approved"].includes(
-                          normalizeStatus(booking.status)
-                        ) ? (
-                        <span className="text-xs text-slate-400 font-medium select-none">
-                          Available on day
-                        </span>
+                      {booking.isHotseat ? (
+                        normalizeStatus(booking.status) === "checkedin" ? (
+                          <span className="text-xs font-semibold text-[#658362]">
+                            ✓ Checked In
+                          </span>
+                        ) : ["confirmed", "approved"].includes(
+                            normalizeStatus(booking.status)
+                          ) && isBookingToday(booking) ? (
+                          <button
+                            type="button"
+                            disabled={checkingInId === (booking.rawId || booking.bookingId)}
+                            onClick={() => handleCheckIn(booking)}
+                            className="rounded-lg bg-[#2F6FE0] px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                          >
+                            {checkingInId === (booking.rawId || booking.bookingId)
+                              ? "Checking in..."
+                              : "Check-In"}
+                          </button>
+                        ) : ["confirmed", "approved"].includes(
+                            normalizeStatus(booking.status)
+                          ) ? (
+                          <span className="text-xs text-slate-400 font-medium select-none">
+                            Available on day
+                          </span>
+                        ) : null
                       ) : null}
                     </td>
                   </tr>
