@@ -87,6 +87,26 @@ export default function Notifications() {
     }
   }
 
+  // Helper to get locally cleared/dismissed notification IDs
+  const getClearedNotificationIds = () => {
+    try {
+      const raw = localStorage.getItem('spacebook_cleared_notifications')
+      return raw ? JSON.parse(raw) : []
+    } catch (e) {
+      return []
+    }
+  }
+
+  const saveClearedNotificationIds = (ids) => {
+    try {
+      const existing = getClearedNotificationIds()
+      const merged = Array.from(new Set([...existing, ...ids]))
+      localStorage.setItem('spacebook_cleared_notifications', JSON.stringify(merged))
+    } catch (e) {
+      // ignore
+    }
+  }
+
   // =====================================================
   // Fetch Notifications
   // =====================================================
@@ -114,21 +134,24 @@ export default function Notifications() {
         : response.data?.notifications || []
 
       const readIds = new Set(getReadNotificationIds().map(String))
+      const clearedIds = new Set(getClearedNotificationIds().map(String))
 
-      const mapped = rawList.map((n, idx) => {
-        const id = String(n.notificationId ?? n.id ?? n._id ?? idx)
-        const isRead =
-          n.isRead === true ||
-          n.is_read === true ||
-          n.read === true ||
-          readIds.has(id)
+      const mapped = rawList
+        .map((n, idx) => {
+          const id = String(n.notificationId ?? n.id ?? n._id ?? idx)
+          const isRead =
+            n.isRead === true ||
+            n.is_read === true ||
+            n.read === true ||
+            readIds.has(id)
 
-        return {
-          ...n,
-          notificationId: id,
-          isRead,
-        }
-      })
+          return {
+            ...n,
+            notificationId: id,
+            isRead,
+          }
+        })
+        .filter((n) => !clearedIds.has(String(n.notificationId)))
 
       setNotifications(mapped)
     } catch (err) {
@@ -228,12 +251,30 @@ export default function Notifications() {
     }
   }, [user, isAdmin])
 
-  const clearAllNotifications = () => {
+  const clearAllNotifications = async () => {
     const currentIds = notifications.map((n, idx) =>
       String(n.notificationId ?? n.id ?? n._id ?? idx)
     )
+    saveClearedNotificationIds(currentIds)
     saveReadNotificationIds(currentIds)
     setNotifications([])
+
+    try {
+      const endpoint = isAdmin
+        ? '/admin/notifications/clear'
+        : '/employee/notifications/clear'
+      await client.delete(endpoint)
+    } catch (e) {
+      // ignore
+    }
+
+    window.dispatchEvent(new Event('notificationsRead'))
+  }
+
+  const clearNotification = (notificationId) => {
+    const idStr = String(notificationId)
+    saveClearedNotificationIds([idStr])
+    setNotifications((prev) => prev.filter((item) => String(item.notificationId) !== idStr))
     window.dispatchEvent(new Event('notificationsRead'))
   }
 
@@ -361,9 +402,19 @@ export default function Notifications() {
 
                 </div>
 
-                <span className="whitespace-nowrap font-mono text-[10px] uppercase text-slate">
-                  {item.timeAgo}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="whitespace-nowrap text-[10px] font-medium uppercase text-slate">
+                    {item.timeAgo}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => clearNotification(item.notificationId)}
+                    className="rounded-lg p-1 text-slate hover:bg-slate-100 hover:text-ink transition"
+                    title="Dismiss notification"
+                  >
+                    ✕
+                  </button>
+                </div>
 
               </div>
 

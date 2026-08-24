@@ -24,16 +24,29 @@ export default function NotificationDropdown({
     }
   }
 
+  // Helper to get locally cleared/dismissed notification IDs
+  const getClearedNotificationIds = () => {
+    try {
+      const raw = localStorage.getItem('spacebook_cleared_notifications')
+      return raw ? JSON.parse(raw) : []
+    } catch (e) {
+      return []
+    }
+  }
+
   // Fetch API data when dropdown opens
   useEffect(() => {
     if (!open) return;
 
     const readIds = new Set(getReadNotificationIds().map(String));
+    const clearedIds = new Set(getClearedNotificationIds().map(String));
 
     // If initialNotifications was already provided by TopNav, use it
     if (initialNotifications) {
       const activeUnread = initialNotifications.filter(
-        (n) => !(n.isRead === true || readIds.has(String(n.notificationId || n.id)))
+        (n) =>
+          !clearedIds.has(String(n.notificationId || n.id)) &&
+          !(n.isRead === true || readIds.has(String(n.notificationId || n.id)))
       );
       setNotifications(activeUnread);
       return;
@@ -53,7 +66,10 @@ export default function NotificationDropdown({
               isRead: n.isRead === true || n.is_read === true || readIds.has(id),
             };
           })
-          .filter((n) => !n.isRead);
+          .filter(
+            (n) =>
+              !clearedIds.has(String(n.notificationId)) && !n.isRead
+          );
         setNotifications(mapped);
       } catch (err) {
         console.error("Failed to fetch notifications in dropdown:", err);

@@ -182,6 +182,26 @@ export default function TopNav({
     }
   }
 
+  // Helper to get locally cleared/dismissed notification IDs
+  const getClearedNotificationIds = () => {
+    try {
+      const raw = localStorage.getItem('spacebook_cleared_notifications')
+      return raw ? JSON.parse(raw) : []
+    } catch (e) {
+      return []
+    }
+  }
+
+  const saveClearedNotificationIds = (ids) => {
+    try {
+      const existing = getClearedNotificationIds()
+      const merged = Array.from(new Set([...existing, ...ids]))
+      localStorage.setItem('spacebook_cleared_notifications', JSON.stringify(merged))
+    } catch (e) {
+      // ignore
+    }
+  }
+
   // =====================================================
   // Fetch Notifications
   // =====================================================
@@ -207,21 +227,24 @@ export default function TopNav({
         : response.data?.notifications || []
 
       const readIds = new Set(getReadNotificationIds().map(String))
+      const clearedIds = new Set(getClearedNotificationIds().map(String))
 
-      const mapped = rawList.map((n, idx) => {
-        const id = String(n.notificationId ?? n.id ?? n._id ?? idx)
-        const isRead =
-          n.isRead === true ||
-          n.is_read === true ||
-          n.read === true ||
-          readIds.has(id)
+      const mapped = rawList
+        .map((n, idx) => {
+          const id = String(n.notificationId ?? n.id ?? n._id ?? idx)
+          const isRead =
+            n.isRead === true ||
+            n.is_read === true ||
+            n.read === true ||
+            readIds.has(id)
 
-        return {
-          ...n,
-          notificationId: id,
-          isRead,
-        }
-      })
+          return {
+            ...n,
+            notificationId: id,
+            isRead,
+          }
+        })
+        .filter((n) => !clearedIds.has(String(n.notificationId)))
 
       setNotifications(mapped)
     } catch (error) {
