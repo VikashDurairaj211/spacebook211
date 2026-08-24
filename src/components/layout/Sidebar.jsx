@@ -11,7 +11,7 @@ const NAV_ITEMS = [
 
 const ADMIN_ITEMS = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: ShieldCheck },
-  { to: '/admin/room-management', label: 'Room Management', icon: Building2 },
+  { to: '/admin/room-management', label: 'Workspace Administration', icon: Building2 },
   { to: '/admin/booking-management', label: 'Booking Management', icon: BookOpenCheck },
   { to: '/admin/reports', label: 'Reports', icon: BarChart3 },
 ]

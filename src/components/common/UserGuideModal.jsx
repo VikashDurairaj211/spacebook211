@@ -76,7 +76,7 @@ const GUIDE_SECTIONS = [
       {
         title: '3. Instant Reservation & Confirmation',
         content:
-          'Click "Book Now", enter your Meeting Title and Purpose, review the summary modal, and click "Confirm Booking". Your reservation is created immediately and added to your calendar.',
+          'Click "Book Now", enter your Meeting Title, review the summary modal, and click "Confirm Booking". Your reservation is created immediately and added to your calendar.',
       },
     ],
   },
@@ -193,7 +193,7 @@ const GUIDE_SECTIONS = [
     description: 'Room inventory, master booking management, and workplace reports.',
     topics: [
       {
-        title: '1. Room Management',
+        title: '1. Workspace Administration',
         content:
           'Admins can add new meeting rooms, update room capacity, set floor/module location, configure equipment amenities, and toggle rooms into maintenance mode when unavailable.',
       },

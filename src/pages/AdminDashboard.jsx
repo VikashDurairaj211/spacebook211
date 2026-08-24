@@ -227,7 +227,7 @@ export default function AdminDashboard() {
         </h1>
 
         <p className="mt-1 text-sm text-slate">
-          Operational overview for room management and booking activity.
+          Operational overview for workspace administration and booking activity.
         </p>
       </div>
 

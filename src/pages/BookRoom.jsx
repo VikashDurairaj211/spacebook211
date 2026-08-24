@@ -378,17 +378,17 @@ function ScrollableTimePicker({
       <Field label={label}>
         <div
           onClick={() => setIsOpen((c) => !c)}
-          className={`flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border bg-sky-50/70 hover:bg-sky-100/70 px-3 text-sm shadow-sm transition-colors ${
+          className={`flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border bg-white hover:bg-slate-50/80 px-3 text-sm shadow-sm transition-colors ${
             error
               ? 'border-red-300 hover:border-red-400 bg-red-50/30'
-              : 'border-sky-300/80 hover:border-sky-400'
+              : 'border-slate-200 hover:border-slate-300'
           }`}
         >
-          <span className={value ? 'text-sky-950 font-semibold' : 'text-slate-500'}>
+          <span className={value ? 'text-ink font-semibold' : 'text-slate-500'}>
             {value ? String(value).substring(0, 5) : 'Select time'}
           </span>
           <svg
-            className={`h-4 w-4 text-sky-700 transition-transform ${
+            className={`h-4 w-4 text-slate-500 transition-transform ${
               isOpen ? 'rotate-180' : ''
             }`}
             fill="none"

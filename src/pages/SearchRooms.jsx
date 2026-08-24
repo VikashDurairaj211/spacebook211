@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { searchRooms } from "../api/rooms";
+import { searchRooms, getRoomAvailability } from "../api/rooms";
 import { getMyBookings } from "../api/bookings";
+import client from "../api/client";
 
 import { Field, Input, Select } from "../components/common/Input";
 import BusinessDatePicker from "../components/common/BusinessDatePicker";
@@ -21,6 +22,116 @@ const ROOM_TYPES = [
   { id: 2, name: "Training" },
   { id: 3, name: "Discussion" },
 ];
+
+function computeRoomTypeGuides(rooms) {
+  if (!Array.isArray(rooms) || rooms.length === 0) {
+    try {
+      const raw = localStorage.getItem("spacebook_room_inventory");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          rooms = parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!Array.isArray(rooms) || rooms.length === 0) {
+    return [];
+  }
+
+  // Group rooms by their room type
+  const groups = {};
+
+  rooms.forEach((room) => {
+    const rawType =
+      room.roomType?.name ||
+      room.roomType ||
+      room.type ||
+      room.roomTypeName ||
+      "";
+    const typeName = String(rawType).trim();
+    if (!typeName) return;
+
+    const key =
+      typeName.charAt(0).toUpperCase() + typeName.slice(1);
+
+    if (!groups[key]) {
+      groups[key] = {
+        name: key,
+        capacities: [],
+        facilities: new Set(),
+      };
+    }
+
+    const cap = Number(room.capacity ?? room.Capacity);
+    if (!Number.isNaN(cap) && cap > 0) {
+      groups[key].capacities.push(cap);
+    }
+
+    const rawFacs =
+      room.facilities ||
+      room.roomFacilities ||
+      room.Facilities ||
+      [];
+
+    if (Array.isArray(rawFacs)) {
+      rawFacs.forEach((f) => {
+        const facName =
+          typeof f === "string"
+            ? f
+            : f?.name || f?.facilityName || f?.FacilityName;
+        if (facName && String(facName).trim()) {
+          groups[key].facilities.add(String(facName).trim());
+        }
+      });
+    }
+  });
+
+  const preferredOrder = ["Discussion", "Conference", "Training"];
+  const keys = Object.keys(groups).sort((a, b) => {
+    const idxA = preferredOrder.indexOf(a);
+    const idxB = preferredOrder.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
+  return keys.map((key) => {
+    const g = groups[key];
+    const caps = g.capacities;
+    let capacityText = "Standard Capacity";
+    if (caps.length > 0) {
+      const minCap = Math.min(...caps);
+      const maxCap = Math.max(...caps);
+      if (minCap === maxCap) {
+        capacityText = `Up to ${maxCap} People`;
+      } else {
+        capacityText = `${minCap} to ${maxCap} People`;
+      }
+    }
+
+    const facilitiesArr = Array.from(g.facilities);
+    const facilitiesText =
+      facilitiesArr.length > 0 ? facilitiesArr.join(", ") : "";
+
+    const label =
+      key.toLowerCase().endsWith("room") ||
+      key.toLowerCase().endsWith("rooms")
+        ? `${key}:`
+        : `${key} Rooms:`;
+
+    return {
+      type: key,
+      label,
+      capacityText,
+      facilitiesText,
+    };
+  });
+}
 
 const isWeekendDate = (dateStr) => {
   if (!dateStr) return false;
@@ -390,12 +501,12 @@ function ScrollableTimePicker({
           onClick={() =>
             setIsOpen((current) => !current)
           }
-          className="flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border border-sky-300/80 bg-sky-50/70 hover:bg-sky-100/70 px-3 text-sm shadow-sm transition-colors"
+          className="flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/80 px-3 text-sm shadow-sm transition-colors"
         >
           <span
             className={
               value
-                ? "text-sky-950 font-semibold"
+                ? "text-ink font-semibold"
                 : "text-slate-500"
             }
           >
@@ -405,7 +516,7 @@ function ScrollableTimePicker({
           </span>
 
           <svg
-            className={`h-4 w-4 text-sky-700 transition-transform ${
+            className={`h-4 w-4 text-slate-500 transition-transform ${
               isOpen
                 ? "rotate-180"
                 : ""
@@ -596,13 +707,78 @@ export default function SearchRooms() {
   const [pendingRoomId, setPendingRoomId] =
     useState(null);
 
+  const [roomTypeGuides, setRoomTypeGuides] =
+    useState(() => computeRoomTypeGuides([]));
+
   // ===================================================
-  // LOAD BOOKINGS
+  // LOAD BOOKINGS & ROOM SPECS FROM BACKEND
   // ===================================================
 
   useEffect(() => {
     loadBookings();
+    loadRoomSpecs();
   }, []);
+
+  async function loadRoomSpecs() {
+    try {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      const todayDate = `${year}-${month}-${day}`;
+
+      let roomsList = [];
+
+      // 1. Fetch live employee availability for today
+      try {
+        const availData = await getRoomAvailability(todayDate);
+        const arr = Array.isArray(availData)
+          ? availData
+          : availData?.rooms || availData?.data || [];
+        if (arr.length > 0) {
+          roomsList = arr;
+        }
+      } catch (e) {
+        console.warn("Availability endpoint note:", e);
+      }
+
+      // 2. Fetch admin rooms if available
+      if (roomsList.length === 0) {
+        try {
+          const { data: adminData } = await client.get("/admin/rooms");
+          const arr = Array.isArray(adminData)
+            ? adminData
+            : adminData?.data || adminData?.rooms || [];
+          if (arr.length > 0) {
+            roomsList = arr;
+          }
+        } catch (e) {
+          console.warn("Admin rooms endpoint note:", e);
+        }
+      }
+
+      // 3. Check master inventory from storage
+      if (roomsList.length === 0) {
+        try {
+          const raw = localStorage.getItem("spacebook_room_inventory");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              roomsList = parsed;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (roomsList.length > 0) {
+        setRoomTypeGuides(computeRoomTypeGuides(roomsList));
+      }
+    } catch (err) {
+      console.warn("Unable to load room availability specs from backend:", err);
+    }
+  }
 
   async function loadBookings() {
     try {
@@ -1388,10 +1564,13 @@ export default function SearchRooms() {
       {/* CAPACITY & FACILITY GUIDE CARD */}
       <Card className="text-sm text-ink">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-medium">
-          <div> <strong className="text-ink">Discussion Rooms:</strong> 8 to 10 People 
-           (TV, Whiteboard)</div>
-          <div> <strong className="text-ink">Conference Rooms:</strong> Up to 20 People (TV)</div>
-          <div> <strong className="text-ink">Training Rooms:</strong> Up to 50 People (Projector)</div>
+          {roomTypeGuides.map((guide, idx) => (
+            <div key={guide.type || idx}>
+              <strong className="text-ink">{guide.label}</strong>{" "}
+              {guide.capacityText}
+              {guide.facilitiesText ? ` (${guide.facilitiesText})` : ""}
+            </div>
+          ))}
         </div>
       </Card>
 
