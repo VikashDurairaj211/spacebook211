@@ -35,6 +35,7 @@ import {
   getBookingTrendReport,
   getBookingStatusReport,
   getRoomUsageReport,
+  exportBookingsCsv,
 } from '../../api/adminReports'
 import { downloadCSV, exportToExcel } from '../../utils/exportHelpers'
 
@@ -533,24 +534,50 @@ export default function Reports() {
     )
   }
 
-  const handleExportCSV = () => {
-    const csvData = filteredBookings.map((b) => ({
-      'Booking ID': b.bookingId,
-      'Meeting Title': b.title,
-      'Employee Name': b.createdBy,
-      'Room Name': b.roomName,
-      Module: b.module,
-      Date: b.date,
-      'Start Time': b.startTime,
-      'End Time': b.endTime,
-      Status: b.status,
-      'Cancellation Reason': b.cancelReason || 'N/A',
-    }))
+  const handleExportCSV = async () => {
+    try {
+      const params = {}
+      if (moduleFilter && moduleFilter !== 'All') params.module = moduleFilter
+      if (statusFilter && statusFilter !== 'All') params.status = statusFilter
+      if (timeFilter && timeFilter !== 'All') params.period = timeFilter
 
-    downloadCSV(
-      csvData,
-      `SpaceBook-Analytics-${new Date().toISOString().split('T')[0]}.csv`
-    )
+      const blobData = await exportBookingsCsv(params)
+
+      const blob =
+        blobData instanceof Blob
+          ? blobData
+          : new Blob([blobData], { type: 'text/csv;charset=utf-8;' })
+
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.setAttribute(
+        'download',
+        `SpaceBook-Analytics-${new Date().toISOString().split('T')[0]}.csv`
+      )
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(link.href)
+    } catch (err) {
+      console.warn('API CSV export failed, falling back to client CSV generation:', err)
+      const csvData = filteredBookings.map((b) => ({
+        'Booking ID': b.bookingId,
+        'Meeting Title': b.title,
+        'Employee Name': b.createdBy,
+        'Room Name': b.roomName,
+        Module: b.module,
+        Date: b.date,
+        'Start Time': b.startTime,
+        'End Time': b.endTime,
+        Status: b.status,
+        'Cancellation Reason': b.cancelReason || 'N/A',
+      }))
+
+      downloadCSV(
+        csvData,
+        `SpaceBook-Analytics-${new Date().toISOString().split('T')[0]}.csv`
+      )
+    }
   }
 
   // =====================================================
@@ -591,13 +618,12 @@ export default function Reports() {
 
           <Button
             size="sm"
-            variant="secondary"
             onClick={handleExportCSV}
             disabled={filteredBookings.length === 0}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-sky-900 border-sky-200 bg-sky-50/50 hover:bg-sky-100 hover:border-sky-300 whitespace-nowrap shadow-sm transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-xs font-bold text-white shadow-md shadow-blue-700/20 whitespace-nowrap transition-all active:scale-95 border-0"
           >
-            <FileText size={13} className="text-sky-700" />
-            <span>Export CSV</span>
+            <FileText size={14} className="text-blue-100" />
+            <span className="text-white">Export CSV</span>
           </Button>
 
           <Button

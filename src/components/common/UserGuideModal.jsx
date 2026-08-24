@@ -287,7 +287,10 @@ export default function UserGuideModal({ open, onClose }) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[100000] font-sans flex items-center justify-center bg-slate-900/60 p-3 sm:p-6 backdrop-blur-md animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-[100000] font-sans flex items-center justify-center bg-slate-900/60 p-3 sm:p-6 backdrop-blur-md animate-in fade-in duration-200"
+      style={{ fontFamily: 'var(--fontFamilyBase, "Segoe UI Variable", "Segoe UI", sans-serif)' }}
+    >
       <div className="relative flex h-[90vh] max-h-[820px] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-2xl">
         {/* =================================================
             Modal Header
@@ -298,10 +301,10 @@ export default function UserGuideModal({ open, onClose }) {
               <BookOpen size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-sky-950">
+              <h2 className="font-display text-lg font-bold text-sky-950">
                 SpaceBook User Guide & Help Center
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 font-sans">
                 Complete walkthrough for room reservations, hot-desking, policies, and admin tools.
               </p>
             </div>
@@ -331,7 +334,7 @@ export default function UserGuideModal({ open, onClose }) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search topics (e.g., 'how to reschedule', 'office hours', 'hotseat', 'excel export')..."
-              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-xs font-sans text-slate-800 placeholder-slate-400 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
             />
             {searchQuery && (
               <button
@@ -350,7 +353,7 @@ export default function UserGuideModal({ open, onClose }) {
         <div className="flex flex-1 overflow-hidden">
           {/* Left Navigation Sidebar */}
           <div className="w-64 border-r border-line bg-slate-50/60 p-3 overflow-y-auto hidden md:block">
-            <p className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <p className="px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-wider text-slate-400">
               Guide Chapters
             </p>
             <nav className="mt-1 space-y-1">
@@ -361,7 +364,7 @@ export default function UserGuideModal({ open, onClose }) {
                   <button
                     key={section.id}
                     onClick={() => setActiveSectionId(section.id)}
-                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-sans font-semibold transition ${
                       isActive
                         ? 'bg-sky-600 text-white shadow-sm font-bold'
                         : 'text-slate-700 hover:bg-slate-200/60 hover:text-slate-900'
@@ -382,14 +385,14 @@ export default function UserGuideModal({ open, onClose }) {
 
             {/* Quick Policy Box in Sidebar */}
             <div className="mt-6 rounded-2xl border border-sky-200 bg-white p-3 shadow-sm">
-              <div className="flex items-center justify-between text-[11px] font-bold text-sky-950">
+              <div className="flex items-center justify-between font-mono text-[11px] font-bold text-sky-950 uppercase tracking-wider">
                 <span>Active Hours</span>
                 <Clock size={13} className="text-sky-600" />
               </div>
-              <p className="mt-1 text-xs font-bold text-sky-700">
+              <p className="mt-1 text-xs font-bold text-sky-700 font-sans">
                 10:00 AM – 10:00 PM
               </p>
-              <p className="mt-1 text-[10px] text-slate-500 leading-tight">
+              <p className="mt-1 text-[10px] text-slate-500 font-sans leading-tight">
                 Monday to Friday · Instant auto-confirmations.
               </p>
             </div>
@@ -400,14 +403,14 @@ export default function UserGuideModal({ open, onClose }) {
             {/* Active Chapter Header */}
             <div className="border-b border-line pb-4">
               <div className="flex items-center gap-2">
-                <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-[11px] font-bold text-sky-800 uppercase tracking-wider">
+                <span className="rounded-full bg-sky-100 px-2.5 py-0.5 font-mono text-[11px] font-bold text-sky-800 uppercase tracking-wider">
                   {activeSection.badge}
                 </span>
               </div>
-              <h3 className="mt-1 text-xl font-bold text-slate-900">
+              <h3 className="mt-1 font-display text-xl font-bold text-slate-900">
                 {activeSection.title}
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 font-sans mt-0.5">
                 {activeSection.description}
               </p>
             </div>
@@ -420,15 +423,15 @@ export default function UserGuideModal({ open, onClose }) {
                   className="rounded-2xl border border-slate-200/80 bg-slate-50/40 p-5 space-y-3 transition hover:border-sky-200 hover:bg-white"
                 >
                   <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-100 text-sky-800 text-xs font-bold">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-100 text-sky-800 text-xs font-mono font-bold">
                       {idx + 1}
                     </div>
-                    <h4 className="text-sm font-bold text-slate-900">
+                    <h4 className="font-display text-sm font-bold text-slate-900">
                       {topic.title}
                     </h4>
                   </div>
 
-                  <p className="text-xs text-slate-700 leading-relaxed pl-8">
+                  <p className="text-xs text-slate-700 font-sans leading-relaxed pl-8">
                     {topic.content}
                   </p>
 
@@ -438,7 +441,7 @@ export default function UserGuideModal({ open, onClose }) {
                       {topic.steps.map((step, sIdx) => (
                         <div
                           key={sIdx}
-                          className="flex items-start gap-2 text-xs text-slate-600"
+                          className="flex items-start gap-2 text-xs font-sans text-slate-600"
                         >
                           <ArrowRight
                             size={12}
@@ -452,7 +455,7 @@ export default function UserGuideModal({ open, onClose }) {
 
                   {/* Pro-Tip Box */}
                   {topic.tips && (
-                    <div className="ml-8 mt-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5 text-xs text-emerald-900 flex items-start gap-2">
+                    <div className="ml-8 mt-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5 text-xs font-sans text-emerald-900 flex items-start gap-2">
                       <CheckCircle2
                         size={14}
                         className="text-emerald-600 shrink-0 mt-0.5"
@@ -471,7 +474,7 @@ export default function UserGuideModal({ open, onClose }) {
         {/* =================================================
             Modal Footer
         ================================================= */}
-        <div className="flex items-center justify-between border-t border-line bg-slate-50 px-6 py-3 text-xs text-slate-500">
+        <div className="flex items-center justify-between border-t border-line bg-slate-50 px-6 py-3 text-xs font-sans text-slate-500">
           <div className="flex items-center gap-2">
             <Sparkles size={14} className="text-sky-600" />
             <span>Need more help? Ask <strong>Aira</strong> anytime.</span>
@@ -480,7 +483,7 @@ export default function UserGuideModal({ open, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl bg-sky-700 px-4 py-1.5 font-bold text-white shadow-sm hover:bg-sky-800 transition"
+            className="rounded-xl bg-sky-700 px-4 py-1.5 font-sans font-bold text-white shadow-sm hover:bg-sky-800 transition"
           >
             Got it, thanks!
           </button>

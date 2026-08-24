@@ -647,24 +647,14 @@ export default function BookingManagement() {
                   </td>
 
                   <td className="px-2 py-3 text-center whitespace-nowrap">
-                    <div className="inline-flex items-center gap-2 font-sans text-sm">
-                      <button
-                        onClick={() =>
-                          openViewModal(booking)
-                        }
-                        className="text-sky-600 hover:text-sky-800 font-bold text-sm hover:underline"
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleDeleteBooking(booking.bookingId)
-                        }
-                        className="text-red-600 hover:text-red-800 font-bold text-sm hover:underline ml-1"
-                      >
-                        Cancel
-                      </button>
-                    </div>
+                    <button
+                      onClick={() =>
+                        openViewModal(booking)
+                      }
+                      className="text-sky-600 hover:text-sky-800 font-bold text-sm hover:underline"
+                    >
+                      View
+                    </button>
                   </td>
                 </tr>
               ))
@@ -686,14 +676,7 @@ export default function BookingManagement() {
           onClose={closeModal}
           title="Booking Details"
           footer={
-            <div className="flex w-full items-center justify-between">
-              <Button
-                size="sm"
-                variant="danger"
-                onClick={() => handleDeleteBooking(selectedBooking.bookingId)}
-              >
-                Cancel Booking
-              </Button>
+            <div className="flex w-full items-center justify-end">
               <Button
                 size="sm"
                 variant="secondary"

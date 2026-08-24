@@ -170,7 +170,7 @@ export default function MyBookings() {
 
         const bookingList = Array.isArray(data)
           ? data
-          : data?.bookings || [];
+          : data?.bookings || data?.data || [];
 
         roomBookings = bookingList.map((booking) => ({
           ...booking,
@@ -179,6 +179,26 @@ export default function MyBookings() {
             booking.bookingId ??
             booking.id ??
             booking.Id,
+
+          bookingDate:
+            booking.bookingDate ??
+            booking.date ??
+            "",
+
+          startTime:
+            booking.startTime ??
+            booking.time ??
+            "",
+
+          endTime:
+            booking.endTime ??
+            "",
+
+          roomName:
+            booking.roomName ||
+            booking.room?.roomName ||
+            booking.room?.name ||
+            `Room ${getRoomId(booking) || ""}`,
 
           roomId: getRoomId(booking),
 
@@ -342,13 +362,28 @@ export default function MyBookings() {
   const canModifyBooking = (booking) => {
     if (!booking) return false;
 
-    const status =
-      booking.status?.toLowerCase() || "";
+    const displayStatus = getDisplayStatus(booking);
+    if (
+      displayStatus === "CANCELLED" ||
+      displayStatus === "CHECKED IN" ||
+      displayStatus === "REJECTED" ||
+      displayStatus === "EXPIRED"
+    ) {
+      return false;
+    }
+
+    const status = booking.status?.toLowerCase() || "";
 
     if (
       status === "cancelled" ||
+      status === "canceled" ||
       status === "rejected" ||
-      status === "expired"
+      status === "expired" ||
+      status === "checkedin" ||
+      status === "checked in" ||
+      booking.checkInTime ||
+      booking.checkedIn === true ||
+      booking.isCheckedIn === true
     ) {
       return false;
     }
@@ -533,7 +568,9 @@ export default function MyBookings() {
     if (
       s === "approved" ||
       s === "confirmed" ||
-      s === "available"
+      s === "available" ||
+      s === "checkedin" ||
+      s === "checked in"
     ) {
       return "bg-[#658362] text-white";
     }
@@ -545,6 +582,7 @@ export default function MyBookings() {
     if (
       s === "rejected" ||
       s === "cancelled" ||
+      s === "canceled" ||
       s === "expired"
     ) {
       return "bg-[#B85450] text-white";
