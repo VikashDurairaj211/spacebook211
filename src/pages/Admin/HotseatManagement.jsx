@@ -970,99 +970,99 @@ export default function HotseatManagement() {
       ================================================= */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: TOTAL RESERVATIONS */}
-        <Card className="p-4 shadow-sm">
+        <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
               TOTAL RESERVATIONS
             </span>
-            <Calendar size={16} className="text-sky-600" />
+            <Calendar size={14} className="text-sky-600" />
           </div>
-          <p className="mt-2 text-3xl font-extrabold text-ink">
+          <p className="mt-1 text-2xl font-extrabold text-ink leading-tight">
             {kpis.total}
           </p>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate">
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>{kpis.uniqueSeats} Active Hotseats</span>
             <span className="font-semibold text-sky-700">100% Vol</span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
-            <div className="h-1.5 rounded-full bg-sky-600 w-full" />
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
+            <div className="h-1 rounded-full bg-sky-600 w-full" />
           </div>
         </Card>
 
         {/* Card 2: UTILIZATION */}
-        <Card className="p-4 shadow-sm">
+        <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
               UTILIZATION
             </span>
-            <Activity size={16} className="text-sky-600" />
+            <Activity size={14} className="text-sky-600" />
           </div>
-          <p className="mt-2 text-3xl font-extrabold text-ink">
+          <p className="mt-1 text-2xl font-extrabold text-ink leading-tight">
             {kpis.utilization}%
           </p>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate">
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>Hotseat Occupancy</span>
             <span className="font-semibold text-sky-700">{kpis.utilization}%</span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
             <div
-              className="h-1.5 rounded-full bg-sky-600 transition-all duration-500"
+              className="h-1 rounded-full bg-sky-600 transition-all duration-500"
               style={{ width: `${Math.min(100, Math.max(0, Number(kpis.utilization) || 0))}%` }}
             />
           </div>
         </Card>
 
         {/* Card 3: CONFIRMED BOOKINGS */}
-        <Card className="p-4 shadow-sm">
+        <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
               CONFIRMED BOOKINGS
             </span>
-            <CheckCircle2 size={16} className="text-[#5c7a60]" />
+            <CheckCircle2 size={14} className="text-[#5c7a60]" />
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <p className="text-3xl font-extrabold text-[#5c7a60]">
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <p className="text-2xl font-extrabold text-[#5c7a60] leading-tight">
               {kpis.confirmed}
             </p>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
               {kpis.confirmedRate}%
             </span>
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate">
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>Successful</span>
             <span className="font-bold text-emerald-700">{kpis.confirmedRate}%</span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
             <div
-              className="h-1.5 rounded-full bg-[#5c7a60] transition-all duration-500"
+              className="h-1 rounded-full bg-[#5c7a60] transition-all duration-500"
               style={{ width: `${kpis.confirmedRate}%` }}
             />
           </div>
         </Card>
 
         {/* Card 4: CANCELLED BOOKINGS */}
-        <Card className="p-4 shadow-sm">
+        <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
               CANCELLED BOOKINGS
             </span>
-            <XCircle size={16} className="text-[#be534d]" />
+            <XCircle size={14} className="text-[#be534d]" />
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <p className="text-3xl font-extrabold text-[#be534d]">
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <p className="text-2xl font-extrabold text-[#be534d] leading-tight">
               {kpis.cancelled}
             </p>
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800">
+            <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-800">
               {kpis.cancellationRate}%
             </span>
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate">
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>Cancelled</span>
             <span className="font-bold text-red-700">{kpis.cancellationRate}%</span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
             <div
-              className="h-1.5 rounded-full bg-[#be534d] transition-all duration-500"
+              className="h-1 rounded-full bg-[#be534d] transition-all duration-500"
               style={{ width: `${kpis.cancellationRate}%` }}
             />
           </div>
