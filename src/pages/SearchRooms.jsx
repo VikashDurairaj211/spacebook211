@@ -1,7 +1,14 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { searchRooms, getRoomAvailability } from "../api/rooms";
+import {
+  searchRooms,
+  getRoomAvailability,
+  getModules,
+  getRoomTypes,
+  DEFAULT_MODULES,
+  DEFAULT_ROOM_TYPES,
+} from "../api/rooms";
 import { getMyBookings } from "../api/bookings";
 import client from "../api/client";
 
@@ -13,17 +20,7 @@ import Card from "../components/common/Card";
 import Loader from "../components/common/Loader";
 import Modal from "../components/common/Modal";
 
-const MODULES = [
-  "Module 1 - Elcot Park - CMB",
-  "Module 2 - Elcot Park - CMB",
-  "Module 1 - Tidel Park - CMB",
-];
 
-const ROOM_TYPES = [
-  { id: 1, name: "Conference" },
-  { id: 2, name: "Training" },
-  { id: 3, name: "Discussion" },
-];
 
 
 const isWeekendDate = (dateStr) => {
@@ -165,8 +162,50 @@ function normalizeRoomFacilities(raw) {
 export default function SearchRooms() {
   const [searchParams] = useSearchParams();
 
+  const [modules, setModules] = useState(DEFAULT_MODULES);
+  const [roomTypes, setRoomTypes] = useState(DEFAULT_ROOM_TYPES);
+
   const [filters, setFilters] =
     useState(INITIAL_FILTERS);
+
+  // Load dynamic modules and room types from backend
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDynamicFilters() {
+      try {
+        const [modData, typeData] = await Promise.allSettled([
+          getModules(),
+          getRoomTypes(),
+        ]);
+
+        if (isMounted) {
+          if (
+            modData.status === "fulfilled" &&
+            Array.isArray(modData.value) &&
+            modData.value.length > 0
+          ) {
+            setModules(modData.value);
+          }
+          if (
+            typeData.status === "fulfilled" &&
+            Array.isArray(typeData.value) &&
+            typeData.value.length > 0
+          ) {
+            setRoomTypes(typeData.value);
+          }
+        }
+      } catch (err) {
+        console.warn("Using fallback room options:", err);
+      }
+    }
+
+    loadDynamicFilters();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // ===================================================
   // TOP NAV SEARCH PARAMETER SYNC
@@ -201,7 +240,7 @@ export default function SearchRooms() {
       if (roomTypeIdParam) {
         nextRoomTypeId = String(roomTypeIdParam);
       } else if (roomTypeParam) {
-        const found = ROOM_TYPES.find(t => t.name.toLowerCase() === roomTypeParam.toLowerCase());
+        const found = roomTypes.find(t => t.name.toLowerCase() === roomTypeParam.toLowerCase());
         if (found) {
           nextRoomTypeId = String(found.id);
         }
@@ -282,6 +321,9 @@ export default function SearchRooms() {
   const [conflictingBooking, setConflictingBooking] =
     useState(null);
 
+  const [pendingRoomId, setPendingRoomId] =
+    useState(null);
+
   // ===================================================
   // LOAD BOOKINGS FROM BACKEND
   // ===================================================
@@ -325,21 +367,23 @@ export default function SearchRooms() {
   // DYNAMICALLY FILTER ROOM TYPES BASED ON MODULE
   // ===================================================
 
-  const availableRoomTypes = ROOM_TYPES.filter((type) => {
-    if (
-      filters.module === "Module 2 - Elcot Park - CMB" &&
-      type.name === "Conference"
-    ) {
-      return false;
-    }
-    if (
-      filters.module === "Module 1 - Elcot Park - CMB" &&
-      type.name === "Training"
-    ) {
-      return false;
-    }
-    return true;
-  });
+  const availableRoomTypes = useMemo(() => {
+    return roomTypes.filter((type) => {
+      if (
+        filters.module === "Module 2 - Elcot Park - CMB" &&
+        type.name === "Conference"
+      ) {
+        return false;
+      }
+      if (
+        filters.module === "Module 1 - Elcot Park - CMB" &&
+        type.name === "Training"
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [roomTypes, filters.module]);
 
   // ===================================================
   // UPDATE FILTER
@@ -382,7 +426,7 @@ export default function SearchRooms() {
 
   function getRoomTypeName() {
     const roomType =
-      ROOM_TYPES.find(
+      roomTypes.find(
         (type) =>
           String(type.id) ===
           String(filters.roomTypeId)
@@ -1201,7 +1245,7 @@ export default function SearchRooms() {
                   Select Module
                 </option>
 
-                {MODULES.map(
+                {modules.map(
                   (module) => (
                     <option
                       key={module}

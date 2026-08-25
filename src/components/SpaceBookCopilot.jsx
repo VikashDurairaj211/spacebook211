@@ -5,10 +5,10 @@ export default function SpaceBookCopilot({ isOpen = false, onClose }) {
     <div
       style={{
         position: 'fixed',
-        right: '24px',
-        top: '68px',
+        right: '12px',
+        top: '56px',
         width: '400px',
-        height: 'calc(100vh - 88px)',
+        height: 'calc(100vh - 72px)',
         maxHeight: '640px',
         zIndex: isOpen ? 9999 : -1,
         background: '#fff',

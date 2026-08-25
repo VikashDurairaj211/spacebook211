@@ -118,6 +118,7 @@ export default function BookingManagement() {
       // =====================================================
 
       if (statsRes.data) {
+        const statsData = statsRes.data
         setStatusCounts({
           Pending:
             statsData.pendingRequests ??
@@ -170,51 +171,43 @@ export default function BookingManagement() {
           b.meetingTitle ??
           'Reserved Workspace',
 
-          // Room
-          roomName:
-            b.roomName ??
-            empMatch.roomName ??
-            b.room?.name ??
-            `Room ${b.roomId ?? ''}`,
+        // Room
+        roomName:
+          b.roomName ??
+          b.room?.name ??
+          `Room ${b.roomId ?? ''}`,
 
-          // Module
-          module:
-            b.module ??
-            empMatch.module ??
-            b.moduleName ??
-            b.room?.module ??
-            'N/A',
+        // Module
+        module:
+          b.module ??
+          b.moduleName ??
+          b.room?.module ??
+          'N/A',
 
-          // Date
-          date:
-            b.bookingDate ??
-            empMatch.bookingDate ??
-            b.date ??
-            '',
+        // Date
+        date:
+          b.bookingDate ??
+          b.date ??
+          '',
 
-          // Start time
-          startTime: b.startTime
-            ? String(b.startTime).substring(0, 5)
-            : empMatch.startTime
-            ? String(empMatch.startTime).substring(0, 5)
-            : '',
+        // Start time
+        startTime: b.startTime
+          ? String(b.startTime).substring(0, 5)
+          : '',
 
-          // End time
-          endTime: b.endTime
-            ? String(b.endTime).substring(0, 5)
-            : empMatch.endTime
-            ? String(empMatch.endTime).substring(0, 5)
-            : '',
+        // End time
+        endTime: b.endTime
+          ? String(b.endTime).substring(0, 5)
+          : '',
 
-          // Employee / creator
-          createdBy:
-            b.requestedBy ??
-            b.createdBy ??
-            empMatch.requestedBy ??
-            b.requester ??
-            b.employeeName ??
-            b.employee?.name ??
-            'Employee',
+        // Employee / creator
+        createdBy:
+          b.requestedBy ??
+          b.createdBy ??
+          b.requester ??
+          b.employeeName ??
+          b.employee?.name ??
+          'Employee',
 
         // Status
         status:

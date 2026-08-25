@@ -87,7 +87,7 @@ export default function Layout() {
         />
 
         {!isCopilotOpen && (
-          <div className="fixed top-[68px] right-6 z-[9999] flex items-center gap-3 select-none pointer-events-auto">
+          <div className="fixed top-[56px] right-3 z-[9999] flex items-center gap-3 select-none pointer-events-auto">
             {/* Floating Invitation / Help Bubble */}
             {showCopilotBubble && (
               <div

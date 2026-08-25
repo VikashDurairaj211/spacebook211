@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import client from '../../api/client'
-import { useAuth } from '../../context/AuthContext'
+import client from '../api/client'
+import { useAuth } from '../context/AuthContext'
 
 export default function NotificationDropdown({ onClose }) {
   const [notifications, setNotifications] = useState([])

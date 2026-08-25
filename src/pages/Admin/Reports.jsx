@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ResponsiveContainer,
   AreaChart,
@@ -16,14 +17,12 @@ import {
 } from 'recharts'
 import {
   RefreshCw,
-  FileSpreadsheet,
   FileText,
   Users,
   CheckCircle2,
   XCircle,
   Clock,
   Building2,
-  AlertTriangle,
   Calendar,
   Sparkles,
   Activity,
@@ -40,7 +39,7 @@ import {
   getBookingStatusReport,
   getRoomUsageReport,
 } from '../../api/adminReports'
-import { downloadCSV, exportToExcel } from '../../utils/exportHelpers'
+import { downloadCSV } from '../../utils/exportHelpers'
 
 // =====================================================
 // HELPERS
@@ -633,30 +632,6 @@ export default function Reports() {
       .slice(0, 6)
   }, [filteredBookings])
 
-  // 5. Cancellation Reasons Breakdown
-  const cancellationReasonsData = useMemo(() => {
-    const map = {}
-    let totalCancelled = 0
-
-    filteredBookings.forEach((b) => {
-      const st = normalizeStatus(b.status)
-      if (st === 'CANCELLED' || st === 'REJECTED') {
-        const reason = b.cancelReason ? b.cancelReason.trim() : 'Schedule Conflict'
-        map[reason] = (map[reason] || 0) + 1
-        totalCancelled += 1
-      }
-    })
-
-    return Object.entries(map)
-      .map(([reason, count]) => ({
-        reason,
-        count,
-        percentage: totalCancelled > 0 ? Math.round((count / totalCancelled) * 100) : 0,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-  }, [filteredBookings])
-
   // 6. Hourly Distribution
   const hourlyDistributionData = useMemo(() => {
     const hourMap = new Map()
@@ -680,25 +655,6 @@ export default function Reports() {
   // =====================================================
   // EXPORT HANDLERS
   // =====================================================
-
-  const handleExportExcel = () => {
-    const auditData = filteredBookings.map((b) => ({
-      'Booking ID': b.bookingId,
-      'Meeting Title': b.title || '-',
-      Room: b.roomName,
-      Module: b.module,
-      Date: b.date,
-      Time: `${b.startTime} - ${b.endTime}`,
-      'Created By': b.createdBy,
-      Status: b.status,
-      'Cancellation Reason': b.cancelReason || 'N/A',
-    }))
-
-    exportToExcel(
-      [{ name: 'Room Reservations Audit', data: auditData }],
-      `SpaceBook-Room-Analytics-${new Date().toISOString().split('T')[0]}.xlsx`
-    )
-  }
 
   const handleExportCSV = () => {
     const csvData = filteredBookings.map((b) => ({
@@ -734,16 +690,16 @@ export default function Reports() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-nowrap flex-shrink-0">
+        <div className="flex items-center gap-2 flex-nowrap flex-shrink-0">
           <Button
             size="sm"
             variant="secondary"
             onClick={loadData}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold whitespace-nowrap shadow-sm hover:border-slate-400 transition-all active:scale-95"
+            className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap shadow-xs hover:border-slate-400 transition-all active:scale-95 h-7"
           >
             <RefreshCw
-              size={13}
+              size={11}
               className={loading ? 'animate-spin text-sky-600' : 'text-slate-600'}
             />
             <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
@@ -753,20 +709,10 @@ export default function Reports() {
             size="sm"
             onClick={handleExportCSV}
             disabled={filteredBookings.length === 0}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-xs font-bold text-white shadow-md shadow-blue-700/20 whitespace-nowrap transition-all active:scale-95 border-0"
+            className="flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-[11px] font-bold text-white shadow-xs whitespace-nowrap transition-all active:scale-95 border-0 h-7"
           >
-            <FileText size={14} className="text-blue-100" />
+            <FileText size={12} className="text-blue-100" />
             <span className="text-white">Export CSV</span>
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={handleExportExcel}
-            disabled={filteredBookings.length === 0}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-xs font-bold text-white shadow-md shadow-emerald-700/20 whitespace-nowrap transition-all active:scale-95 border-0"
-          >
-            <FileSpreadsheet size={14} className="text-emerald-100" />
-            <span>Export Excel (.xlsx)</span>
           </Button>
         </div>
       </div>
@@ -837,99 +783,99 @@ export default function Reports() {
       ================================================= */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: TOTAL RESERVATIONS */}
-        <Card className="p-4 shadow-sm">
+        <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
               Total Reservations
             </span>
-            <Calendar size={16} className="text-sky-600" />
+            <Calendar size={14} className="text-sky-600" />
           </div>
-          <p className="mt-2 text-3xl font-extrabold text-ink">
+          <p className="mt-1 text-2xl font-extrabold text-ink leading-tight">
             {kpis.total}
           </p>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate">
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>{kpis.uniqueRooms} Active Rooms</span>
             <span className="font-semibold text-sky-700">100% Vol</span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
-            <div className="h-1.5 rounded-full bg-sky-600 w-full" />
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
+            <div className="h-1 rounded-full bg-sky-600 w-full" />
           </div>
         </Card>
 
         {/* Card 2: UTILIZATION */}
-        <Card className="p-4 shadow-sm">
+        <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
               Utilization
             </span>
-            <Activity size={16} className="text-sky-600" />
+            <Activity size={14} className="text-sky-600" />
           </div>
-          <p className="mt-2 text-3xl font-extrabold text-ink">
+          <p className="mt-1 text-2xl font-extrabold text-ink leading-tight">
             {kpis.utilization}%
           </p>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate">
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>Occupancy Rate</span>
             <span className="font-semibold text-sky-700">{kpis.utilization}%</span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
             <div
-              className="h-1.5 rounded-full bg-sky-600 transition-all duration-500"
+              className="h-1 rounded-full bg-sky-600 transition-all duration-500"
               style={{ width: `${Math.min(100, Math.max(0, Number(kpis.utilization) || 0))}%` }}
             />
           </div>
         </Card>
 
         {/* Card 3: CONFIRMED BOOKINGS */}
-        <Card className="p-4 shadow-sm">
+        <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
               Confirmed Bookings
             </span>
-            <CheckCircle2 size={16} className="text-[#658362]" />
+            <CheckCircle2 size={14} className="text-[#658362]" />
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <p className="text-3xl font-extrabold text-[#658362]">
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <p className="text-2xl font-extrabold text-[#658362] leading-tight">
               {kpis.confirmed}
             </p>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
               {kpis.confirmedRate}%
             </span>
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate">
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>Successful Occupancy</span>
             <span className="font-bold text-emerald-700">{kpis.confirmedRate}%</span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
             <div
-              className="h-1.5 rounded-full bg-[#658362] transition-all duration-500"
+              className="h-1 rounded-full bg-[#658362] transition-all duration-500"
               style={{ width: `${kpis.confirmedRate}%` }}
             />
           </div>
         </Card>
 
         {/* Card 4: CANCELLED BOOKINGS */}
-        <Card className="p-4 shadow-sm">
+        <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
               Cancelled Bookings
             </span>
-            <XCircle size={16} className="text-[#B85450]" />
+            <XCircle size={14} className="text-[#B85450]" />
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <p className="text-3xl font-extrabold text-[#B85450]">
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <p className="text-2xl font-extrabold text-[#B85450] leading-tight">
               {kpis.cancelled}
             </p>
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800">
+            <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-800">
               {kpis.cancellationRate}%
             </span>
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate">
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>Cancellation Impact</span>
             <span className="font-bold text-red-700">{kpis.cancellationRate}%</span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
             <div
-              className="h-1.5 rounded-full bg-[#B85450] transition-all duration-500"
+              className="h-1 rounded-full bg-[#B85450] transition-all duration-500"
               style={{ width: `${kpis.cancellationRate}%` }}
             />
           </div>
@@ -953,9 +899,9 @@ export default function Reports() {
           <Button
             size="sm"
             onClick={() => setIsAuditModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#0284c7] hover:bg-[#0369a1] text-white font-semibold text-xs rounded-xl shadow-sm transition-all active:scale-95 border-0"
+            className="flex items-center gap-1 px-2.5 py-1 bg-[#0284c7] hover:bg-[#0369a1] text-white font-semibold text-[11px] rounded-lg shadow-xs transition-all active:scale-95 border-0 h-7"
           >
-            <Eye size={15} />
+            <Eye size={12} />
             <span>View</span>
           </Button>
         </div>
@@ -1171,54 +1117,9 @@ export default function Reports() {
       </div>
 
       {/* =================================================
-          ROW 3: Cancellation Drivers & Peak Check-in Hours
+          ROW 3: Peak Check-in Hours
       ================================================= */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* CHART 5: Cancellation Drivers */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-700 text-ink">
-                Top Cancellation Reasons & Drivers
-              </h2>
-              <p className="text-xs text-slate">
-                Visual breakdown of why reservations were cancelled.
-              </p>
-            </div>
-            <AlertTriangle size={16} className="text-[#B85450]" />
-          </div>
-
-          <div className="pt-4">
-            {cancellationReasonsData.length === 0 ? (
-              <p className="py-12 text-center text-sm text-slate">
-                No cancellations recorded under the active filters.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {cancellationReasonsData.map((item, idx) => (
-                  <div key={idx} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-ink">
-                        "{item.reason}"
-                      </span>
-                      <span className="font-bold text-red-700">
-                        {item.count} {item.count === 1 ? 'time' : 'times'} ({item.percentage}%)
-                      </span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-red-100">
-                      <div
-                        className="h-2 rounded-full bg-red-500 transition-all duration-500"
-                        style={{ width: `${item.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </Card>
-
-        {/* CHART 6: Peak Demand by Hour */}
+      <div>
         <Card className="p-5 shadow-sm">
           <div className="flex items-center justify-between border-b border-line pb-3">
             <div>
@@ -1232,7 +1133,7 @@ export default function Reports() {
             <Clock size={16} className="text-sky-600" />
           </div>
 
-          <div className="h-[250px] w-full pt-4">
+          <div className="h-[260px] w-full pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={hourlyDistributionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -1249,169 +1150,171 @@ export default function Reports() {
       {/* =====================================================
           AUDIT TABLE MODAL
       ===================================================== */}
-      {isAuditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-5xl rounded-3xl bg-white shadow-2xl p-6 relative flex flex-col max-h-[92vh] border border-slate-200 animate-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3">
-              <h2 className="text-lg font-bold text-slate-900 font-display">
-                Workplace Reservation Records & Audit
-              </h2>
-              <button
-                type="button"
-                onClick={() => setIsAuditModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-lg hover:bg-slate-100"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Subheader with Filter Count & Search */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-2">
-              <p className="text-xs text-slate-500">
-                Showing {displayedTableBookings.length} of {bookings.length} reservations matching active filters.
-              </p>
-
-              <div className="flex items-center gap-2">
-                <input
-                  value={tableSearch}
-                  onChange={(e) => setTableSearch(e.target.value)}
-                  placeholder="Search bookings, rooms, employees..."
-                  className="w-full sm:w-72 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:border-sky-500"
-                />
-                {tableSearch && (
-                  <button
-                    type="button"
-                    onClick={() => setTableSearch('')}
-                    className="text-xs font-bold text-slate-400 hover:text-slate-700 px-1"
-                    title="Clear search"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Table Container Box */}
-            <div className="mt-2 rounded-xl border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
-              <div className="overflow-auto max-h-[440px]">
-                <table className="w-full min-w-[850px] text-left text-xs">
-                  <thead className="sticky top-0 z-10 bg-white shadow-xs">
-                    <tr className="border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-900">
-                      <th className="px-4 py-3 whitespace-nowrap">BOOKING ID</th>
-                      <th className="px-4 py-3 whitespace-nowrap">MEETING TITLE</th>
-                      <th className="px-4 py-3 whitespace-nowrap">ROOM</th>
-                      <th className="px-4 py-3 whitespace-nowrap">MODULE</th>
-                      <th className="px-4 py-3 whitespace-nowrap">DATE</th>
-                      <th className="px-4 py-3 whitespace-nowrap">TIME</th>
-                      <th className="px-4 py-3 whitespace-nowrap">CREATED BY</th>
-                      <th className="px-4 py-3 text-center whitespace-nowrap">STATUS</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {loading ? (
-                      <tr>
-                        <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
-                          Loading reservation records...
-                        </td>
-                      </tr>
-                    ) : paginatedBookings.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
-                          No reservation records match the active filter criteria.
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedBookings.map((booking) => (
-                        <tr
-                          key={booking.bookingId}
-                          onClick={() => openViewModal(booking)}
-                          className="cursor-pointer transition-colors duration-150 hover:bg-slate-50/80"
-                          title="Click to view full reservation details"
-                        >
-                          <td className="px-4 py-3.5 font-bold text-slate-900 whitespace-nowrap">
-                            {booking.bookingId}
-                          </td>
-                          <td className="px-4 py-3.5 font-medium text-slate-800 whitespace-nowrap max-w-[180px] truncate" title={booking.title || '-'}>
-                            {booking.title || '-'}
-                          </td>
-                          <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
-                            {booking.roomName}
-                          </td>
-                          <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
-                            {booking.module}
-                          </td>
-                          <td className="px-4 py-3.5 text-slate-600 font-mono whitespace-nowrap">
-                            {booking.date}
-                          </td>
-                          <td className="px-4 py-3.5 text-slate-600 font-mono whitespace-nowrap">
-                            {booking.startTime && booking.endTime
-                              ? `${booking.startTime} - ${booking.endTime}`
-                              : booking.startTime || '-'}
-                          </td>
-                          <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
-                            {booking.createdBy}
-                          </td>
-                          <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                            <CustomStatusTag status={booking.status} />
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Modal Footer (Matching 2-Row Layout) */}
-            <div className="mt-4 flex flex-col gap-3 pt-1">
-              {/* Row 1 */}
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-slate-500">
-                  Showing {displayedTableBookings.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}–{Math.min(currentPage * pageSize, displayedTableBookings.length)} of {displayedTableBookings.length} bookings
-                </p>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={currentPage <= 1}
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                  >
-                    Prev
-                  </button>
-                  <span className="text-xs font-semibold text-slate-700 px-2">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-
-              {/* Row 2 */}
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-slate-500">
-                  Total {displayedTableBookings.length} bookings found
-                </p>
-
+      {isAuditModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+            <div className="w-full max-w-5xl rounded-3xl bg-white shadow-2xl p-6 relative flex flex-col max-h-[90vh] border border-slate-200 animate-in zoom-in-95 duration-150">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h2 className="text-lg font-bold text-slate-900 font-display">
+                  Workplace Reservation Records & Audit
+                </h2>
                 <button
                   type="button"
                   onClick={() => setIsAuditModalOpen(false)}
-                  className="rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-all shadow-xs"
+                  className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-lg hover:bg-slate-100"
                 >
-                  Close
+                  <X size={18} />
                 </button>
               </div>
+
+              {/* Subheader with Filter Count & Search */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-2.5">
+                <p className="text-xs text-slate-500">
+                  Showing {displayedTableBookings.length} of {bookings.length} reservations matching active filters.
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    value={tableSearch}
+                    onChange={(e) => setTableSearch(e.target.value)}
+                    placeholder="Search bookings, rooms, employees..."
+                    className="w-full sm:w-72 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:border-sky-500"
+                  />
+                  {tableSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setTableSearch('')}
+                      className="text-xs font-bold text-slate-400 hover:text-slate-700 px-1"
+                      title="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Table Container Box */}
+              <div className="mt-1 rounded-xl border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
+                <div className="overflow-auto max-h-[440px]">
+                  <table className="w-full min-w-[850px] text-left text-xs">
+                    <thead className="sticky top-0 z-10 bg-white shadow-xs">
+                      <tr className="border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-900">
+                        <th className="px-4 py-3 whitespace-nowrap">BOOKING ID</th>
+                        <th className="px-4 py-3 whitespace-nowrap">MEETING TITLE</th>
+                        <th className="px-4 py-3 whitespace-nowrap">ROOM</th>
+                        <th className="px-4 py-3 whitespace-nowrap">MODULE</th>
+                        <th className="px-4 py-3 whitespace-nowrap">DATE</th>
+                        <th className="px-4 py-3 whitespace-nowrap">TIME</th>
+                        <th className="px-4 py-3 whitespace-nowrap">CREATED BY</th>
+                        <th className="px-4 py-3 text-center whitespace-nowrap">STATUS</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {loading ? (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                            Loading reservation records...
+                          </td>
+                        </tr>
+                      ) : paginatedBookings.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                            No reservation records match the active filter criteria.
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedBookings.map((booking) => (
+                          <tr
+                            key={booking.bookingId}
+                            onClick={() => openViewModal(booking)}
+                            className="cursor-pointer transition-colors duration-150 hover:bg-slate-50/80"
+                            title="Click to view full reservation details"
+                          >
+                            <td className="px-4 py-3.5 font-bold text-slate-900 whitespace-nowrap">
+                              {booking.bookingId}
+                            </td>
+                            <td className="px-4 py-3.5 font-medium text-slate-800 whitespace-nowrap max-w-[180px] truncate" title={booking.title || '-'}>
+                              {booking.title || '-'}
+                            </td>
+                            <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
+                              {booking.roomName}
+                            </td>
+                            <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
+                              {booking.module}
+                            </td>
+                            <td className="px-4 py-3.5 text-slate-600 font-mono whitespace-nowrap">
+                              {booking.date}
+                            </td>
+                            <td className="px-4 py-3.5 text-slate-600 font-mono whitespace-nowrap">
+                              {booking.startTime && booking.endTime
+                                ? `${booking.startTime} - ${booking.endTime}`
+                                : booking.startTime || '-'}
+                            </td>
+                            <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
+                              {booking.createdBy}
+                            </td>
+                            <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                              <CustomStatusTag status={booking.status} />
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Modal Footer (Matching 2-Row Layout) */}
+              <div className="mt-4 flex flex-col gap-3 pt-1 border-t border-slate-100">
+                {/* Row 1 */}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-slate-500">
+                    Showing {displayedTableBookings.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}–{Math.min(currentPage * pageSize, displayedTableBookings.length)} of {displayedTableBookings.length} bookings
+                  </p>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={currentPage <= 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      Prev
+                    </button>
+                    <span className="text-xs font-semibold text-slate-700 px-2">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={currentPage >= totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+
+                {/* Row 2 */}
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-slate-500">
+                    Total {displayedTableBookings.length} bookings found
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsAuditModalOpen(false)}
+                    className="rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-all shadow-xs"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* =====================================================
           SINGLE BOOKING DETAIL MODAL
