@@ -205,8 +205,8 @@ export default function ScrollableTimePicker({
         <span
           className={
             currentValue
-              ? 'text-ink font-medium'
-              : 'text-slate-500'
+              ? 'text-ink font-normal'
+              : 'text-slate-500 font-normal'
           }
         >
           {currentValue ? `${currentValue} (${formatHourLabel(selectedHour || currentValue.slice(0, 2))})` : placeholder}
