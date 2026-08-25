@@ -101,10 +101,30 @@ function getLocation(room) {
 // =====================================================
 
 function getSlotStatus(room, slot) {
+  const id = String(room.id ?? room.roomId ?? '').trim();
+  const code = String(room.roomNumber ?? room.roomCode ?? room.code ?? '').trim().toLowerCase();
+  try {
+    const overrides = JSON.parse(localStorage.getItem('spacebook_room_status_overrides') || '{}');
+    const blocked = JSON.parse(localStorage.getItem('spacebook_blocked_rooms') || '[]');
+    if (overrides[id] === 'Maintenance' || (code && overrides[code] === 'Maintenance')) return 'Maintenance';
+    if (id && blocked.map(String).includes(id)) return 'Maintenance';
+  } catch {
+    // ignore
+  }
+
+  const rawRoomStatus = String(room.status ?? room.roomStatus ?? '').toLowerCase();
+  if (rawRoomStatus === 'maintenance' || rawRoomStatus === 'blocked' || room.isBlocked === true || room.IsBlocked === true || room.isAvailable === false) {
+    return 'Maintenance';
+  }
+
   if (slot.status) {
     const status = String(slot.status)
       .trim()
       .toLowerCase();
+
+    if (status === "maintenance" || status === "blocked") {
+      return "Maintenance";
+    }
 
     if (status === "available") {
       return "Available";
@@ -441,7 +461,9 @@ export default function AvailabilityGrid({
                     ? "primary"
                     : "secondary"
                 }
+                disabled={status === "Maintenance"}
                 onClick={() => {
+                  if (status === "Maintenance") return;
                   console.log(
                     "SELECTED ROOM:",
                     room
@@ -472,6 +494,8 @@ export default function AvailabilityGrid({
               >
                 {status === "Available"
                   ? "Book Now"
+                  : status === "Maintenance"
+                  ? "Under Maintenance"
                   : status === "Pending"
                   ? "Pending Approval"
                   : status === "Completed"

@@ -296,13 +296,33 @@ export default function MyBookings() {
       }
 
       // =====================================================
-      // COMBINE
+      // COMBINE & DEDUPLICATE
       // =====================================================
 
-      const combinedBookings = [
-        ...roomBookings,
-        ...hotseatBookings,
-      ];
+      const hotseatIdSet = new Set(
+        hotseatBookings.map((h) => String(h.bookingId))
+      );
+
+      const pureRoomBookings = roomBookings.filter((rb) => {
+        const id = String(rb.bookingId);
+        if (hotseatIdSet.has(id)) return false;
+        if (rb.seatId || rb.seatNumber || rb.isHotseat === true) return false;
+        const name = String(rb.roomName || "").toLowerCase();
+        if (name.includes("hot seat") || name.includes("hotseat")) return false;
+        const purpose = String(rb.purpose || "").toLowerCase();
+        if (purpose.includes("hotseat")) return false;
+        return true;
+      });
+
+      const combinedMap = new Map();
+      pureRoomBookings.forEach((b) => {
+        if (b.bookingId) combinedMap.set(`room-${b.bookingId}`, b);
+      });
+      hotseatBookings.forEach((b) => {
+        if (b.bookingId) combinedMap.set(`hotseat-${b.bookingId}`, b);
+      });
+
+      const combinedBookings = Array.from(combinedMap.values());
 
       // =====================================================
       // SORT BY BOOKING ID DESC

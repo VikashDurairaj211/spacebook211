@@ -3,6 +3,10 @@ import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Card from "../components/common/Card";
 import DashboardCard from "../components/cards/DashboardCard";
+import Button from "../components/common/Button";
+import Modal from "../components/common/Modal";
+import { useToast } from "../components/common/ToastProvider";
+import { CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import * as employeeApi from "../api/employee";
 import { getMyBookings } from "../api/bookings";
 import { getMyHotseatBookings } from "../api/hotseat";
@@ -50,12 +54,25 @@ const HOTSEAT_API_BASE = "https://spacebook-505h.onrender.com/api/Hotseat";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const toast = useToast();
 
   const [dashboard, setDashboard] = useState(null);
   const [roomBookings, setRoomBookings] = useState([]);
   const [hotseatBookings, setHotseatBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [checkingInId, setCheckingInId] = useState(null);
+
+  const [modalState, setModalState] = useState({
+    open: false,
+    type: "confirm", // "confirm" | "success" | "warning" | "error"
+    title: "",
+    message: "",
+    booking: null,
+  });
+
+  const closeModal = () => {
+    setModalState((prev) => ({ ...prev, open: false }));
+  };
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem("spacebook_token") || "";
@@ -163,7 +180,7 @@ export default function Dashboard() {
     }
   };
 
-  async function handleCheckIn(booking) {
+  function handleCheckIn(booking) {
     if (!booking?.isHotseat) return;
     if (checkingInId) return;
 
@@ -175,34 +192,63 @@ export default function Dashboard() {
     if (!["confirmed", "approved"].includes(status)) return;
 
     if (!isBookingToday(booking)) {
-      alert("Check-in is only permitted on the day of the reservation.");
+      setModalState({
+        open: true,
+        type: "warning",
+        title: "Check-In Not Permitted",
+        message: "Check-in is only permitted on the day of the reservation.",
+        booking: null,
+      });
       return;
     }
 
     const deadline = getCheckInDeadline(booking);
 
     if (deadline && new Date() > deadline) {
-      setCheckingInId(bookingId);
-
-      try {
-        const released = await releaseHotseat(bookingId);
-
-        if (released) {
-          alert(
-            "The 30-minute check-in window has expired. The hotseat has been released."
-          );
-          await loadDashboard();
-        } else {
-          alert(
-            "The check-in window has expired, but the hotseat could not be released automatically."
-          );
-        }
-      } finally {
-        setCheckingInId(null);
-      }
-
+      handleReleaseExpiredHotseat(bookingId);
       return;
     }
+
+    // Open application confirmation popup modal
+    setModalState({
+      open: true,
+      type: "confirm",
+      title: "Confirm Hotseat Check-In",
+      message: `Are you ready to check in to ${booking.roomName || booking.displayName || "Hot Seat"}?`,
+      booking,
+    });
+  }
+
+  async function handleReleaseExpiredHotseat(bookingId) {
+    setCheckingInId(bookingId);
+    try {
+      const released = await releaseHotseat(bookingId);
+      if (released) {
+        setModalState({
+          open: true,
+          type: "warning",
+          title: "Check-In Window Expired",
+          message: "The 30-minute check-in window has expired. The hotseat reservation has been released for other team members.",
+          booking: null,
+        });
+        await loadDashboard();
+      } else {
+        setModalState({
+          open: true,
+          type: "error",
+          title: "Check-In Window Expired",
+          message: "The check-in window has expired, but the hotseat could not be released automatically.",
+          booking: null,
+        });
+      }
+    } finally {
+      setCheckingInId(null);
+    }
+  }
+
+  async function performCheckIn(booking) {
+    const bookingId = booking?.rawId || booking?.bookingId;
+    if (!bookingId) return;
 
     try {
       setCheckingInId(bookingId);
@@ -217,19 +263,19 @@ export default function Dashboard() {
 
       if (!response.ok) {
         let errData = null;
-
         try {
           errData = await response.json();
         } catch {
           errData = null;
         }
 
-        alert(
-          errData?.message ||
-            errData?.title ||
-            "Failed to check in."
-        );
-
+        setModalState({
+          open: true,
+          type: "error",
+          title: "Check-In Failed",
+          message: errData?.message || errData?.title || "Failed to check in. Please try again.",
+          booking: null,
+        });
         return;
       }
 
@@ -249,12 +295,31 @@ export default function Dashboard() {
         })
       );
 
-      alert("Checked in successfully!");
+      setModalState({
+        open: true,
+        type: "success",
+        title: "Checked In Successfully!",
+        message: `You are now checked in to ${booking.roomName || booking.displayName || "your hotseat"} for today. Have a productive day!`,
+        booking: null,
+      });
+
+      toast.addToast({
+        type: "success",
+        title: "Checked in successfully!",
+        message: `${booking.roomName || booking.displayName || "Hot Seat"} is confirmed.`,
+      });
+
       window.dispatchEvent(new Event("booking-updated"));
       await loadDashboard();
     } catch (err) {
       console.error("CHECK-IN ERROR:", err);
-      alert("Network error during check-in.");
+      setModalState({
+        open: true,
+        type: "error",
+        title: "Network Error",
+        message: "Unable to connect to the server. Please check your network connection.",
+        booking: null,
+      });
     } finally {
       setCheckingInId(null);
     }
@@ -343,7 +408,22 @@ export default function Dashboard() {
     ].includes(s);
   };
 
-  const normalizedRoomBookings = roomBookings.map((booking) => ({
+  const hotseatIdSet = new Set(
+    hotseatBookings.map((h) => String(h.bookingId || h.id))
+  );
+
+  const pureRoomBookings = roomBookings.filter((booking) => {
+    const id = String(booking.bookingId || booking.id);
+    if (hotseatIdSet.has(id)) return false;
+    if (booking.seatId || booking.seatNumber || booking.isHotseat === true) return false;
+    const name = String(booking.roomName || booking.displayName || "").toLowerCase();
+    if (name.includes("hot seat") || name.includes("hotseat")) return false;
+    const purpose = String(booking.purpose || "").toLowerCase();
+    if (purpose.includes("hotseat")) return false;
+    return true;
+  });
+
+  const normalizedRoomBookings = pureRoomBookings.map((booking) => ({
     ...booking,
     isHotseat: false,
     bookingId: booking.bookingId || booking.id,
@@ -372,7 +452,17 @@ export default function Dashboard() {
     ),
   }));
 
-  const normalizedHotseatBookings = hotseatBookings.map((booking) => ({
+  const uniqueHotseatMap = new Map();
+  hotseatBookings.forEach((b) => {
+    const id = String(b.bookingId || b.id || "");
+    if (id) {
+      uniqueHotseatMap.set(id, b);
+    } else {
+      uniqueHotseatMap.set(`${b.seatNumber}-${b.bookingDate || b.date}`, b);
+    }
+  });
+
+  const normalizedHotseatBookings = Array.from(uniqueHotseatMap.values()).map((booking) => ({
     ...booking,
     isHotseat: true,
     bookingId: booking.bookingId || booking.id,
@@ -386,13 +476,14 @@ export default function Dashboard() {
       booking.expectedCheckIn ||
         booking.expectedCheckInTime ||
         booking.checkInTime ||
+        booking.time ||
         ""
     ),
 
     displayName:
       booking.seatNumber
         ? `Hot Seat ${booking.seatNumber}`
-        : "Hot Seat",
+        : booking.roomName || "Hot Seat",
 
     status: booking.status || "",
 
@@ -400,14 +491,20 @@ export default function Dashboard() {
       booking.expectedCheckIn ||
         booking.expectedCheckInTime ||
         booking.checkInTime ||
+        booking.endTime ||
         ""
     ),
   }));
 
-  const allBookings = [
-    ...normalizedRoomBookings,
-    ...normalizedHotseatBookings,
-  ];
+  const allBookingsMap = new Map();
+  normalizedRoomBookings.forEach((b) => {
+    if (b.bookingId) allBookingsMap.set(`room-${b.bookingId}`, b);
+  });
+  normalizedHotseatBookings.forEach((b) => {
+    if (b.bookingId) allBookingsMap.set(`hotseat-${b.bookingId}`, b);
+  });
+
+  const allBookings = Array.from(allBookingsMap.values());
 
   const pad = (value) => String(value).padStart(2, "0");
 
@@ -491,8 +588,13 @@ export default function Dashboard() {
 
   const today = getLocalDateString();
 
+  // Today's Meetings only counts meeting rooms (excluding hotseat desk reservations)
   const bookingsToday = allBookings.filter((booking) => {
     if (isInactiveStatus(booking.status)) {
+      return false;
+    }
+
+    if (booking.isHotseat) {
       return false;
     }
 
@@ -502,10 +604,16 @@ export default function Dashboard() {
     );
   }).length;
 
+  // Hotseat Bookings counts active hotseats for today & upcoming
   const hotseatBookingCount =
-    normalizedHotseatBookings.filter(
-      (booking) => !isInactiveStatus(booking.status)
-    ).length;
+    normalizedHotseatBookings.filter((booking) => {
+      if (isInactiveStatus(booking.status)) {
+        return false;
+      }
+
+      const bookingDateStr = String(booking.date || "").substring(0, 10);
+      return !bookingDateStr || bookingDateStr >= today;
+    }).length;
 
   const getStatusBadgeClass = (status) => {
     const s = status?.toLowerCase() || "";
@@ -643,15 +751,10 @@ export default function Dashboard() {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <DashboardCard
           title="Upcoming"
           value={upcomingCount}
-        />
-
-        <DashboardCard
-          title="Hotseat Bookings"
-          value={hotseatBookingCount}
         />
 
         <DashboardCard
@@ -769,6 +872,96 @@ export default function Dashboard() {
           </table>
         </div>
       </Card>
+      {/* CHECK-IN APPLICATION POPUP MODAL */}
+      <Modal
+        open={modalState.open}
+        title={modalState.title}
+        onClose={closeModal}
+        className="max-w-md"
+        footer={
+          modalState.type === "confirm" ? (
+            <>
+              <Button
+                variant="secondary"
+                onClick={closeModal}
+                disabled={Boolean(checkingInId)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (modalState.booking) {
+                    performCheckIn(modalState.booking);
+                  }
+                }}
+                disabled={Boolean(checkingInId)}
+                className="bg-[#2F6FE0] text-white hover:bg-blue-700 font-semibold"
+              >
+                {checkingInId ? "Checking In..." : "Confirm Check-In"}
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="primary"
+              onClick={closeModal}
+              className="w-full justify-center sm:w-auto"
+            >
+              Done
+            </Button>
+          )
+        }
+      >
+        <div className="space-y-4">
+          {modalState.type === "success" && (
+            <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-green-800">
+              <CheckCircle2 className="h-6 w-6 shrink-0 text-green-600 mt-0.5" />
+              <p className="text-sm font-medium leading-relaxed">{modalState.message}</p>
+            </div>
+          )}
+
+          {modalState.type === "warning" && (
+            <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
+              <Clock className="h-6 w-6 shrink-0 text-amber-600 mt-0.5" />
+              <p className="text-sm font-medium leading-relaxed">{modalState.message}</p>
+            </div>
+          )}
+
+          {modalState.type === "error" && (
+            <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">
+              <AlertCircle className="h-6 w-6 shrink-0 text-red-600 mt-0.5" />
+              <p className="text-sm font-medium leading-relaxed">{modalState.message}</p>
+            </div>
+          )}
+
+          {modalState.type === "confirm" && (
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600">
+                {modalState.message}
+              </p>
+              {modalState.booking && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs space-y-2 text-slate-700">
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-slate-500">Seat / Room:</span>
+                    <span className="font-medium text-slate-900">{modalState.booking.roomName || modalState.booking.displayName || "Hot Seat"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-slate-500">Location:</span>
+                    <span>{modalState.booking.module || "Module 1 - Elcot Park - CMB"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-slate-500">Date:</span>
+                    <span>{modalState.booking.bookingDate || modalState.booking.date}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-slate-500">Arrival Time:</span>
+                    <span>{formatTime(modalState.booking.startTime || modalState.booking.time) || "16:00"}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

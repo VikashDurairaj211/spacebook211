@@ -14,8 +14,9 @@ import Loader from "../components/common/Loader";
 import Modal from "../components/common/Modal";
 
 const MODULES = [
-  "Module 2 - Elcot Park - CMB",
   "Module 1 - Elcot Park - CMB",
+  "Module 2 - Elcot Park - CMB",
+  "Module 1 - Tidel Park - CMB",
 ];
 
 const ROOM_TYPES = [
@@ -133,7 +134,9 @@ export default function SearchRooms() {
       let nextModule = prev.module;
       let nextRoomTypeId = prev.roomTypeId;
 
-      if (query.includes("module 1") || query.includes("m1")) {
+      if (query.includes("tidel") || query.includes("tidal")) {
+        nextModule = "Module 1 - Tidel Park - CMB";
+      } else if (query.includes("module 1") || query.includes("m1")) {
         nextModule = "Module 1 - Elcot Park - CMB";
       } else if (query.includes("module 2") || query.includes("m2")) {
         nextModule = "Module 2 - Elcot Park - CMB";
@@ -644,6 +647,43 @@ export default function SearchRooms() {
         isCapacityExceeded =
           data.capacityExceeded === true;
       }
+
+      // Filter out rooms that are in Maintenance or Blocked
+      let statusOverrides = {};
+      let blockedRoomIds = [];
+      try {
+        statusOverrides = JSON.parse(localStorage.getItem('spacebook_room_status_overrides') || '{}');
+        blockedRoomIds = JSON.parse(localStorage.getItem('spacebook_blocked_rooms') || '[]');
+      } catch {
+        // ignore
+      }
+
+      searchResults = searchResults.filter((room) => {
+        const id = String(room.id ?? room.roomId ?? '').trim();
+        const code = String(room.roomNumber ?? room.roomCode ?? room.code ?? '').trim().toLowerCase();
+
+        const override = statusOverrides[id] || (code && statusOverrides[code]);
+        if (override && String(override).toLowerCase() === 'maintenance') {
+          return false;
+        }
+
+        if (id && blockedRoomIds.map(String).includes(id)) {
+          return false;
+        }
+
+        const roomStatus = String(room.status || room.roomStatus || '').toLowerCase();
+        if (
+          roomStatus === 'maintenance' ||
+          roomStatus === 'blocked' ||
+          room.isBlocked === true ||
+          room.IsBlocked === true ||
+          room.isAvailable === false
+        ) {
+          return false;
+        }
+
+        return true;
+      });
 
       // Check if backend message indicates capacity failure
       const lowerBackendMsg = String(backendMessage).toLowerCase();
@@ -1372,10 +1412,10 @@ export default function SearchRooms() {
 
                     <span
                       className={`inline-block w-28 rounded-full py-1 text-center text-xs font-bold tracking-wider uppercase ${getStatusBadgeClass(
-                        "Available"
+                        room.status || "Available"
                       )}`}
                     >
-                      Available
+                      {room.status || "Available"}
                     </span>
                   </div>
 

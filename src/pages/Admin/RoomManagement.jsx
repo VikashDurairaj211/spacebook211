@@ -137,12 +137,13 @@ function normalizeFacilities(facilities, masterFacilities = []) {
 
 function formatRoomNumber(code, index = 0, moduleId = 1) {
   if (!code || code === '-' || String(code).trim() === '') {
-    const mod = Number(moduleId) === 2 ? 'EO2' : 'EO1'
+    const mod = Number(moduleId) === 3 ? 'TO1' : Number(moduleId) === 2 ? 'EO2' : 'EO1'
     const num = String(index + 1).padStart(3, '0')
-    return `CBE-05-${mod}-${num}`
+    const loc = Number(moduleId) === 3 ? 'CBE-04' : 'CBE-05'
+    return `${loc}-${mod}-${num}`
   }
   let str = String(code).trim().toUpperCase()
-  str = str.replace(/E0/g, 'EO')
+  str = str.replace(/E0/g, 'EO').replace(/T0/g, 'TO')
   return str
 }
 
@@ -310,6 +311,48 @@ const DEFAULT_INITIAL_ROOMS = [
     status: 'Available',
     isBlocked: false,
     facilities: [{ id: 1, name: 'Monitor' }, { id: 2, name: 'Whiteboard' }],
+  },
+  {
+    id: 9,
+    roomId: 9,
+    roomName: 'Conference Room',
+    roomNumber: 'CBE-04-TO1-001',
+    module: 'Module 1 - Tidel Park - CMB',
+    moduleId: 3,
+    roomType: 'Conference',
+    roomTypeId: 1,
+    capacity: 16,
+    status: 'Available',
+    isBlocked: false,
+    facilities: [{ id: 1, name: 'Projector' }, { id: 2, name: 'Whiteboard' }],
+  },
+  {
+    id: 10,
+    roomId: 10,
+    roomName: 'Discussion Room 1',
+    roomNumber: 'CBE-04-TO1-002',
+    module: 'Module 1 - Tidel Park - CMB',
+    moduleId: 3,
+    roomType: 'Discussion',
+    roomTypeId: 3,
+    capacity: 8,
+    status: 'Available',
+    isBlocked: false,
+    facilities: [{ id: 1, name: 'Monitor' }, { id: 2, name: 'Whiteboard' }],
+  },
+  {
+    id: 11,
+    roomId: 11,
+    roomName: 'Training Room',
+    roomNumber: 'CBE-04-TO1-003',
+    module: 'Module 1 - Tidel Park - CMB',
+    moduleId: 3,
+    roomType: 'Training',
+    roomTypeId: 2,
+    capacity: 25,
+    status: 'Available',
+    isBlocked: false,
+    facilities: [{ id: 1, name: 'Projector' }, { id: 2, name: 'Whiteboard' }, { id: 3, name: 'TV' }],
   },
 ]
 
@@ -743,11 +786,23 @@ export default function RoomManagement() {
         const roomNameStr = String(room.roomname ?? room.roomName ?? room.name ?? 'Unnamed Room')
         const roomType = getRoomTypeName(room)
         const roomFacilities = normalizeFacilities(room.facilities, resolvedFacData)
-        const moduleId = Number(room.moduleid ?? room.moduleId ?? (String(roomNumberRaw).includes('EO2') || String(roomNumberRaw).includes('E02') ? 2 : 1))
+        const moduleId = Number(
+          room.moduleid ??
+          room.moduleId ??
+          (String(roomNumberRaw).includes('TO1') || String(roomNumberRaw).includes('T01') || String(room.module || '').includes('Tidel')
+            ? 3
+            : String(roomNumberRaw).includes('EO2') || String(roomNumberRaw).includes('E02')
+            ? 2
+            : 1)
+        )
         const moduleName =
           room.module ??
           room.moduleName ??
-          (moduleId === 2 ? 'Module 2 - Elcot Park - CMB' : 'Module 1 - Elcot Park - CMB')
+          (moduleId === 3
+            ? 'Module 1 - Tidel Park - CMB'
+            : moduleId === 2
+            ? 'Module 2 - Elcot Park - CMB'
+            : 'Module 1 - Elcot Park - CMB')
 
         const formattedRoomNumber = formatRoomNumber(roomNumberRaw, idx, moduleId)
 
@@ -755,7 +810,12 @@ export default function RoomManagement() {
         let status = 'Available'
         if (overriddenStatus) {
           status = overriddenStatus === 'Maintenance' ? 'Maintenance' : 'Available'
-        } else if (String(room.status || '').toLowerCase() === 'maintenance') {
+        } else if (
+          String(room.status || '').toLowerCase() === 'maintenance' ||
+          room.isBlocked === true ||
+          room.IsBlocked === true ||
+          checkIfRoomIsBlocked(room)
+        ) {
           status = 'Maintenance'
         } else {
           status = 'Available'
@@ -969,7 +1029,9 @@ export default function RoomManagement() {
 
         // 3. Update status endpoint as well
         try {
-          await updateAdminRoomStatus(selectedRoomId, isBlocked)
+          const shouldBlock = selectedStatus === 'Maintenance'
+          saveBlockedRoomId(selectedRoomId, shouldBlock)
+          await updateAdminRoomStatus(selectedRoomId, shouldBlock)
         } catch {
           // ignore
         }
