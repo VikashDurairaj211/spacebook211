@@ -643,13 +643,7 @@ export default function Dashboard() {
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <DashboardCard
-          title="Total Bookings"
-          value={totalBookings}
-          tone="warning"
-        />
-
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
         <DashboardCard
           title="Upcoming"
           value={upcomingCount}

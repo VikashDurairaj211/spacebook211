@@ -104,14 +104,14 @@ const GUIDE_SECTIONS = [
         ],
       },
       {
-        title: '3. Reserving Your Hot-Seat',
+        title: '3. Booking a Workstation Desk',
         content:
-          'Click on any available green seat pin, select your expected check-in time (from 10:00 AM onwards), and confirm your reservation. You can manage or release your hot-seat from the desk panel anytime.',
+          'Select your target Date and Work Shift (Full Day 10:00 AM - 10:00 PM, Morning 10:00 AM - 04:00 PM, or Afternoon 04:00 PM - 10:00 PM). Select your Module floor, pick any Green available seat, and confirm. Your desk turns blue upon selection and red once confirmed.',
       },
       {
-        title: '4. Hassle-Free Hot-Seat Cancellation',
+        title: '4. Checking In & QR Code Workflow',
         content:
-          'If your plans change, cancelling a hot-seat is quick and effortless. Simply click "Cancel" on your hot-seat booking—no cancellation reason is required, and the seat is immediately freed for your colleagues.',
+          'Once booked, your workstation card appears under the map. When arriving at the office, click "Check In" or scan the desk QR code to confirm your physical presence.',
       },
     ],
   },

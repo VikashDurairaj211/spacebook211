@@ -16,6 +16,7 @@ import Card from "../components/common/Card";
 import Button from "../components/common/Button";
 import Modal from "../components/common/Modal";
 import { Field, Input } from "../components/common/Input";
+import ScrollableTimePicker from "../components/common/ScrollableTimePicker";
 import { useToast } from "../components/common/ToastProvider";
 
 export default function MyBookings() {
@@ -1836,31 +1837,22 @@ export default function MyBookings() {
 
                 </Field>
 
-                <Field label="Expected Check-in Time">
-
-                  <Input
-                    type="time"
-                    value={formatDisplayTime(
-                      selected.expectedCheckIn ||
-                      selected.startTime
-                    )}
-                    onChange={(e) =>
-                      setSelected({
-                        ...selected,
-
-                        expectedCheckIn:
-                          e.target.value,
-
-                        startTime:
-                          e.target.value,
-
-                        endTime:
-                          e.target.value,
-                      })
-                    }
-                  />
-
-                </Field>
+                <ScrollableTimePicker
+                  label="Expected Check-in Time"
+                  value={formatDisplayTime(
+                    selected.expectedCheckIn ||
+                    selected.startTime
+                  )}
+                  onChange={(val) =>
+                    setSelected({
+                      ...selected,
+                      expectedCheckIn: val,
+                      startTime: val,
+                      endTime: val,
+                    })
+                  }
+                  selectedDate={selected.bookingDate || selected.date}
+                />
 
                 <p className="text-xs text-slate-500">
                   Change the date or expected check-in
@@ -1877,45 +1869,34 @@ export default function MyBookings() {
               <>
                 <div className="grid grid-cols-2 gap-3">
 
-                  <Field label="Start Time">
+                  <ScrollableTimePicker
+                    label="Start Time"
+                    value={formatDisplayTime(
+                      selected.startTime
+                    )}
+                    onChange={(val) =>
+                      setSelected({
+                        ...selected,
+                        startTime: val,
+                      })
+                    }
+                    selectedDate={selected.bookingDate || selected.date}
+                  />
 
-                    <Input
-                      type="time"
-                      min="10:00"
-                      max="22:00"
-                      value={formatDisplayTime(
-                        selected.startTime
-                      )}
-                      onChange={(e) =>
-                        setSelected({
-                          ...selected,
-                          startTime:
-                            e.target.value,
-                        })
-                      }
-                    />
-
-                  </Field>
-
-                  <Field label="End Time">
-
-                    <Input
-                      type="time"
-                      min="10:00"
-                      max="22:00"
-                      value={formatDisplayTime(
-                        selected.endTime
-                      )}
-                      onChange={(e) =>
-                        setSelected({
-                          ...selected,
-                          endTime:
-                            e.target.value,
-                        })
-                      }
-                    />
-
-                  </Field>
+                  <ScrollableTimePicker
+                    label="End Time"
+                    value={formatDisplayTime(
+                      selected.endTime
+                    )}
+                    onChange={(val) =>
+                      setSelected({
+                        ...selected,
+                        endTime: val,
+                      })
+                    }
+                    selectedDate={selected.bookingDate || selected.date}
+                    minTime={selected.startTime}
+                  />
 
                 </div>
 

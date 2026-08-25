@@ -36,3 +36,18 @@ export async function getHotseatStats() {
   const { data } = await client.get("/Hotseat/stats");
   return data;
 }
+
+export async function getAdminHotseatBookings(params = {}) {
+  try {
+    const { data } = await client.get("/Hotseat/all", { params });
+    return data;
+  } catch (err) {
+    // Fallback if /Hotseat/all is not exposed
+    try {
+      const { data } = await client.get("/Hotseat", { params });
+      return data;
+    } catch {
+      return [];
+    }
+  }
+}

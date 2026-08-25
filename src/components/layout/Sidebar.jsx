@@ -1,10 +1,10 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Search, CalendarRange, MapPin, ShieldCheck, Building2, BookOpenCheck, BarChart3, Clock } from 'lucide-react'
+import { LayoutDashboard, Search, CalendarRange, MapPin, ShieldCheck, Building2, BookOpenCheck, Armchair, BarChart3, Clock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/search-rooms', label: 'Search Rooms', icon: Search },
+  { to: '/search-rooms', label: 'Workspace Search', icon: Search },
   { to: '/availability-calendar', label: 'Availability Calendar', icon: CalendarRange },
   { to: '/office-map', label: 'Hotseat Reservation', icon: MapPin },
 ]
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
 const ADMIN_ITEMS = [
   { to: '/admin/reports', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/room-management', label: 'Workspace Administration', icon: Building2 },
+  { to: '/admin/hotseat-management', label: 'Hotseat Management', icon: Armchair },
 ]
 
 export default function Sidebar({ collapsed = true, modules = [], bookings = [] }) {
@@ -50,6 +51,33 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
 
             {!collapsed && (
               <div className="pt-2 space-y-4">
+                {/* Facility Overview Card */}
+                <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-800">
+                      Facility Overview
+                    </span>
+                    <Building2 size={14} className="text-sky-600" />
+                  </div>
+
+                  <div className="space-y-2 pt-1">
+                    <div className="text-[11px] leading-snug">
+                      <p className="font-bold text-sky-950">Discussion Rooms:</p>
+                      <p className="text-slate-600">8 to 10 People (Monitor, Speaker, Video Conferencing, Whiteboard, Wi-Fi)</p>
+                    </div>
+
+                    <div className="text-[11px] leading-snug">
+                      <p className="font-bold text-sky-950">Conference Rooms:</p>
+                      <p className="text-slate-600">Up to 20 People (Monitor, Speaker, Video Conferencing, Wi-Fi)</p>
+                    </div>
+
+                    <div className="text-[11px] leading-snug">
+                      <p className="font-bold text-sky-950">Training Rooms:</p>
+                      <p className="text-slate-600">Up to 50 People (Mike, Projector, Speaker, Wi-Fi)</p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Office Policy Card */}
                 <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">

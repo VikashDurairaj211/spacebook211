@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import FloorMapModule1 from "./FloorMapModule1";
 import FloorMapModule2 from "./FloorMapModule2";
+import FloorMapTidalParkModule1 from "./FloorMapModule1Tidal";
 import "../../index.css";
 import {
   CheckCircle2,
@@ -12,6 +13,7 @@ import Card from "../../components/common/Card";
 import Button from "../../components/common/Button";
 import Modal from "../../components/common/Modal";
 import { Field, Input } from "../../components/common/Input";
+import ScrollableTimePicker from "../../components/common/ScrollableTimePicker";
 import { useToast } from "../../components/common/ToastProvider";
 import {
   getMyBookings,
@@ -134,172 +136,7 @@ function Select({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Dual Column Time Picker (Starts at 10:00 AM)
-// ---------------------------------------------------------------------------
 
-function CustomTimePicker({ value, onChange, selectedDate }) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef(null);
-
-  const now = new Date();
-  const todayKey = getTodayKey();
-  const isToday = selectedDate === todayKey;
-
-  const currentHour = now.getHours();
-  const currentMin = now.getMinutes();
-
-  const [selectedHour, selectedMin] = value && value.includes(":")
-    ? value.split(":")
-    : ["", ""];
-
-  const hours = Array.from(
-    { length: 13 },
-    (_, i) => String(i + 10).padStart(2, "0")
-  );
-
-  const minutes = Array.from(
-    { length: 60 },
-    (_, i) => String(i).padStart(2, "0")
-  );
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target)
-      ) {
-        setOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleHourSelect = (hr) => {
-    if (isToday && parseInt(hr, 10) < currentHour) {
-      return;
-    }
-
-    onChange(`${hr}:${selectedMin || "00"}`);
-  };
-
-  const handleMinSelect = (mn) => {
-    if (
-      isToday &&
-      parseInt(selectedHour, 10) === currentHour &&
-      parseInt(mn, 10) < currentMin
-    ) {
-      return;
-    }
-
-    onChange(`${selectedHour || "10"}:${mn}`);
-  };
-
-  const displayTime = () => {
-    if (!value || !value.includes(":")) {
-      return "Select time";
-    }
-
-    return value;
-  };
-
-  return (
-    <div className="relative w-full" ref={containerRef}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 focus:border-[#2F6FE0] focus:outline-none transition-colors"
-      >
-        <span>{displayTime()}</span>
-
-        <ChevronDown size={16} className="text-slate-500" />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-full mt-1 w-full z-50 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
-          <div className="grid grid-cols-2 gap-2">
-
-            {/* HOURS */}
-            <div>
-              <div className="text-[11px] font-semibold text-slate-600 text-center py-1 border-b border-slate-100">
-                Hour
-              </div>
-
-              <div className="max-h-44 overflow-y-auto pr-1 flex flex-col gap-1 mt-1 scrollbar-thin">
-                {hours.map((hr) => {
-                  const isPast =
-                    isToday &&
-                    parseInt(hr, 10) < currentHour;
-
-                  const isSelected = hr === selectedHour;
-
-                  return (
-                    <button
-                      key={hr}
-                      type="button"
-                      disabled={isPast}
-                      onClick={() => handleHourSelect(hr)}
-                      className={`w-full py-1.5 rounded text-xs font-semibold transition-colors text-center ${
-                        isSelected
-                          ? "bg-[#2F6FE0] text-white"
-                          : isPast
-                          ? "text-slate-300 bg-slate-50 cursor-not-allowed opacity-50"
-                          : "text-slate-700 hover:bg-slate-100"
-                      }`}
-                    >
-                      {hr}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* MINUTES */}
-            <div>
-              <div className="text-[11px] font-semibold text-slate-600 text-center py-1 border-b border-slate-100">
-                Min
-              </div>
-
-              <div className="max-h-44 overflow-y-auto pr-1 flex flex-col gap-1 mt-1 scrollbar-thin">
-                {minutes.map((mn) => {
-                  const isPast =
-                    isToday &&
-                    parseInt(selectedHour, 10) === currentHour &&
-                    parseInt(mn, 10) < currentMin;
-
-                  const isSelected = mn === selectedMin;
-
-                  return (
-                    <button
-                      key={mn}
-                      type="button"
-                      disabled={isPast}
-                      onClick={() => handleMinSelect(mn)}
-                      className={`w-full py-1.5 rounded text-xs font-semibold transition-colors text-center ${
-                        isSelected
-                          ? "bg-[#2F6FE0] text-white"
-                          : isPast
-                          ? "text-slate-300 bg-slate-50 cursor-not-allowed opacity-50"
-                          : "text-slate-700 hover:bg-slate-100"
-                      }`}
-                    >
-                      {mn}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Toast Notification
@@ -430,8 +267,8 @@ export default function HotseatBookingApp() {
   const [conflictData, setConflictData] = useState(null);
   const toast = useToast();
 
-  const tomorrow = getTomorrowKey();
-  const [targetDate, setTargetDate] = useState(isWeekend(tomorrow) ? getTodayKey() : tomorrow);
+  const today = getTodayKey();
+  const [targetDate, setTargetDate] = useState(today);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem("spacebook_token") || "";
@@ -479,9 +316,28 @@ export default function HotseatBookingApp() {
             bookedByUserId: s.bookedByUserId || s.userId || null,
           }));
 
+        const tidalSeats = Array.from({ length: 224 }, (_, i) => {
+          const num = i + 1;
+          const seatCode = `WS-04-${String(num).padStart(3, "0")}`;
+          const found = seatArray.find(
+            (s) =>
+              String(s.seatNumber || "").toLowerCase() === seatCode.toLowerCase()
+          );
+          return {
+            id: seatCode,
+            label: `Seat ${num}`,
+            number: num,
+            modulePrefix: "WS-04",
+            type: "hotseat",
+            status: found ? String(found.status || "available").toLowerCase() : "available",
+            bookedByUserId: found?.bookedByUserId || found?.userId || null,
+          };
+        });
+
         setModules([
-          { id: "module1", label: "Module 1", seats: module1Seats, rooms: [] },
-          { id: "module2", label: "Module 2", seats: module2Seats, rooms: [] },
+          { id: "module1", label: "Module 1", office: "Elcot Park", seats: module1Seats, rooms: [] },
+          { id: "module2", label: "Module 2", office: "Elcot Park", seats: module2Seats, rooms: [] },
+          { id: "tidal-module1", label: "Module 1", office: "Tidal Park", seats: tidalSeats, rooms: [] },
         ]);
       }
 
@@ -821,7 +677,7 @@ function OfficeMapTab({
   setTargetDate,
 }) {
   const [location, setLocation] = useState("Coimbatore");
-  const [zone, setZone] = useState("Elcot Park");
+  const [zone, setZone] = useState("Tidal Park");
   const [moduleId, setModuleId] = useState("module1");
   const [active, setActive] = useState(null);
   const [bookingResult, setBookingResult] = useState(null);
@@ -830,9 +686,36 @@ function OfficeMapTab({
   const tomorrow = getTomorrowKey();
 
   const LOCATIONS = ["Coimbatore"];
-  const ZONES = ["Elcot Park"];
+  const ZONES = ["Tidal Park", "Elcot Park"];
 
-  const currentModule = modules.find((m) => m.id === moduleId);
+  const isTidalPark =
+    String(zone).toLowerCase().includes("tidal") ||
+    String(zone).toLowerCase().includes("tidel");
+
+  const availableModuleOptions = isTidalPark
+    ? [{ value: "module1", label: "Module 1" }]
+    : [
+        { value: "module1", label: "Module 1" },
+        { value: "module2", label: "Module 2" },
+      ];
+
+  const currentModule = isTidalPark
+    ? modules.find((m) => m.office === "Tidal Park") || {
+        id: "tidal-module1",
+        label: "Module 1",
+        office: "Tidal Park",
+        seats: Array.from({ length: 224 }, (_, i) => ({
+          id: `WS-04-${String(i + 1).padStart(3, "0")}`,
+          label: `Seat ${i + 1}`,
+          number: i + 1,
+          modulePrefix: "WS-04",
+          type: "hotseat",
+          status: "available",
+        })),
+      }
+    : modules.find((m) => m.id === moduleId && m.office === "Elcot Park") ||
+      modules.find((m) => m.id === moduleId);
+
   const readyForModule = location && zone;
 
   const myBookingForDate = bookings.find((b) => {
@@ -947,7 +830,7 @@ function OfficeMapTab({
             value={location}
             onChange={(v) => {
               setLocation(v);
-              setModuleId("");
+              setModuleId("module1");
               setActive(null);
             }}
             options={LOCATIONS}
@@ -961,7 +844,7 @@ function OfficeMapTab({
             value={zone}
             onChange={(v) => {
               setZone(v);
-              setModuleId("");
+              setModuleId("module1");
               setActive(null);
             }}
             options={ZONES}
@@ -977,14 +860,7 @@ function OfficeMapTab({
               setModuleId(v);
               setActive(null);
             }}
-            options={
-              readyForModule
-                ? modules.map((m) => ({
-                    value: m.id,
-                    label: m.label,
-                  }))
-                : []
-            }
+            options={readyForModule ? availableModuleOptions : []}
             placeholder={readyForModule ? "Select Module" : "Choose Office First"}
           />
 
@@ -1022,7 +898,15 @@ function OfficeMapTab({
       {/* FLOOR MAP */}
       {currentModule && (
         <Card className="office-map-active p-6">
-          {moduleId === "module1" && (
+          {isTidalPark && moduleId === "module1" && (
+            <FloorMapTidalParkModule1
+              seats={currentSeats}
+              onSelect={handleSelectSeat}
+              activeSeatId={active?.id}
+            />
+          )}
+
+          {!isTidalPark && moduleId === "module1" && (
             <FloorMapModule1
               seats={currentSeats}
               onSelect={handleSelectSeat}
@@ -1030,7 +914,7 @@ function OfficeMapTab({
             />
           )}
 
-          {moduleId === "module2" && (
+          {!isTidalPark && moduleId === "module2" && (
             <FloorMapModule2
               seats={currentSeats}
               onSelect={handleSelectSeat}
@@ -1302,7 +1186,7 @@ function BookingDialog({
               Expected check-in time
             </label>
 
-            <CustomTimePicker
+            <ScrollableTimePicker
               value={expectedCheckIn}
               onChange={setExpectedCheckIn}
               selectedDate={date}
