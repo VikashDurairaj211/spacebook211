@@ -305,21 +305,21 @@ export default function FloorMapTidalParkModule1({
 
         .tp-header-banner {
           text-align: center;
-          margin-bottom: 6px;
+          margin-bottom: 12px;
         }
 
         .tp-title {
           color: #071d61;
-          font-size: clamp(12px, 1.2vw, 16px);
+          font-size: clamp(13px, 1.3vw, 17px);
           font-weight: 800;
-          line-height: 1.1;
-          letter-spacing: 0.025em;
+          line-height: 1.2;
+          letter-spacing: 0.03em;
           text-transform: uppercase;
         }
 
         .tp-subtitle {
           color: #64748b;
-          font-size: clamp(8.5px, 0.75vw, 10.5px);
+          font-size: clamp(9px, 0.8vw, 11px);
           font-weight: 600;
           letter-spacing: 0.03em;
           margin-top: 2px;
@@ -331,12 +331,13 @@ export default function FloorMapTidalParkModule1({
           display: flex;
           justify-content: center;
           align-items: flex-start;
-          gap: clamp(40px, 6vw, 84px);
-          padding: 14px 20px;
+          gap: clamp(60px, 9vw, 130px);
+          padding: 20px 32px;
           box-sizing: border-box;
           background: #ffffff;
           border: 1px solid #e2e8f0;
-          border-radius: 8px;
+          border-radius: 10px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
           overflow-x: auto;
         }
 
@@ -344,7 +345,8 @@ export default function FloorMapTidalParkModule1({
           .tp-floor-map {
             flex-direction: column;
             align-items: center;
-            gap: 20px;
+            gap: 24px;
+            padding: 16px;
           }
         }
 
@@ -353,7 +355,7 @@ export default function FloorMapTidalParkModule1({
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 14px;
+          gap: 28px;
           min-width: max-content;
         }
 
@@ -362,7 +364,7 @@ export default function FloorMapTidalParkModule1({
           display: flex;
           justify-content: center;
           align-items: center;
-          margin-bottom: 0px;
+          margin-bottom: 14px;
         }
 
         .tp-room {
@@ -371,11 +373,11 @@ export default function FloorMapTidalParkModule1({
           justify-content: center;
           text-align: center;
           box-sizing: border-box;
-          width: 82%;
-          max-width: 180px;
-          height: clamp(38px, 4.8vw, 54px);
+          width: 85%;
+          max-width: 200px;
+          height: clamp(40px, 5.0vw, 56px);
           border-radius: 8px;
-          font-size: clamp(8px, 0.75vw, 11px);
+          font-size: clamp(8.5px, 0.8vw, 11.5px);
           line-height: 1.2;
           font-weight: 800;
           letter-spacing: 0.04em;
@@ -392,24 +394,24 @@ export default function FloorMapTidalParkModule1({
           width: 100%;
           min-width: max-content;
           box-sizing: border-box;
-          padding: 2px;
+          padding: 4px;
           background: transparent;
         }
 
         .tp-section-title {
           width: max-content;
           max-width: 95%;
-          margin: 0 auto 3px;
-          padding: 2px 8px;
+          margin: 0 auto 6px;
+          padding: 2.5px 12px;
           box-sizing: border-box;
           background: #062268;
           color: #ffffff;
           border-radius: 4px;
           text-align: center;
-          font-size: clamp(7.5px, 0.7vw, 10px);
-          line-height: 1.1;
+          font-size: clamp(8px, 0.75vw, 10.5px);
+          line-height: 1.2;
           font-weight: 800;
-          letter-spacing: 0.02em;
+          letter-spacing: 0.025em;
           white-space: nowrap;
         }
 
@@ -417,10 +419,10 @@ export default function FloorMapTidalParkModule1({
           display: grid;
           justify-content: center;
           align-items: center;
-          gap: 2px;
-          margin-bottom: 2px;
+          gap: 3.5px;
+          margin-bottom: 4px;
           color: #071d61;
-          font-size: clamp(7px, 0.62vw, 9px);
+          font-size: clamp(7.5px, 0.68vw, 9.5px);
           line-height: 1;
           text-align: center;
         }
@@ -433,7 +435,7 @@ export default function FloorMapTidalParkModule1({
           width: 100%;
           display: flex;
           flex-direction: column;
-          gap: 2px;
+          gap: 3.5px;
           align-items: center;
         }
 
@@ -441,16 +443,16 @@ export default function FloorMapTidalParkModule1({
           display: grid;
           justify-content: center;
           align-items: center;
-          gap: 2px;
+          gap: 3.5px;
         }
 
         .tp-row-label {
           color: #071d61;
-          font-size: clamp(7px, 0.62vw, 9px);
+          font-size: clamp(7.5px, 0.68vw, 9.5px);
           line-height: 1;
           font-weight: 700;
           text-align: left;
-          padding-right: 2px;
+          padding-right: 3px;
         }
 
         .tp-seat-cell {
