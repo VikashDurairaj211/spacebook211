@@ -274,11 +274,17 @@ export default function HotseatBookingApp() {
   const [moduleId, setModuleId] = useState("module1");
 
   const getAuthHeaders = () => {
-    const token = localStorage.getItem("spacebook_token") || "";
+    let token =
+      localStorage.getItem("spacebook_token") ||
+      localStorage.getItem("token") ||
+      "";
+    if (token && !token.startsWith("Bearer ")) {
+      token = `Bearer ${token}`;
+    }
 
     return {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: token } : {}),
     };
   };
 
@@ -299,6 +305,8 @@ export default function HotseatBookingApp() {
           .filter((s) => s.seatNumber?.includes("EO1"))
           .map((s) => ({
             id: s.seatNumber,
+            seatNumber: s.seatNumber,
+            seatId: s.seatId ?? s.id ?? parseInt(s.seatNumber.split("-").pop(), 10),
             label: `Seat ${s.seatNumber.split("-").pop()}`,
             number: parseInt(s.seatNumber.split("-").pop(), 10),
             modulePrefix: "EO1",
@@ -311,6 +319,8 @@ export default function HotseatBookingApp() {
           .filter((s) => s.seatNumber?.includes("EO2"))
           .map((s) => ({
             id: s.seatNumber,
+            seatNumber: s.seatNumber,
+            seatId: s.seatId ?? s.id ?? (parseInt(s.seatNumber.split("-").pop(), 10) + 98),
             label: `Seat ${s.seatNumber.split("-").pop()}`,
             number: parseInt(s.seatNumber.split("-").pop(), 10),
             modulePrefix: "EO2",
@@ -321,13 +331,25 @@ export default function HotseatBookingApp() {
 
         const tidalSeats = Array.from({ length: 224 }, (_, i) => {
           const num = i + 1;
-          const seatCode = `WS-04-${String(num).padStart(3, "0")}`;
-          const found = seatArray.find(
-            (s) =>
-              String(s.seatNumber || "").toLowerCase() === seatCode.toLowerCase()
-          );
+          const pad3 = `WS-04-${String(num).padStart(3, "0")}`;
+          const pad2 = `WS-04-${String(num).padStart(2, "0")}`;
+          const pad1 = `WS-04-${num}`;
+
+          const found = seatArray.find((s) => {
+            const sn = String(s.seatNumber || "").trim().toLowerCase();
+            return (
+              sn === pad3.toLowerCase() ||
+              sn === pad2.toLowerCase() ||
+              sn === pad1.toLowerCase() ||
+              (sn.startsWith("ws") && parseInt(sn.split("-").pop(), 10) === num) ||
+              (sn.includes("tidel") && parseInt(sn.replace(/[^0-9]/g, ""), 10) === num)
+            );
+          });
+
           return {
-            id: seatCode,
+            id: found?.seatNumber || pad3,
+            seatNumber: found?.seatNumber || pad3,
+            seatId: found?.seatId ?? found?.id ?? 0,
             label: `Seat ${num}`,
             number: num,
             modulePrefix: "WS-04",
@@ -372,62 +394,88 @@ export default function HotseatBookingApp() {
     }
 
     try {
-      const numericSeatId = parseInt(item.id.replace(/[^0-9]/g, "").slice(-3), 10);
-      
+      let resolvedSeatNumber = item.seatNumber || item.id || `WS-04-${String(item.number || 1).padStart(3, "0")}`;
+      const numFromId =
+        parseInt(String(resolvedSeatNumber).split("-").pop(), 10) ||
+        item.number ||
+        1;
+
+      let resolvedSeatId = item.seatId;
+      if (resolvedSeatId === undefined || resolvedSeatId === null) {
+        if (item.modulePrefix === "EO2" || String(resolvedSeatNumber).includes("EO2")) {
+          resolvedSeatId = numFromId + 98;
+        } else if (item.modulePrefix === "WS-04" || String(resolvedSeatNumber).startsWith("WS")) {
+          resolvedSeatId = 0;
+        } else {
+          resolvedSeatId = numFromId;
+        }
+      }
+
       const rawTime = String(expectedCheckIn || "10:00");
       const formattedTime = rawTime.length === 5 ? `${rawTime}:00` : rawTime.slice(0, 8);
-
-      const actualSeatId =
-        item.modulePrefix === "EO2"
-          ? numericSeatId + 98
-          : numericSeatId;
 
       const formattedBookingDate = targetDate.includes("T")
         ? targetDate.substring(0, 10)
         : targetDate;
 
-      // Always fetch the freshest office seats right before attempting to reserve.
-      const latestSeatsResponse = await fetch(
-        `${API_BASE}/seats?date=${formattedBookingDate}`,
-        {
-          headers: getAuthHeaders(),
-        }
-      );
-
-      if (latestSeatsResponse.ok) {
-        const latestSeatsData = await latestSeatsResponse.json();
-        const latestSeats = Array.isArray(latestSeatsData)
-          ? latestSeatsData
-          : latestSeatsData?.seats || [];
-
-        const latestSeat = latestSeats.find(
-          (seat) =>
-            String(seat.seatNumber || "").toLowerCase() ===
-            String(item.id || "").toLowerCase()
+      // Check if backend returned a matching seat in the latest API check
+      try {
+        const latestSeatsResponse = await fetch(
+          `${API_BASE}?date=${formattedBookingDate}`,
+          {
+            headers: getAuthHeaders(),
+          }
         );
 
-        const latestStatus = String(
-          latestSeat?.status || ""
-        ).toLowerCase();
+        if (latestSeatsResponse.ok) {
+          const latestSeatsData = await latestSeatsResponse.json();
+          const latestSeats = Array.isArray(latestSeatsData)
+            ? latestSeatsData
+            : latestSeatsData?.seats || [];
 
-        if (
-          latestStatus === "booked" ||
-          latestStatus === "occupied" ||
-          latestStatus === "reserved"
-        ) {
-          await fetchOfficeData();
+          const latestSeat = latestSeats.find((seat) => {
+            const sn = String(seat.seatNumber || "").trim().toLowerCase();
+            const targetSn = String(resolvedSeatNumber).trim().toLowerCase();
+            return (
+              sn === targetSn ||
+              (sn.startsWith("ws") && parseInt(sn.split("-").pop(), 10) === numFromId) ||
+              (seat.seatId && seat.seatId === resolvedSeatId) ||
+              (seat.id && seat.id === resolvedSeatId)
+            );
+          });
 
-          return {
-            ok: false,
-            message:
-              "This seat was just booked by another user. Please choose another seat.",
-          };
+          if (latestSeat) {
+            if (latestSeat.seatId !== undefined && latestSeat.seatId !== null) {
+              resolvedSeatId = latestSeat.seatId;
+            } else if (latestSeat.id !== undefined && latestSeat.id !== null) {
+              resolvedSeatId = latestSeat.id;
+            }
+            if (latestSeat.seatNumber) {
+              resolvedSeatNumber = latestSeat.seatNumber;
+            }
+
+            const latestStatus = String(latestSeat.status || "").toLowerCase();
+            if (
+              latestStatus === "booked" ||
+              latestStatus === "occupied" ||
+              latestStatus === "reserved"
+            ) {
+              await fetchOfficeData();
+              return {
+                ok: false,
+                message:
+                  "This seat was just booked by another user. Please choose another seat.",
+              };
+            }
+          }
         }
+      } catch (err) {
+        console.warn("Seat availability pre-check failed (continuing to booking):", err);
       }
 
       const payload = {
-        seatId: actualSeatId,
-        seatNumber: item.id,
+        seatId: Number(resolvedSeatId) || 0,
+        seatNumber: resolvedSeatNumber,
         bookingDate: formattedBookingDate,
         expectedCheckInTime: formattedTime,
       };
@@ -490,20 +538,18 @@ export default function HotseatBookingApp() {
 
       showCustomToast(
         "Booking Confirmed!",
-        `Successfully booked ${item.label} for ${targetDate}`
+        `Successfully booked ${resolvedSeatNumber} for ${targetDate}`
       );
 
       window.dispatchEvent(new Event("booking-updated"));
       await fetchOfficeData();
 
-      // Some API responses expose the booking immediately in /my-bookings
-      // while the seat endpoint can briefly return its old status. Reconcile
-      // the just-booked seat locally so the map becomes RED immediately.
+      // Reconcile the just-booked seat locally so the map becomes RED immediately
       setModules((currentModules) =>
         currentModules.map((module) => ({
           ...module,
           seats: (module.seats || []).map((seat) =>
-            seat.id === item.id
+            seat.id === item.id || seat.seatNumber === resolvedSeatNumber
               ? {
                   ...seat,
                   status: "occupied",
@@ -527,20 +573,29 @@ export default function HotseatBookingApp() {
     }
 
     try {
-      const numericSeatId = parseInt(changes.seatId.replace(/[^0-9]/g, "").slice(-3), 10);
       const rawTime = String(changes.expectedCheckIn || "10:00");
       const formattedTime = rawTime.length === 5 ? `${rawTime}:00` : rawTime.slice(0, 8);
-
-      const actualSeatId = changes.seatId.includes("EO2")
-        ? numericSeatId + 98
-        : numericSeatId;
 
       const formattedBookingDate = changes.date.includes("T")
         ? changes.date.substring(0, 10)
         : changes.date;
 
+      const numFromId =
+        parseInt(String(changes.seatId || "").split("-").pop(), 10) || 1;
+
+      let resolvedSeatId = changes.seatIdNumber;
+      if (resolvedSeatId === undefined || resolvedSeatId === null) {
+        if (String(changes.seatId).includes("EO2")) {
+          resolvedSeatId = numFromId + 98;
+        } else if (String(changes.seatId).startsWith("WS")) {
+          resolvedSeatId = 0;
+        } else {
+          resolvedSeatId = numFromId;
+        }
+      }
+
       const payload = {
-        seatId: actualSeatId,
+        seatId: Number(resolvedSeatId) || 0,
         seatNumber: changes.seatId,
         bookingDate: formattedBookingDate,
         expectedCheckInTime: formattedTime,
@@ -1069,7 +1124,7 @@ function BookingDialog({
     "";
 
   const [expectedCheckIn, setExpectedCheckIn] = useState(
-    getTimeString(rawExistingTime)
+    getTimeString(rawExistingTime) || "10:00"
   );
 
   const [confirmation, setConfirmation] = useState(null);
@@ -1202,7 +1257,12 @@ function BookingDialog({
               value={expectedCheckIn}
               onChange={setExpectedCheckIn}
               selectedDate={date}
+              placeholder="Select time (10:00 AM - 10:00 PM)"
             />
+
+            <p className="mt-1 text-[11px] text-slate-500">
+              Check-in window: <span className="font-semibold text-slate-700">10:00 AM – 10:00 PM</span>
+            </p>
           </div>
 
           {error && (

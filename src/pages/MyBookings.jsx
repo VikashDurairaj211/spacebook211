@@ -79,6 +79,25 @@ export default function MyBookings() {
   const getBookingModule = (booking) => {
     if (!booking) return "-";
 
+    if (booking.isHotseat || booking.seatNumber) {
+      const seat = String(booking.seatNumber || booking.roomName || "").toUpperCase();
+      const mod = String(booking.module || "").toLowerCase();
+      if (
+        seat.startsWith("WS-04") ||
+        seat.startsWith("WS") ||
+        mod.includes("tidel") ||
+        mod.includes("tidal")
+      ) {
+        return "Module 1 - Tidel Park - CMB";
+      }
+      if (seat.includes("EO2") || mod.includes("module 2") || mod.includes("eo2")) {
+        return "Module 2 - Elcot Park - CMB";
+      }
+      if (seat.includes("EO1") || mod.includes("module 1") || mod.includes("eo1")) {
+        return "Module 1 - Elcot Park - CMB";
+      }
+    }
+
     const mod =
       booking.module ||
       booking.Module ||
@@ -286,6 +305,34 @@ export default function MyBookings() {
             booking.startTime ??
             "";
 
+          const seatNum =
+            booking.seatNumber ||
+            booking.seat ||
+            booking.seatCode ||
+            (booking.roomName && String(booking.roomName).includes("Hot Seat")
+              ? String(booking.roomName).replace("Hot Seat", "").trim()
+              : "") ||
+            "";
+
+          let resolvedModule = booking.module ?? booking.Module ?? "";
+          const seatUpper = String(seatNum).toUpperCase();
+          if (!resolvedModule || resolvedModule === "-" || resolvedModule === "null") {
+            if (
+              seatUpper.startsWith("WS-04") ||
+              seatUpper.startsWith("WS") ||
+              seatUpper.includes("TIDEL") ||
+              seatUpper.includes("TIDAL")
+            ) {
+              resolvedModule = "Module 1 - Tidel Park - CMB";
+            } else if (seatUpper.includes("EO2")) {
+              resolvedModule = "Module 2 - Elcot Park - CMB";
+            } else if (seatUpper.includes("EO1")) {
+              resolvedModule = "Module 1 - Elcot Park - CMB";
+            } else {
+              resolvedModule = "Module 1 - Tidel Park - CMB";
+            }
+          }
+
           return {
             ...booking,
 
@@ -317,33 +364,29 @@ export default function MyBookings() {
 
             roomName:
               booking.roomName ||
-              (booking.seatNumber
-                ? `Hot Seat ${booking.seatNumber}`
+              (seatNum
+                ? `Hot Seat ${seatNum}`
                 : "Hot Seat"),
 
-            module:
-              booking.module ??
-              booking.Module ??
-              "-",
+            module: resolvedModule,
 
             meetingTitle:
               booking.meetingTitle ||
               booking.title ||
               booking.purpose ||
-              (booking.seatNumber ? `Hotseat (${booking.seatNumber})` : "Hotseat Booking"),
+              (seatNum ? `Hotseat (${seatNum})` : "Hotseat Booking"),
 
             purpose:
               booking.meetingTitle ||
               booking.title ||
               booking.purpose ||
-              (booking.seatNumber ? `Hotseat (${booking.seatNumber})` : "Hotseat Booking"),
+              (seatNum ? `Hotseat (${seatNum})` : "Hotseat Booking"),
 
             roomId: null,
 
             seatId: booking.seatId,
 
-            seatNumber:
-              booking.seatNumber,
+            seatNumber: seatNum,
 
             checkInTime:
               booking.checkInTime ?? null,
