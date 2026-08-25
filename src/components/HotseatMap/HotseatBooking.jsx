@@ -111,11 +111,11 @@ function Select({
 
       <div className="relative w-full">
         <select
-          value={value}
+          value={value || ""}
           onChange={(e) => onChange(e.target.value)}
           className="w-full appearance-none rounded-md border border-slate-300 bg-white px-3.5 py-2.5 pr-8 text-sm text-slate-800 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
         >
-          <option value="">{placeholder}</option>
+          {!value && placeholder && <option value="">{placeholder}</option>}
 
           {normalized.map((o) => {
             const disabledWeekend = isWeekend(o.value);
@@ -269,6 +269,9 @@ export default function HotseatBookingApp() {
 
   const today = getTodayKey();
   const [targetDate, setTargetDate] = useState(today);
+  const [location, setLocation] = useState("Coimbatore");
+  const [zone, setZone] = useState("Tidel Park");
+  const [moduleId, setModuleId] = useState("module1");
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem("spacebook_token") || "";
@@ -337,7 +340,7 @@ export default function HotseatBookingApp() {
         setModules([
           { id: "module1", label: "Module 1", office: "Elcot Park", seats: module1Seats, rooms: [] },
           { id: "module2", label: "Module 2", office: "Elcot Park", seats: module2Seats, rooms: [] },
-          { id: "tidal-module1", label: "Module 1", office: "Tidal Park", seats: tidalSeats, rooms: [] },
+          { id: "tidel-module1", label: "Module 1", office: "Tidel Park", seats: tidalSeats, rooms: [] },
         ]);
       }
 
@@ -625,7 +628,7 @@ export default function HotseatBookingApp() {
     }
   }
 
-  if (loading) {
+  if (loading && modules.length === 0) {
     return (
       <div className="p-10 text-center text-sm text-slate-500">
         Loading office space map...
@@ -657,6 +660,12 @@ export default function HotseatBookingApp() {
         setConflictData={setConflictData}
         targetDate={targetDate}
         setTargetDate={setTargetDate}
+        location={location}
+        setLocation={setLocation}
+        zone={zone}
+        setZone={setZone}
+        moduleId={moduleId}
+        setModuleId={setModuleId}
       />
     </div>
   );
@@ -675,10 +684,13 @@ function OfficeMapTab({
   setConflictData,
   targetDate,
   setTargetDate,
+  location,
+  setLocation,
+  zone,
+  setZone,
+  moduleId,
+  setModuleId,
 }) {
-  const [location, setLocation] = useState("Coimbatore");
-  const [zone, setZone] = useState("Tidal Park");
-  const [moduleId, setModuleId] = useState("module1");
   const [active, setActive] = useState(null);
   const [bookingResult, setBookingResult] = useState(null);
 
@@ -686,24 +698,24 @@ function OfficeMapTab({
   const tomorrow = getTomorrowKey();
 
   const LOCATIONS = ["Coimbatore"];
-  const ZONES = ["Tidal Park", "Elcot Park"];
+  const ZONES = ["Tidel Park", "Elcot Park"];
 
-  const isTidalPark =
-    String(zone).toLowerCase().includes("tidal") ||
-    String(zone).toLowerCase().includes("tidel");
+  const isTidelPark =
+    String(zone).toLowerCase().includes("tidel") ||
+    String(zone).toLowerCase().includes("tidal");
 
-  const availableModuleOptions = isTidalPark
+  const availableModuleOptions = isTidelPark
     ? [{ value: "module1", label: "Module 1" }]
     : [
         { value: "module1", label: "Module 1" },
         { value: "module2", label: "Module 2" },
       ];
 
-  const currentModule = isTidalPark
-    ? modules.find((m) => m.office === "Tidal Park") || {
-        id: "tidal-module1",
+  const currentModule = isTidelPark
+    ? modules.find((m) => m.office === "Tidel Park" || m.office === "Tidal Park") || {
+        id: "tidel-module1",
         label: "Module 1",
-        office: "Tidal Park",
+        office: "Tidel Park",
         seats: Array.from({ length: 224 }, (_, i) => ({
           id: `WS-04-${String(i + 1).padStart(3, "0")}`,
           label: `Seat ${i + 1}`,
@@ -898,7 +910,7 @@ function OfficeMapTab({
       {/* FLOOR MAP */}
       {currentModule && (
         <Card className="office-map-active p-6">
-          {isTidalPark && moduleId === "module1" && (
+          {isTidelPark && moduleId === "module1" && (
             <FloorMapTidalParkModule1
               seats={currentSeats}
               onSelect={handleSelectSeat}
@@ -906,7 +918,7 @@ function OfficeMapTab({
             />
           )}
 
-          {!isTidalPark && moduleId === "module1" && (
+          {!isTidelPark && moduleId === "module1" && (
             <FloorMapModule1
               seats={currentSeats}
               onSelect={handleSelectSeat}
@@ -914,7 +926,7 @@ function OfficeMapTab({
             />
           )}
 
-          {!isTidalPark && moduleId === "module2" && (
+          {!isTidelPark && moduleId === "module2" && (
             <FloorMapModule2
               seats={currentSeats}
               onSelect={handleSelectSeat}
