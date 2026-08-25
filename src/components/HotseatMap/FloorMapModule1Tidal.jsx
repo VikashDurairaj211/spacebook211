@@ -331,8 +331,8 @@ export default function FloorMapTidalParkModule1({
           display: flex;
           justify-content: center;
           align-items: flex-start;
-          gap: clamp(60px, 9vw, 130px);
-          padding: 20px 32px;
+          gap: clamp(100px, 15vw, 240px);
+          padding: 18px 28px;
           box-sizing: border-box;
           background: #ffffff;
           border: 1px solid #e2e8f0;
@@ -345,8 +345,8 @@ export default function FloorMapTidalParkModule1({
           .tp-floor-map {
             flex-direction: column;
             align-items: center;
-            gap: 24px;
-            padding: 16px;
+            gap: 16px;
+            padding: 12px;
           }
         }
 
@@ -355,7 +355,7 @@ export default function FloorMapTidalParkModule1({
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 28px;
+          gap: 10px;
           min-width: max-content;
         }
 
@@ -364,7 +364,7 @@ export default function FloorMapTidalParkModule1({
           display: flex;
           justify-content: center;
           align-items: center;
-          margin-bottom: 14px;
+          margin-bottom: 4px;
         }
 
         .tp-room {
@@ -375,7 +375,7 @@ export default function FloorMapTidalParkModule1({
           box-sizing: border-box;
           width: 85%;
           max-width: 200px;
-          height: clamp(40px, 5.0vw, 56px);
+          height: clamp(38px, 4.8vw, 54px);
           border-radius: 8px;
           font-size: clamp(8.5px, 0.8vw, 11.5px);
           line-height: 1.2;
@@ -394,24 +394,24 @@ export default function FloorMapTidalParkModule1({
           width: 100%;
           min-width: max-content;
           box-sizing: border-box;
-          padding: 4px;
+          padding: 2px;
           background: transparent;
         }
 
         .tp-section-title {
           width: max-content;
           max-width: 95%;
-          margin: 0 auto 6px;
-          padding: 2.5px 12px;
+          margin: 0 auto 4px;
+          padding: 2px 10px;
           box-sizing: border-box;
           background: #062268;
           color: #ffffff;
           border-radius: 4px;
           text-align: center;
-          font-size: clamp(8px, 0.75vw, 10.5px);
-          line-height: 1.2;
+          font-size: clamp(7.5px, 0.7vw, 10px);
+          line-height: 1.1;
           font-weight: 800;
-          letter-spacing: 0.025em;
+          letter-spacing: 0.02em;
           white-space: nowrap;
         }
 
@@ -419,10 +419,10 @@ export default function FloorMapTidalParkModule1({
           display: grid;
           justify-content: center;
           align-items: center;
-          gap: 3.5px;
-          margin-bottom: 4px;
+          gap: 2.5px;
+          margin-bottom: 2.5px;
           color: #071d61;
-          font-size: clamp(7.5px, 0.68vw, 9.5px);
+          font-size: clamp(7px, 0.62vw, 9px);
           line-height: 1;
           text-align: center;
         }
@@ -435,7 +435,7 @@ export default function FloorMapTidalParkModule1({
           width: 100%;
           display: flex;
           flex-direction: column;
-          gap: 3.5px;
+          gap: 2.5px;
           align-items: center;
         }
 
@@ -443,16 +443,16 @@ export default function FloorMapTidalParkModule1({
           display: grid;
           justify-content: center;
           align-items: center;
-          gap: 3.5px;
+          gap: 2.5px;
         }
 
         .tp-row-label {
           color: #071d61;
-          font-size: clamp(7.5px, 0.68vw, 9.5px);
+          font-size: clamp(7px, 0.62vw, 9px);
           line-height: 1;
           font-weight: 700;
           text-align: left;
-          padding-right: 3px;
+          padding-right: 2px;
         }
 
         .tp-seat-cell {
