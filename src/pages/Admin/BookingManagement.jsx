@@ -98,46 +98,37 @@ export default function BookingManagement() {
         'Fetching admin booking data from Render API...'
       )
 
-      const [statsRes, bookingsRes] = await Promise.all([
+      const [statsRes, bookingsRes] = await Promise.allSettled([
         client.get('/admin/bookings/dashboard'),
         client.get('/admin/bookings'),
       ])
-
-      console.log(
-        'Booking dashboard response:',
-        statsRes.data
-      )
-
-      console.log(
-        'Bookings response:',
-        bookingsRes.data
-      )
 
       // =====================================================
       // Dashboard Statistics
       // =====================================================
 
-      if (statsRes.data) {
+      if (statsRes.status === 'fulfilled' && statsRes.value?.data) {
+        const statsData = statsRes.value.data
         setStatusCounts({
           Pending:
-            statsRes.data.pendingRequests ??
-            statsRes.data.pendingCount ??
-            statsRes.data.Pending ??
-            statsRes.data.pending ??
+            statsData.pendingRequests ??
+            statsData.pendingCount ??
+            statsData.Pending ??
+            statsData.pending ??
             0,
 
           Confirmed:
-            statsRes.data.confirmed ??
-            statsRes.data.confirmedCount ??
-            statsRes.data.Confirmed ??
-            statsRes.data.confirmedBookings ??
+            statsData.confirmed ??
+            statsData.confirmedCount ??
+            statsData.Confirmed ??
+            statsData.confirmedBookings ??
             0,
 
           Cancelled:
-            statsRes.data.cancelled ??
-            statsRes.data.cancelledCount ??
-            statsRes.data.Cancelled ??
-            statsRes.data.cancelledBookings ??
+            statsData.cancelled ??
+            statsData.cancelledCount ??
+            statsData.Cancelled ??
+            statsData.cancelledBookings ??
             0,
         })
       }
@@ -146,73 +137,99 @@ export default function BookingManagement() {
       // Booking List
       // =====================================================
 
-      const bookingData = Array.isArray(bookingsRes.data)
-        ? bookingsRes.data
-        : bookingsRes.data?.data ||
-          bookingsRes.data?.bookings ||
-          []
+      const adminData = bookingsRes.status === 'fulfilled'
+        ? (Array.isArray(bookingsRes.value.data)
+            ? bookingsRes.value.data
+            : bookingsRes.value.data?.data ||
+              bookingsRes.value.data?.bookings ||
+              [])
+        : []
 
       // =====================================================
       // Map Backend Response
       // =====================================================
 
-      const mappedBookings = bookingData.map((b) => ({
-        // Booking ID
-        bookingId: b.bookingId ?? b.id,
+      const mappedBookings = adminData.map((b) => {
+        const id = b.bookingId ?? b.id
 
-        // Keep id for compatibility
-        id: b.bookingId ?? b.id,
+        const resolvedTitle =
+          b.meetingTitle ||
+          b.MeetingTitle ||
+          b.meeting_title ||
+          b.title ||
+          b.Title ||
+          b.meetingName ||
+          b.MeetingName ||
+          b.purpose ||
+          b.Purpose ||
+          b.subject ||
+          b.description ||
+          'Workspace Reservation'
 
-        // Meeting title
-        title:
-          b.title ??
-          b.purpose ??
-          b.meetingTitle ??
-          'Reserved Workspace',
+        return {
+          // Booking ID
+          bookingId: id,
 
-        // Room
-        roomName:
-          b.roomName ??
-          b.room?.name ??
-          `Room ${b.roomId ?? ''}`,
+          // Keep id for compatibility
+          id: id,
 
-        // Module
-        module:
-          b.module ??
-          b.moduleName ??
-          b.room?.module ??
-          'N/A',
+          // Meeting title
+          title: resolvedTitle,
+          meetingTitle: resolvedTitle,
 
-        // Date
-        date:
-          b.bookingDate ??
-          b.date ??
-          '',
+          // Room
+          roomName:
+            b.roomName ??
+            empMatch.roomName ??
+            b.room?.name ??
+            `Room ${b.roomId ?? ''}`,
 
-        // Start time
-        startTime: b.startTime
-          ? String(b.startTime).substring(0, 5)
-          : '',
+          // Module
+          module:
+            b.module ??
+            empMatch.module ??
+            b.moduleName ??
+            b.room?.module ??
+            'N/A',
 
-        // End time
-        endTime: b.endTime
-          ? String(b.endTime).substring(0, 5)
-          : '',
+          // Date
+          date:
+            b.bookingDate ??
+            empMatch.bookingDate ??
+            b.date ??
+            '',
 
-        // Employee / creator
-        createdBy:
-          b.requestedBy ??
-          b.createdBy ??
-          b.requester ??
-          b.employeeName ??
-          b.employee?.name ??
-          'Employee',
+          // Start time
+          startTime: b.startTime
+            ? String(b.startTime).substring(0, 5)
+            : empMatch.startTime
+            ? String(empMatch.startTime).substring(0, 5)
+            : '',
 
-        // Status
-        status:
-          b.status ??
-          'Pending',
-      }))
+          // End time
+          endTime: b.endTime
+            ? String(b.endTime).substring(0, 5)
+            : empMatch.endTime
+            ? String(empMatch.endTime).substring(0, 5)
+            : '',
+
+          // Employee / creator
+          createdBy:
+            b.requestedBy ??
+            b.createdBy ??
+            empMatch.requestedBy ??
+            b.requester ??
+            b.employeeName ??
+            b.employee?.name ??
+            'Employee',
+
+          // Status
+          status:
+            b.status ??
+            empMatch.status ??
+            'Pending',
+        }
+      })
 
       console.log(
         'Mapped bookings:',

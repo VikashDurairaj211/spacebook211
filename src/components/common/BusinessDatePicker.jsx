@@ -168,7 +168,7 @@ export default function BusinessDatePicker({
   return (
     <div className="relative w-full" ref={containerRef}>
       {label && (
-        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+        <label className="mb-1 block font-mono text-[11px] uppercase tracking-wider text-slate">
           {label}
         </label>
       )}
@@ -188,7 +188,7 @@ export default function BusinessDatePicker({
       >
         <span
           className={`whitespace-nowrap ${
-            value ? 'text-ink font-semibold' : 'text-slate-500'
+            value ? 'text-ink' : 'text-slate-500'
           }`}
         >
           {formatDisplay(value)}

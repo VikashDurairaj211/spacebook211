@@ -181,6 +181,20 @@ export default function MyBookings() {
             booking.id ??
             booking.Id,
 
+          meetingTitle:
+            booking.meetingTitle ||
+            booking.title ||
+            booking.meetingName ||
+            booking.purpose ||
+            "",
+
+          purpose:
+            booking.meetingTitle ||
+            booking.title ||
+            booking.meetingName ||
+            booking.purpose ||
+            "",
+
           bookingDate:
             booking.bookingDate ??
             booking.date ??
@@ -270,9 +284,17 @@ export default function MyBookings() {
               booking.Module ??
               "-",
 
-            purpose:
+            meetingTitle:
+              booking.meetingTitle ||
+              booking.title ||
               booking.purpose ||
-              "Hotseat Booking",
+              (booking.seatNumber ? `Hotseat (${booking.seatNumber})` : "Hotseat Booking"),
+
+            purpose:
+              booking.meetingTitle ||
+              booking.title ||
+              booking.purpose ||
+              (booking.seatNumber ? `Hotseat (${booking.seatNumber})` : "Hotseat Booking"),
 
             roomId: null,
 
@@ -1171,7 +1193,13 @@ export default function MyBookings() {
         endTime:
           formatApiTime(endTime),
 
+        meetingTitle:
+          selected.meetingTitle?.trim() ||
+          selected.purpose?.trim() ||
+          "Meeting",
+
         purpose:
+          selected.meetingTitle?.trim() ||
           selected.purpose?.trim() ||
           "Meeting",
 
@@ -1328,7 +1356,7 @@ export default function MyBookings() {
               </th>
 
               <th className="px-3 py-3">
-                Purpose
+                Meeting Title
               </th>
 
               <th className="px-3 py-3">
@@ -1435,13 +1463,12 @@ export default function MyBookings() {
                     {getBookingModule(b)}
                   </td>
 
-                  {/* PURPOSE */}
+                  {/* MEETING TITLE */}
 
-                  <td className="max-w-[140px] truncate px-3 py-4">
-                    {b.purpose &&
-                    b.purpose.trim()
-                      ? b.purpose
-                      : "Reserved Workspace"}
+                  <td className="max-w-[160px] truncate px-3 py-4 font-medium text-slate-900" title={b.meetingTitle || b.purpose || ""}>
+                    {b.meetingTitle ||
+                    b.purpose ||
+                    (b.isHotseat ? "Hotseat Booking" : "Workspace Reservation")}
                   </td>
 
                   {/* DATE */}
@@ -1638,15 +1665,16 @@ export default function MyBookings() {
               </>
             )}
 
-            {/* PURPOSE */}
+            {/* MEETING TITLE */}
 
             <dt className="font-medium">
-              Purpose
+              Meeting Title
             </dt>
 
             <dd>
-              {selected.purpose ||
-                "Reserved Workspace"}
+              {selected.meetingTitle ||
+                selected.purpose ||
+                (selected.isHotseat ? "Hotseat Booking" : "Workspace Reservation")}
             </dd>
 
             {/* DATE */}
@@ -1927,15 +1955,17 @@ export default function MyBookings() {
                   </span>
                 </p>
 
-                <Field label="Purpose">
+                <Field label="Meeting Title">
 
                   <Input
                     value={
-                      selected.purpose || ""
+                      selected.meetingTitle ?? selected.purpose ?? ""
                     }
                     onChange={(e) =>
                       setSelected({
                         ...selected,
+                        meetingTitle:
+                          e.target.value,
                         purpose:
                           e.target.value,
                       })

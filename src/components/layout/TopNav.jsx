@@ -374,10 +374,10 @@ export default function TopNav({
           booking.roomName || booking.RoomName || booking.room?.name || ''
         )
         const title = String(
-          booking.title ||
-            booking.meetingTitle ||
-            booking.purpose ||
+          booking.meetingTitle ||
+            booking.title ||
             booking.Title ||
+            booking.purpose ||
             ''
         )
         const creator = String(
@@ -402,10 +402,10 @@ export default function TopNav({
           booking.room?.name ??
           'Room',
         title:
-          booking.title ??
-          booking.meetingTitle ??
-          booking.purpose ??
-          booking.Title ??
+          booking.meetingTitle ||
+          booking.title ||
+          booking.Title ||
+          booking.purpose ||
           'Booking',
         date: booking.bookingDate ?? booking.date ?? '',
       }))
@@ -478,7 +478,7 @@ export default function TopNav({
 
     if (isAdmin) {
       if (type === 'booking') {
-        navigate(`/admin/booking-management?search=${encodeURIComponent(query)}`)
+        navigate(`/admin/reports?search=${encodeURIComponent(query)}`)
       } else {
         navigate(`/admin/room-management?search=${encodeURIComponent(query)}`)
       }
@@ -494,6 +494,21 @@ export default function TopNav({
       } else {
         navigate(`/search-rooms?q=${encodeURIComponent(query)}`)
       }
+    }
+  }
+
+  function handleSelectRoom(room) {
+    if (!room) return
+    setSearchInput(room.name || '')
+    setShowSearchResults(false)
+
+    if (isAdmin) {
+      navigate(`/admin/room-management?search=${encodeURIComponent(room.name || room.code || '')}`)
+    } else {
+      const moduleParam = room.module || ''
+      const typeParam = room.type || ''
+      const nameParam = room.name || ''
+      navigate(`/search-rooms?module=${encodeURIComponent(moduleParam)}&roomType=${encodeURIComponent(typeParam)}&q=${encodeURIComponent(nameParam)}`)
     }
   }
 
@@ -651,10 +666,7 @@ export default function TopNav({
                           key={room.id}
                           type="button"
                           onClick={() =>
-                            handleSelectResult(
-                              room.name,
-                              'room'
-                            )
+                            handleSelectRoom(room)
                           }
                           className="flex w-full flex-col px-3 py-2 text-left font-sans text-sm transition-colors hover:bg-portal-bg/80"
                         >

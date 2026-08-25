@@ -122,38 +122,64 @@ export default function SearchRooms() {
   // ===================================================
 
   useEffect(() => {
+    const moduleParam = searchParams.get("module") || "";
+    const roomTypeParam = searchParams.get("roomType") || "";
+    const roomTypeIdParam = searchParams.get("roomTypeId") || "";
     const query = String(
       searchParams.get("q") ||
       searchParams.get("search") ||
       ""
     ).toLowerCase().trim();
 
-    if (!query) return;
+    if (!moduleParam && !roomTypeParam && !roomTypeIdParam && !query) return;
 
     setFilters((prev) => {
       let nextModule = prev.module;
       let nextRoomTypeId = prev.roomTypeId;
 
-      if (query.includes("tidel") || query.includes("tidal")) {
-        nextModule = "Module 1 - Tidel Park - CMB";
-      } else if (query.includes("module 1") || query.includes("m1")) {
-        nextModule = "Module 1 - Elcot Park - CMB";
-      } else if (query.includes("module 2") || query.includes("m2")) {
-        nextModule = "Module 2 - Elcot Park - CMB";
-      }
-
-      if (query.includes("conference")) {
-        nextRoomTypeId = "1";
-        if (!nextModule) {
+      if (moduleParam) {
+        if (moduleParam.toLowerCase().includes("tidel") || moduleParam.toLowerCase().includes("tidal")) {
+          nextModule = "Module 1 - Tidel Park - CMB";
+        } else if (moduleParam.toLowerCase().includes("module 2") || moduleParam.toLowerCase().includes("m2")) {
+          nextModule = "Module 2 - Elcot Park - CMB";
+        } else if (moduleParam.toLowerCase().includes("module 1") || moduleParam.toLowerCase().includes("m1")) {
           nextModule = "Module 1 - Elcot Park - CMB";
         }
-      } else if (query.includes("training")) {
-        nextRoomTypeId = "2";
-        if (!nextModule) {
-          nextModule = "Module 2 - Elcot Park - CMB";
+      }
+
+      if (roomTypeIdParam) {
+        nextRoomTypeId = String(roomTypeIdParam);
+      } else if (roomTypeParam) {
+        const found = ROOM_TYPES.find(t => t.name.toLowerCase() === roomTypeParam.toLowerCase());
+        if (found) {
+          nextRoomTypeId = String(found.id);
         }
-      } else if (query.includes("discussion")) {
-        nextRoomTypeId = "3";
+      }
+
+      if (!nextModule && query) {
+        if (query.includes("tidel") || query.includes("tidal") || query.includes("to1")) {
+          nextModule = "Module 1 - Tidel Park - CMB";
+        } else if (query.includes("module 2") || query.includes("m2") || query.includes("eo2")) {
+          nextModule = "Module 2 - Elcot Park - CMB";
+        } else if (query.includes("module 1") || query.includes("m1") || query.includes("eo1")) {
+          nextModule = "Module 1 - Elcot Park - CMB";
+        }
+      }
+
+      if (!nextRoomTypeId && query) {
+        if (query.includes("conference")) {
+          nextRoomTypeId = "1";
+          if (!nextModule) {
+            nextModule = "Module 1 - Elcot Park - CMB";
+          }
+        } else if (query.includes("training")) {
+          nextRoomTypeId = "2";
+          if (!nextModule) {
+            nextModule = "Module 2 - Elcot Park - CMB";
+          }
+        } else if (query.includes("discussion")) {
+          nextRoomTypeId = "3";
+        }
       }
 
       return {
@@ -401,23 +427,6 @@ export default function SearchRooms() {
         "Number of participants must be at least 1."
       );
       return;
-    }
-
-    if (requestedCapacity > 0) {
-      const maxCap = getMaxCapacityForType(
-        filters.roomTypeId,
-        knownRooms
-      );
-
-      if (maxCap !== null && requestedCapacity > maxCap) {
-        setCapacityExceeded(true);
-        setSearchMessage(
-          "No room can accommodate the selected number of participants."
-        );
-        setResults([]);
-        setResultsOpen(true);
-        return;
-      }
     }
 
     // =================================================
@@ -672,13 +681,17 @@ export default function SearchRooms() {
         }
 
         const roomStatus = String(room.status || room.roomStatus || '').toLowerCase();
-        if (
-          roomStatus === 'maintenance' ||
-          roomStatus === 'blocked' ||
+        const isBlocked =
           room.isBlocked === true ||
           room.IsBlocked === true ||
-          room.isAvailable === false
-        ) {
+          String(room.isBlocked).toLowerCase() === 'true' ||
+          String(room.IsBlocked).toLowerCase() === 'true' ||
+          room.isBlocked === 1 ||
+          room.IsBlocked === 1 ||
+          roomStatus === 'maintenance' ||
+          roomStatus === 'blocked';
+
+        if (isBlocked || room.isAvailable === false) {
           return false;
         }
 

@@ -495,12 +495,12 @@ export default function AvailabilityGrid({
                 {status === "Available"
                   ? "Book Now"
                   : status === "Maintenance"
-                  ? "Under Maintenance"
-                  : status === "Pending"
-                  ? "Pending Approval"
-                  : status === "Completed"
-                  ? "View History"
-                  : "View Details"}
+                    ? "Under Maintenance"
+                    : status === "Pending"
+                      ? "Pending Approval"
+                      : status === "Completed"
+                        ? "View History"
+                        : "View Details"}
               </Button>
             </article>
           );

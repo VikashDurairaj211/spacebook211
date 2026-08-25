@@ -294,6 +294,16 @@ export default function AvailabilityCalendar() {
                 []
               );
 
+            const isBlockedFlag =
+              room.isBlocked === true ||
+              room.IsBlocked === true ||
+              String(room.isBlocked).toLowerCase() === "true" ||
+              String(room.IsBlocked).toLowerCase() === "true" ||
+              room.isBlocked === 1 ||
+              room.IsBlocked === 1 ||
+              String(room.status || "").toLowerCase() === "maintenance" ||
+              String(room.roomStatus || "").toLowerCase() === "maintenance";
+
             const mappedRoom = {
               ...room,
 
@@ -373,6 +383,16 @@ export default function AvailabilityCalendar() {
                 normalizedFacilities,
 
               // -----------------------------------------
+              // STATUS & MAINTENANCE
+              // -----------------------------------------
+
+              isBlocked: isBlockedFlag,
+
+              status: isBlockedFlag
+                ? "Maintenance"
+                : room.status || "Available",
+
+              // -----------------------------------------
               // CURRENT BOOKING
               // -----------------------------------------
 
@@ -401,10 +421,15 @@ export default function AvailabilityCalendar() {
                     slot.toTime ||
                     "",
 
-                  isBooked:
-                    slot.isBooked ??
-                    slot.booked ??
-                    false,
+                  isBooked: isBlockedFlag
+                    ? true
+                    : slot.isBooked ??
+                      slot.booked ??
+                      false,
+
+                  status: isBlockedFlag
+                    ? "Maintenance"
+                    : slot.status,
                 })),
             };
 
@@ -783,7 +808,7 @@ export default function AvailabilityCalendar() {
 
         <div>
           <h1 className="font-display text-2xl font-700 text-ink">
-            Room Availability
+            Workspace Availability
           </h1>
 
           <p className="mt-1 text-sm text-slate">

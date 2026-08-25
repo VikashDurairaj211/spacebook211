@@ -187,13 +187,11 @@ export default function Reports() {
         setDashboardMetrics(dashRes.value.data)
       }
 
-      // 1. Live Bookings
+      // 1. Live Admin Bookings
       if (bookingsRes.status === 'fulfilled') {
         const rawData = Array.isArray(bookingsRes.value.data)
           ? bookingsRes.value.data
-          : bookingsRes.value.data?.data ||
-            bookingsRes.value.data?.bookings ||
-            []
+          : bookingsRes.value.data?.data || bookingsRes.value.data?.bookings || []
 
         const mapped = rawData.map((b, idx) => {
           const rawReason =
@@ -206,14 +204,25 @@ export default function Reports() {
 
           const resolvedId = b.bookingId ?? b.booking_id ?? b.BookingId ?? b.id ?? b.reservationId ?? (idx + 1)
 
+          const resolvedTitle =
+            b.meetingTitle ||
+            b.MeetingTitle ||
+            b.meeting_title ||
+            b.title ||
+            b.Title ||
+            b.meetingName ||
+            b.MeetingName ||
+            b.purpose ||
+            b.Purpose ||
+            b.subject ||
+            b.description ||
+            'Workspace Reservation'
+
           return {
             bookingId: resolvedId,
             id: resolvedId,
-            title:
-              b.title ??
-              b.purpose ??
-              b.meetingTitle ??
-              'Reserved Workspace',
+            title: resolvedTitle,
+            meetingTitle: resolvedTitle,
             roomName:
               b.roomName ??
               b.room?.name ??
@@ -787,11 +796,11 @@ export default function Reports() {
       </Card>
 
       {/* =================================================
-          Top Visual KPI Cards with Progress Meters
+          Top Visual KPI Cards with Progress Meters (Horizontally Scrollable)
       ================================================= */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="flex gap-3 overflow-x-auto pb-2.5 pt-1 [scrollbar-width:thin]">
         {/* Total Reservations */}
-        <Card className="p-4 shadow-sm">
+        <Card className="min-w-[210px] flex-1 shrink-0 p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
               Total Reservations
@@ -811,7 +820,7 @@ export default function Reports() {
         </Card>
 
         {/* Utilization */}
-        <Card className="p-4 shadow-sm">
+        <Card className="min-w-[210px] flex-1 shrink-0 p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
               Utilization
@@ -834,7 +843,7 @@ export default function Reports() {
         </Card>
 
         {/* Confirmed Rate */}
-        <Card className="p-4 shadow-sm">
+        <Card className="min-w-[210px] flex-1 shrink-0 p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
               Confirmed Bookings
@@ -864,7 +873,7 @@ export default function Reports() {
         </Card>
 
         {/* Cancellation Rate */}
-        <Card className="p-4 shadow-sm">
+        <Card className="min-w-[210px] flex-1 shrink-0 p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
               Cancelled Bookings
@@ -894,7 +903,7 @@ export default function Reports() {
         </Card>
 
         {/* Active Bookers */}
-        <Card className="p-4 shadow-sm">
+        <Card className="min-w-[210px] flex-1 shrink-0 p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
               Workforce Engagement

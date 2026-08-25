@@ -418,6 +418,25 @@ function updateMasterRoomInventory(roomsList) {
   }
 }
 
+function removeRoomFromMasterInventory(roomId, roomNumber) {
+  try {
+    const raw = localStorage.getItem('spacebook_room_inventory')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      const filtered = parsed.filter((r) => {
+        const rId = String(r.id ?? r.roomId ?? '')
+        const rNum = String(r.roomNumber ?? r.roomCode ?? r.code ?? '').toLowerCase()
+        if (roomId && rId === String(roomId)) return false
+        if (roomNumber && rNum === String(roomNumber).toLowerCase()) return false
+        return true
+      })
+      localStorage.setItem('spacebook_room_inventory', JSON.stringify(filtered))
+    }
+  } catch {
+    // ignore
+  }
+}
+
 function getRoomStatusOverrides() {
   try {
     const raw = localStorage.getItem('spacebook_room_status_overrides')
@@ -508,21 +527,6 @@ async function fetchAdminRooms() {
     console.warn('GET /admin/rooms note:', err)
   }
 
-  // 2. Try Employee availability endpoint with valid date if needed
-  if (backendRooms.length === 0) {
-    try {
-      const now = new Date()
-      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-      const { data } = await client.get('/employee/availability', { params: { date: todayStr } })
-      const list = data?.rooms || (Array.isArray(data) ? data : [])
-      if (list.length > 0) {
-        backendRooms = list
-      }
-    } catch (err) {
-      console.warn('GET /employee/availability note:', err)
-    }
-  }
-
   // Merge live backend rooms with master inventory so blocked rooms are preserved
   return updateMasterRoomInventory(backendRooms)
 }
@@ -535,34 +539,6 @@ async function fetchAdminBookings() {
     const data = response.data
     const list = Array.isArray(data) ? data : data?.data || data?.bookings || []
     if (Array.isArray(list)) allBookings.push(...list)
-  } catch {
-    // ignore
-  }
-
-  try {
-    const response = await client.get('/employee/mybookings')
-    const data = response.data
-    const list = Array.isArray(data) ? data : data?.data || data?.bookings || []
-    if (Array.isArray(list)) allBookings.push(...list)
-  } catch {
-    // ignore
-  }
-
-  try {
-    const now = new Date()
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-    const { data } = await client.get('/employee/availability', { params: { date: todayStr } })
-    const rooms = data?.rooms || (Array.isArray(data) ? data : [])
-    rooms.forEach((r) => {
-      if (r.isAvailable === false || String(r.status || '').toLowerCase() === 'booked' || r.isBooked === true) {
-        allBookings.push({
-          roomId: r.id || r.roomId,
-          roomNumber: r.roomNumber || r.roomCode,
-          roomName: r.name || r.roomName,
-          status: 'BOOKED',
-        })
-      }
-    })
   } catch {
     // ignore
   }
@@ -935,6 +911,52 @@ export default function RoomManagement() {
     setModalMode('view')
   }
 
+  const [deletingId, setDeletingId] = useState(null)
+
+  const handleDeleteRoom = async (room) => {
+    if (!room) return
+    const id = room.id || room.roomId
+    const name = room.roomName || room.name || room.roomNumber || 'this room'
+
+    if (!window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      setDeletingId(id)
+      setError('')
+      setSuccessMessage('')
+
+      if (id) {
+        try {
+          await deleteAdminRoom(id)
+        } catch (apiErr) {
+          console.warn('DELETE /admin/rooms error note:', apiErr)
+        }
+      }
+
+      removeRoomFromMasterInventory(id, room.roomNumber)
+
+      setRooms((prev) =>
+        prev.filter((r) => {
+          const rId = String(r.id ?? r.roomId ?? '')
+          const rNum = String(r.roomNumber ?? r.roomCode ?? '').toLowerCase()
+          if (id && rId === String(id)) return false
+          if (room.roomNumber && rNum === String(room.roomNumber).toLowerCase()) return false
+          return true
+        })
+      )
+
+      setSuccessMessage(`Room "${name}" deleted successfully!`)
+      await loadInitialData()
+    } catch (err) {
+      console.error('Error deleting room:', err)
+      setError('Failed to delete room.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const closeModal = () => {
     if (submitting) return
     setModalOpen(false)
@@ -1014,29 +1036,34 @@ export default function RoomManagement() {
         }
         setSuccessMessage('Room added successfully!')
       } else if (modalMode === 'edit') {
-        // 1. Try PUT /admin/rooms/{id}
-        try {
-          await updateAdminRoom(selectedRoomId, payload)
-        } catch (putErr) {
-          console.warn('PUT /admin/rooms error, trying creation fallback:', putErr)
-          // 2. If room was not yet registered on backend database, create it
+        const targetId = Number(selectedRoomId) || selectedRoomId
+        const shouldBlock = selectedStatus === 'Maintenance'
+
+        // 1. Update status endpoint on backend
+        if (targetId) {
           try {
-            await createAdminRoom(payload)
-          } catch (postErr) {
-            console.warn('POST /admin/rooms fallback note:', postErr)
+            await updateAdminRoomStatus(targetId, shouldBlock)
+            console.log(`Backend status synced for room ${targetId}: isBlocked=${shouldBlock}`)
+          } catch (statusErr) {
+            console.warn('PATCH /admin/rooms/{id}/status error:', statusErr?.response?.data || statusErr.message)
+          }
+
+          // 2. Also update full room record via PUT /admin/rooms/{id}
+          try {
+            await updateAdminRoom(targetId, payload)
+          } catch (putErr) {
+            console.warn('PUT /admin/rooms/{id} note:', putErr?.response?.data || putErr.message)
+            // If room was not in backend database yet, register it
+            try {
+              await createAdminRoom(payload)
+            } catch (postErr) {
+              console.warn('POST /admin/rooms fallback note:', postErr?.response?.data || postErr.message)
+            }
           }
         }
 
-        // 3. Update status endpoint as well
-        try {
-          const shouldBlock = selectedStatus === 'Maintenance'
-          saveBlockedRoomId(selectedRoomId, shouldBlock)
-          await updateAdminRoomStatus(selectedRoomId, shouldBlock)
-        } catch {
-          // ignore
-        }
-
-        setSuccessMessage(`Room "${payload.roomName}" updated successfully!`)
+        saveBlockedRoomId(selectedRoomId, shouldBlock)
+        setSuccessMessage(`Room "${payload.roomName}" updated to ${selectedStatus}!`)
       }
 
       closeModal()
