@@ -1,6 +1,4 @@
-import React from 'react';
-
-export default function SpaceBookCopilot({ onClose }) {
+export default function SpaceBookCopilot({ isOpen = false, onClose }) {
   return (
     <div
       style={{
@@ -10,13 +8,19 @@ export default function SpaceBookCopilot({ onClose }) {
         width: '400px',
         height: 'calc(100vh - 88px)',
         maxHeight: '640px',
-        zIndex: 9999,
+        zIndex: isOpen ? 9999 : -1,
         background: '#fff',
         borderRadius: '16px',
         overflow: 'hidden',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.22)',
+        boxShadow: isOpen ? '0 8px 32px rgba(0, 0, 0, 0.22)' : 'none',
         display: 'flex',
         flexDirection: 'column',
+        opacity: isOpen ? 1 : 0,
+        pointerEvents: isOpen ? 'auto' : 'none',
+        visibility: 'visible',
+        transform: isOpen ? 'scale(1) translateY(0)' : 'scale(0.96) translateY(12px)',
+        transformOrigin: 'top right',
+        transition: 'opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >
       {/* Custom Close Button overlayed precisely on top of the iframe's header */}

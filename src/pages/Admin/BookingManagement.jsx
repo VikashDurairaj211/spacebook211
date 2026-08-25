@@ -27,7 +27,7 @@ function CustomStatusTag({ status }) {
 
   return (
     <span
-      className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${bgClass}`}
+      className={`inline-block min-w-[74px] px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase text-center ${bgClass}`}
     >
       {normalized || 'CONFIRMED'}
     </span>
@@ -152,19 +152,21 @@ export default function BookingManagement() {
       const mappedBookings = adminData.map((b) => {
         const id = b.bookingId ?? b.id
 
-        const resolvedTitle =
-          b.meetingTitle ||
-          b.MeetingTitle ||
-          b.meeting_title ||
-          b.title ||
-          b.Title ||
-          b.meetingName ||
-          b.MeetingName ||
-          b.purpose ||
-          b.Purpose ||
-          b.subject ||
-          b.description ||
-          'Workspace Reservation'
+        const rawTitle =
+          b.meetingTitle ??
+          b.MeetingTitle ??
+          b.meeting_title ??
+          b.title ??
+          b.Title ??
+          b.meetingName ??
+          b.MeetingName ??
+          b.purpose ??
+          b.Purpose ??
+          b.subject ??
+          b.description ??
+          ''
+
+        const resolvedTitle = rawTitle ? String(rawTitle).trim() : ''
 
         return {
           // Booking ID

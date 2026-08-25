@@ -104,8 +104,59 @@ function isBookingActive(status) {
   ].includes(value);
 }
 
+function getRoomTypeName(room) {
+  if (!room) return 'Conference';
+  if (typeof room === 'string' && room.trim()) return room;
+  if (typeof room.roomType === 'string' && room.roomType.trim()) return room.roomType;
+  if (typeof room.roomType === 'object' && room.roomType?.name) return room.roomType.name;
+  if (typeof room.roomTypeName === 'string' && room.roomTypeName.trim()) return room.roomTypeName;
+  if (typeof room.typeName === 'string' && room.typeName.trim()) return room.typeName;
+  if (typeof room.type === 'string' && room.type.trim()) return room.type;
 
+  const typeId = Number(room.roomTypeId ?? room.typeId ?? room.roomType?.id ?? 0);
+  if (typeId === 1) return 'Conference';
+  if (typeId === 2) return 'Training';
+  if (typeId === 3) return 'Discussion';
 
+  const name = String(room.roomName || room.name || '').toLowerCase();
+  if (name.includes('train')) return 'Training';
+  if (name.includes('disc')) return 'Discussion';
+  if (name.includes('conf')) return 'Conference';
+
+  return 'Conference';
+}
+
+function getRoomModuleName(room) {
+  if (!room) return 'Module 1 - Elcot Park - CMB';
+  if (typeof room.module === 'string' && room.module.includes(' - ')) return room.module;
+  if (typeof room.moduleName === 'string' && room.moduleName.includes(' - ')) return room.moduleName;
+
+  const modId = Number(room.moduleId ?? room.moduleid ?? 0);
+  if (modId === 3) return 'Module 1 - Tidel Park - CMB';
+  if (modId === 2) return 'Module 2 - Elcot Park - CMB';
+  if (modId === 1) return 'Module 1 - Elcot Park - CMB';
+
+  const str = String(room.module || room.moduleName || room.roomNumber || room.code || '').toLowerCase();
+  if (str.includes('tidel') || str.includes('tidal') || str.includes('to1')) return 'Module 1 - Tidel Park - CMB';
+  if (str.includes('module 2') || str.includes('m2') || str.includes('eo2')) return 'Module 2 - Elcot Park - CMB';
+  return 'Module 1 - Elcot Park - CMB';
+}
+
+function normalizeRoomFacilities(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw.map((f) => {
+      if (typeof f === 'string') return f;
+      if (typeof f === 'object' && f !== null) return f.facilityName || f.name || f.facility || '';
+      if (typeof f === 'number') {
+        const facilityMap = { 1: 'Projector', 2: 'Video Conferencing', 3: 'Whiteboard', 4: 'Wi-Fi', 5: 'Monitor', 6: 'Speaker' };
+        return facilityMap[f] || `Facility ${f}`;
+      }
+      return String(f);
+    }).filter(Boolean);
+  }
+  return [];
+}
 
 // =====================================================
 // SEARCH ROOMS PAGE
@@ -667,16 +718,21 @@ export default function SearchRooms() {
         // ignore
       }
 
+      let maintenanceCount = 0;
+      const initialCount = searchResults.length;
+
       searchResults = searchResults.filter((room) => {
         const id = String(room.id ?? room.roomId ?? '').trim();
         const code = String(room.roomNumber ?? room.roomCode ?? room.code ?? '').trim().toLowerCase();
 
         const override = statusOverrides[id] || (code && statusOverrides[code]);
         if (override && String(override).toLowerCase() === 'maintenance') {
+          maintenanceCount++;
           return false;
         }
 
         if (id && blockedRoomIds.map(String).includes(id)) {
+          maintenanceCount++;
           return false;
         }
 
@@ -692,10 +748,34 @@ export default function SearchRooms() {
           roomStatus === 'blocked';
 
         if (isBlocked || room.isAvailable === false) {
+          maintenanceCount++;
           return false;
         }
 
         return true;
+      });
+
+      // Normalize room types, modules, capacity, and facilities
+      searchResults = searchResults.map((room) => {
+        const id = room.roomId ?? room.id ?? room.RoomId;
+        const name = room.roomName ?? room.name ?? room.RoomName ?? 'Room';
+        const code = room.roomNumber ?? room.roomCode ?? room.code ?? '';
+        const roomType = getRoomTypeName(room);
+        const moduleName = getRoomModuleName(room);
+        const capacity = Number(room.capacity ?? room.roomCapacity ?? 4);
+        const facilities = normalizeRoomFacilities(room.facilities);
+
+        return {
+          ...room,
+          roomId: id,
+          id: id,
+          roomName: name,
+          roomNumber: code,
+          roomType: roomType,
+          module: moduleName,
+          capacity: capacity,
+          facilities: facilities,
+        };
       });
 
       // Check if backend message indicates capacity failure
@@ -714,34 +794,45 @@ export default function SearchRooms() {
       let finalMessage = backendMessage;
 
       // =================================================
-      // NO-RESULT MESSAGE (Availability vs Capacity)
+      // NO-RESULT MESSAGE (Maintenance vs Availability vs Capacity)
       // =================================================
 
-      if (
-        searchResults.length === 0 &&
-        !finalMessage
-      ) {
-        const roomType =
-          getRoomTypeName();
-
-        if (
-          roomType === "Conference" &&
-          filters.module ===
-            "Module 2 - Elcot Park - CMB"
-        ) {
+      if (searchResults.length === 0) {
+        if (maintenanceCount > 0 && initialCount > 0) {
           finalMessage =
-            "Conference rooms are available only in Module 1 - Elcot Park - CMB.";
+            maintenanceCount === 1
+              ? "The requested room is currently under maintenance and temporarily unavailable for booking."
+              : "The matching rooms are currently under maintenance and temporarily unavailable for booking.";
         } else if (
-          roomType === "Training" &&
-          filters.module ===
-            "Module 1 - Elcot Park - CMB"
+          isCapacityExceeded
         ) {
           finalMessage =
-            "Training rooms are available only in Module 2 - Elcot Park - CMB.";
+            "No room can accommodate the selected number of participants.";
         } else {
-          finalMessage =
-            "No rooms are available for the selected date and time. The rooms may already be booked or unavailable.";
+          const roomType = getRoomTypeName();
+
+          if (
+            roomType === "Conference" &&
+            filters.module === "Module 2 - Elcot Park - CMB"
+          ) {
+            finalMessage =
+              "Conference rooms are available only in Module 1 - Elcot Park - CMB.";
+          } else if (
+            roomType === "Training" &&
+            filters.module === "Module 1 - Elcot Park - CMB"
+          ) {
+            finalMessage =
+              "Training rooms are available only in Module 2 - Elcot Park - CMB.";
+          } else {
+            finalMessage =
+              "No rooms are available for the selected date and time. The rooms may already be booked or unavailable.";
+          }
         }
+      } else if (
+        lowerBackendMsg.includes("success") ||
+        lowerBackendMsg.includes("found")
+      ) {
+        finalMessage = "";
       }
 
       setCapacityExceeded(
@@ -1362,40 +1453,42 @@ export default function SearchRooms() {
           </Button>
         }
       >
-        <p className="mb-4 text-sm text-slate-600">
-          {results.length} room
-          {results.length !== 1
-            ? "s"
-            : ""}{" "}
-          found.
-        </p>
+        {results.length > 0 && (
+          <p className="mb-4 text-sm font-medium text-slate-600">
+            {results.length} available workspace{results.length !== 1 ? "s" : ""} found.
+          </p>
+        )}
 
         {/* NO RESULTS */}
 
         {results.length === 0 ? (
           <div className="space-y-3">
-
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-
-              <p
-                className={`text-sm font-medium ${
-                  capacityExceeded
-                    ? "text-red-600"
-                    : "text-slate-700"
-                }`}
-              >
+            <div
+              className={`rounded-xl border p-4.5 ${
+                searchMessage.toLowerCase().includes("maintenance")
+                  ? "border-amber-200 bg-amber-50/80 text-amber-950"
+                  : capacityExceeded
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : "border-slate-200 bg-slate-50 text-slate-700"
+              }`}
+            >
+              <p className="text-sm font-semibold">
                 {searchMessage ||
                   "No rooms are available for the selected criteria."}
               </p>
 
-              {capacityExceeded && (
-                <p className="mt-2 text-sm text-slate-500">
-                  Please enter a smaller number of participants and search again.
+              {searchMessage.toLowerCase().includes("maintenance") && (
+                <p className="mt-1.5 text-xs text-amber-800">
+                  Facilities staff are currently servicing this workspace. Please select an alternative room type, time slot, or campus module.
                 </p>
               )}
 
+              {capacityExceeded && (
+                <p className="mt-1.5 text-xs text-red-600">
+                  Please enter a smaller number of participants and search again.
+                </p>
+              )}
             </div>
-
           </div>
         ) : (
           <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-1">

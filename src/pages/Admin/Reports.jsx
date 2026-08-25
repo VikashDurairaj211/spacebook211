@@ -27,6 +27,7 @@ import {
   Calendar,
   Sparkles,
   Activity,
+  Eye,
 } from 'lucide-react'
 
 import client from '../../api/client'
@@ -74,7 +75,7 @@ function CustomStatusTag({ status }) {
 
   return (
     <span
-      className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${bgClass}`}
+      className={`inline-block min-w-[74px] px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase text-center ${bgClass}`}
     >
       {normalized || 'CONFIRMED'}
     </span>
@@ -153,7 +154,10 @@ export default function Reports() {
   // Table state & modal
   const [selectedBooking, setSelectedBooking] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false)
   const [tableSearch, setTableSearch] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 8
 
   const openViewModal = (booking) => {
     setSelectedBooking(booking)
@@ -174,17 +178,31 @@ export default function Reports() {
       setLoading(true)
       setError(null)
 
-      const [bookingsRes, trendRes, statusRes, usageRes, dashRes] =
+      const [bookingsRes, trendRes, statusRes, usageRes, dashRes, roomsRes] =
         await Promise.allSettled([
           client.get('/admin/bookings'),
           getBookingTrendReport({ reportType: trendPeriod }),
           getBookingStatusReport({}),
           getRoomUsageReport({}),
           client.get('/admin/dashboard'),
+          client.get('/rooms'),
         ])
 
       if (dashRes.status === 'fulfilled' && dashRes.value?.data) {
         setDashboardMetrics(dashRes.value.data)
+      }
+
+      // Room Map for Module & Type resolution
+      const roomMap = {}
+      if (roomsRes.status === 'fulfilled' && roomsRes.value?.data) {
+        const list = Array.isArray(roomsRes.value.data)
+          ? roomsRes.value.data
+          : roomsRes.value.data?.data || []
+        list.forEach((r) => {
+          const key = r.id ?? r.roomId
+          if (key) roomMap[key] = r
+          if (r.roomName) roomMap[String(r.roomName).toLowerCase()] = r
+        })
       }
 
       // 1. Live Admin Bookings
@@ -204,19 +222,78 @@ export default function Reports() {
 
           const resolvedId = b.bookingId ?? b.booking_id ?? b.BookingId ?? b.id ?? b.reservationId ?? (idx + 1)
 
-          const resolvedTitle =
-            b.meetingTitle ||
-            b.MeetingTitle ||
-            b.meeting_title ||
-            b.title ||
-            b.Title ||
-            b.meetingName ||
-            b.MeetingName ||
-            b.purpose ||
-            b.Purpose ||
-            b.subject ||
-            b.description ||
-            'Workspace Reservation'
+          const rawTitle =
+            b.meetingTitle ??
+            b.MeetingTitle ??
+            b.meeting_title ??
+            b.title ??
+            b.Title ??
+            b.meetingName ??
+            b.MeetingName ??
+            b.purpose ??
+            b.Purpose ??
+            b.subject ??
+            b.description ??
+            ''
+
+          const resolvedTitle = rawTitle ? String(rawTitle).trim() : ''
+
+          const matchedRoom =
+            roomMap[b.roomId] ||
+            roomMap[String(b.roomName || '').toLowerCase()] ||
+            b.room ||
+            {}
+
+          const rawMod = String(
+            b.module ??
+            b.moduleName ??
+            matchedRoom.module ??
+            matchedRoom.moduleName ??
+            ''
+          ).toLowerCase()
+
+          const rawRoomNumber = String(
+            b.roomNumber ??
+            matchedRoom.roomNumber ??
+            matchedRoom.room_number ??
+            ''
+          ).toLowerCase()
+
+          const rawRoomName = String(
+            b.roomName ??
+            matchedRoom.roomName ??
+            matchedRoom.name ??
+            ''
+          ).toLowerCase()
+
+          const rawModuleId = Number(
+            b.moduleId ??
+            b.module_id ??
+            matchedRoom.moduleId ??
+            matchedRoom.module_id
+          )
+
+          let resolvedModule = 'Module 1 - Elcot Park - CMB'
+          if (
+            rawModuleId === 3 ||
+            rawMod.includes('tidel') ||
+            rawMod.includes('tidal') ||
+            rawRoomNumber.includes('to1') ||
+            rawRoomNumber.includes('t01') ||
+            rawRoomName.includes('training') ||
+            rawRoomName.includes('discussion room 2')
+          ) {
+            resolvedModule = 'Module 1 - Tidel Park - CMB'
+          } else if (
+            rawModuleId === 2 ||
+            rawMod.includes('module 2') ||
+            rawMod.includes('m2') ||
+            rawRoomNumber.includes('eo2') ||
+            rawRoomNumber.includes('e02') ||
+            rawRoomName.includes('conference room 2')
+          ) {
+            resolvedModule = 'Module 2 - Elcot Park - CMB'
+          }
 
           return {
             bookingId: resolvedId,
@@ -225,15 +302,14 @@ export default function Reports() {
             meetingTitle: resolvedTitle,
             roomName:
               b.roomName ??
+              matchedRoom.roomName ??
+              matchedRoom.name ??
               b.room?.name ??
               `Room ${b.roomId ?? ''}`,
-            module:
-              b.module ??
-              b.moduleName ??
-              b.room?.module ??
-              'Module 1',
+            module: resolvedModule,
             roomType:
               b.roomType ??
+              matchedRoom.roomType ??
               b.room?.type ??
               b.room?.roomType?.name ??
               'Conference',
@@ -325,12 +401,12 @@ export default function Reports() {
       // Module Filter
       if (moduleFilter !== 'All') {
         const bMod = String(b.module || '').toLowerCase()
-        if (moduleFilter === 'Module 1') {
-          const isMod1 = bMod.includes('module 1') || bMod.includes('eo1') || bMod.includes('e01') || (bMod.includes('1') && !bMod.includes('2'))
-          if (!isMod1) return false
-        } else if (moduleFilter === 'Module 2') {
-          const isMod2 = bMod.includes('module 2') || bMod.includes('eo2') || bMod.includes('e02') || (bMod.includes('2') && !bMod.includes('1'))
-          if (!isMod2) return false
+        if (moduleFilter.includes('Tidel')) {
+          if (!bMod.includes('tidel') && !bMod.includes('tidal')) return false
+        } else if (moduleFilter.includes('Module 2')) {
+          if (!bMod.includes('module 2') && !bMod.includes('eo2') && !bMod.includes('e02')) return false
+        } else if (moduleFilter.includes('Module 1')) {
+          if ((!bMod.includes('module 1') && !bMod.includes('eo1') && !bMod.includes('e01')) || bMod.includes('tidel')) return false
         }
       }
 
@@ -380,6 +456,17 @@ export default function Reports() {
       )
     })
   }, [filteredBookings, tableSearch])
+
+  const totalPages = Math.ceil(displayedTableBookings.length / pageSize) || 1
+
+  const paginatedBookings = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return displayedTableBookings.slice(start, start + pageSize)
+  }, [displayedTableBookings, currentPage, pageSize])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [tableSearch, timeFilter, moduleFilter, statusFilter])
 
   // =====================================================
   // Computed Executive KPI Stats
@@ -705,16 +792,16 @@ export default function Reports() {
         </div>
 
         {/* Action Controls Toolbar */}
-        <div className="flex items-center gap-2.5 flex-nowrap flex-shrink-0">
+        <div className="flex items-center gap-2 flex-nowrap flex-shrink-0">
           <Button
             size="sm"
             variant="secondary"
             onClick={loadData}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold whitespace-nowrap shadow-sm hover:border-slate-400 transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold whitespace-nowrap shadow-sm hover:border-slate-400 transition-all active:scale-95 h-7.5"
           >
             <RefreshCw
-              size={13}
+              size={12}
               className={loading ? 'animate-spin text-sky-600' : 'text-slate-600'}
             />
             <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
@@ -724,20 +811,10 @@ export default function Reports() {
             size="sm"
             onClick={handleExportCSV}
             disabled={filteredBookings.length === 0}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-xs font-bold text-white shadow-md shadow-blue-700/20 whitespace-nowrap transition-all active:scale-95 border-0"
+            className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-xs font-bold text-white shadow-sm shadow-blue-700/20 whitespace-nowrap transition-all active:scale-95 border-0 h-7.5"
           >
-            <FileText size={14} className="text-blue-100" />
+            <FileText size={12} className="text-blue-100" />
             <span className="text-white">Export CSV</span>
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={handleExportExcel}
-            disabled={filteredBookings.length === 0}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-xs font-bold text-white shadow-md shadow-emerald-700/20 whitespace-nowrap transition-all active:scale-95 border-0"
-          >
-            <FileSpreadsheet size={14} className="text-emerald-100" />
-            <span>Export Excel (.xlsx)</span>
           </Button>
         </div>
       </div>
@@ -772,8 +849,9 @@ export default function Reports() {
               className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
             >
               <option value="All">All Modules</option>
-              <option value="Module 1">Module 1 - Elcot Park</option>
-              <option value="Module 2">Module 2 - Elcot Park</option>
+              <option value="Module 1 - Elcot Park">Module 1 - Elcot Park</option>
+              <option value="Module 2 - Elcot Park">Module 2 - Elcot Park</option>
+              <option value="Module 1 - Tidel Park">Module 1 - Tidel Park</option>
             </select>
 
             {/* Status Filter */}
@@ -782,9 +860,9 @@ export default function Reports() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
             >
-              <option value="All">All Statuses</option>
-              <option value="Confirmed">Confirmed Bookings</option>
-              <option value="Cancelled">Cancelled Bookings</option>
+              <option value="All">All Status</option>
+              <option value="Confirmed">Confirmed</option>
+              <option value="Cancelled">Cancelled</option>
             </select>
           </div>
 
@@ -796,283 +874,190 @@ export default function Reports() {
       </Card>
 
       {/* =================================================
-          Top Visual KPI Cards with Progress Meters (Horizontally Scrollable)
+          Top Visual KPI Cards with Progress Meters (Compact 5-Column Grid)
       ================================================= */}
-      <div className="flex gap-3 overflow-x-auto pb-2.5 pt-1 [scrollbar-width:thin]">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
         {/* Total Reservations */}
-        <Card className="min-w-[210px] flex-1 shrink-0 p-4 shadow-sm">
+        <Card className="p-3 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
               Total Reservations
             </span>
-            <Calendar size={16} className="text-sky-600" />
+            <Calendar size={14} className="text-sky-600" />
           </div>
-          <p className="mt-2 text-3xl font-extrabold text-ink">
+          <p className="mt-1 text-xl font-extrabold text-ink">
             {kpis.total}
           </p>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate">
+          <div className="mt-1 flex items-center justify-between text-[10px] text-slate">
             <span>{kpis.uniqueRooms} Active Rooms</span>
-            <span className="font-semibold text-sky-700">100% Volume</span>
+            <span className="font-semibold text-sky-700">100% Vol</span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
-            <div className="h-1.5 rounded-full bg-sky-600 w-full" />
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
+            <div className="h-1 rounded-full bg-sky-600 w-full" />
           </div>
         </Card>
 
         {/* Utilization */}
-        <Card className="min-w-[210px] flex-1 shrink-0 p-4 shadow-sm">
+        <Card className="p-3 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
               Utilization
             </span>
-            <Activity size={16} className="text-sky-600" />
+            <Activity size={14} className="text-sky-600" />
           </div>
-          <p className="mt-2 text-3xl font-extrabold text-ink">
+          <p className="mt-1 text-xl font-extrabold text-ink">
             {kpis.utilization}%
           </p>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate">
-            <span>Approximate occupancy</span>
+          <div className="mt-1 flex items-center justify-between text-[10px] text-slate">
+            <span>Occupancy</span>
             <span className="font-semibold text-sky-700">{kpis.utilization}%</span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
             <div
-              className="h-1.5 rounded-full bg-sky-600 transition-all duration-500"
+              className="h-1 rounded-full bg-sky-600 transition-all duration-500"
               style={{ width: `${Math.min(100, Math.max(0, Number(kpis.utilization) || 0))}%` }}
             />
           </div>
         </Card>
 
         {/* Confirmed Rate */}
-        <Card className="min-w-[210px] flex-1 shrink-0 p-4 shadow-sm">
+        <Card className="p-3 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
               Confirmed Bookings
             </span>
-            <CheckCircle2 size={16} className="text-[#658362]" />
+            <CheckCircle2 size={14} className="text-[#658362]" />
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <p className="text-3xl font-extrabold text-[#658362]">
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <p className="text-xl font-extrabold text-[#658362]">
               {kpis.confirmed}
             </p>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
-              {kpis.confirmedRate}% Rate
+            <span className="rounded-full bg-emerald-100 px-1.5 py-0.2 text-[10px] font-bold text-emerald-800">
+              {kpis.confirmedRate}%
             </span>
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate">
-            <span>Successful Occupancy</span>
+          <div className="mt-1 flex items-center justify-between text-[10px] text-slate">
+            <span>Successful</span>
             <span className="font-bold text-emerald-700">
               {kpis.confirmedRate}%
             </span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
             <div
-              className="h-1.5 rounded-full bg-[#658362] transition-all duration-500"
+              className="h-1 rounded-full bg-[#658362] transition-all duration-500"
               style={{ width: `${kpis.confirmedRate}%` }}
             />
           </div>
         </Card>
 
         {/* Cancellation Rate */}
-        <Card className="min-w-[210px] flex-1 shrink-0 p-4 shadow-sm">
+        <Card className="p-3 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
               Cancelled Bookings
             </span>
-            <XCircle size={16} className="text-[#B85450]" />
+            <XCircle size={14} className="text-[#B85450]" />
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <p className="text-3xl font-extrabold text-[#B85450]">
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <p className="text-xl font-extrabold text-[#B85450]">
               {kpis.cancelled}
             </p>
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800">
-              {kpis.cancellationRate}% Cancel Rate
+            <span className="rounded-full bg-red-100 px-1.5 py-0.2 text-[10px] font-bold text-red-800">
+              {kpis.cancellationRate}%
             </span>
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate">
-            <span>Cancellation Impact</span>
+          <div className="mt-1 flex items-center justify-between text-[10px] text-slate">
+            <span>Cancelled</span>
             <span className="font-bold text-red-700">
               {kpis.cancellationRate}%
             </span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
             <div
-              className="h-1.5 rounded-full bg-[#B85450] transition-all duration-500"
+              className="h-1 rounded-full bg-[#B85450] transition-all duration-500"
               style={{ width: `${kpis.cancellationRate}%` }}
             />
           </div>
         </Card>
 
         {/* Active Bookers */}
-        <Card className="min-w-[210px] flex-1 shrink-0 p-4 shadow-sm">
+        <Card className="p-3 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
               Workforce Engagement
             </span>
-            <Users size={16} className="text-purple-600" />
+            <Users size={14} className="text-purple-600" />
           </div>
-          <p className="mt-2 text-3xl font-extrabold text-ink">
+          <p className="mt-1 text-xl font-extrabold text-ink">
             {kpis.uniqueUsers}
           </p>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate">
-            <span>Active Team Members</span>
+          <div className="mt-1 flex items-center justify-between text-[10px] text-slate">
+            <span>Team Members</span>
             <span className="font-semibold text-purple-700">
               {kpis.uniqueUsers > 0
                 ? (kpis.total / kpis.uniqueUsers).toFixed(1)
                 : 0}{' '}
-              avg/person
+              avg
             </span>
           </div>
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-slate-100">
-            <div className="h-1.5 rounded-full bg-purple-600 w-full" />
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
+            <div className="h-1 rounded-full bg-purple-600 w-full" />
           </div>
         </Card>
       </div>
 
       {/* =================================================
-          DETAILED BOOKING RECORDS TABLE
+          Workplace Reservation Records & Audit Summary Card
       ================================================= */}
-      <Card className="overflow-hidden shadow-sm">
-        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between border-b border-line bg-portal-bg/40">
+      <Card className="p-4 shadow-sm border border-line">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h2 className="font-display text-sm font-bold text-ink">
               Workplace Reservation Records & Audit
             </h2>
-            <p className="text-xs text-slate">
+            <p className="text-xs text-slate mt-0.5">
               Showing {displayedTableBookings.length} of {bookings.length} reservations matching active filters.
-              {(timeFilter !== 'All' || moduleFilter !== 'All' || statusFilter !== 'All' || tableSearch) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTimeFilter('All')
-                    setModuleFilter('All')
-                    setStatusFilter('All')
-                    setTableSearch('')
-                  }}
-                  className="ml-2 font-bold text-sky-600 hover:underline"
-                >
-                  Reset all filters
-                </button>
-              )}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              value={tableSearch}
-              onChange={(e) => setTableSearch(e.target.value)}
-              placeholder="Search bookings, rooms, employees..."
-              className="w-full sm:w-64 rounded-xl border border-line bg-white px-3 py-1.5 text-xs text-ink outline-none focus:border-sky-500"
-            />
-            {tableSearch && (
-              <button
-                type="button"
-                onClick={() => setTableSearch('')}
-                className="text-xs font-bold text-slate hover:text-ink px-1"
-                title="Clear search"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="overflow-x-auto p-4">
-          <table className="w-full min-w-[800px] text-left text-xs">
-            <thead>
-              <tr className="border-b border-line text-[11px] font-extrabold uppercase tracking-wider text-black">
-                <th className="px-3 py-2.5 whitespace-nowrap">Booking ID</th>
-                <th className="px-3 py-2.5 whitespace-nowrap">Meeting Title</th>
-                <th className="px-3 py-2.5 whitespace-nowrap">Room</th>
-                <th className="px-3 py-2.5 whitespace-nowrap">Module</th>
-                <th className="px-3 py-2.5 whitespace-nowrap">Date</th>
-                <th className="px-3 py-2.5 whitespace-nowrap">Time</th>
-                <th className="px-3 py-2.5 whitespace-nowrap">Created By</th>
-                <th className="px-3 py-2.5 text-center whitespace-nowrap">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {loading ? (
-                <tr>
-                  <td colSpan={8} className="px-3 py-8 text-center text-slate">
-                    Loading booking records...
-                  </td>
-                </tr>
-              ) : displayedTableBookings.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-3 py-8 text-center text-slate">
-                    No booking records match the active filter criteria.
-                  </td>
-                </tr>
-              ) : (
-                displayedTableBookings.map((booking) => (
-                  <tr
-                    key={booking.bookingId}
-                    onClick={() => openViewModal(booking)}
-                    className="cursor-pointer transition-colors duration-150 hover:bg-sky-50/70"
-                    title="Click to view full reservation details"
-                  >
-                    <td className="px-3 py-3 font-sans text-xs font-semibold text-ink whitespace-nowrap">
-                      {booking.bookingId}
-                    </td>
-                    <td className="px-3 py-3 font-medium text-ink whitespace-nowrap">
-                      {booking.title}
-                    </td>
-                    <td className="px-3 py-3 text-slate whitespace-nowrap">
-                      {booking.roomName}
-                    </td>
-                    <td className="px-3 py-3 text-slate whitespace-nowrap">
-                      {booking.module}
-                    </td>
-                    <td className="px-3 py-3 text-slate whitespace-nowrap">
-                      {booking.date}
-                    </td>
-                    <td className="px-3 py-3 font-sans text-xs text-slate whitespace-nowrap">
-                      {booking.startTime && booking.endTime
-                        ? `${booking.startTime} - ${booking.endTime}`
-                        : booking.startTime || '-'}
-                    </td>
-                    <td className="px-3 py-3 text-slate whitespace-nowrap">
-                      {booking.createdBy}
-                    </td>
-                    <td className="px-3 py-3 text-center whitespace-nowrap">
-                      <CustomStatusTag status={booking.status} />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <Button
+            size="sm"
+            onClick={() => setIsAuditModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1 text-xs font-bold text-white bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 shadow-sm border-0 h-7.5 whitespace-nowrap self-start sm:self-auto"
+          >
+            <Eye size={13} />
+            <span>View</span>
+          </Button>
         </div>
       </Card>
 
       {/* =================================================
           ROW 1: Primary Visual Charts (2 Columns)
       ================================================= */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         {/* CHART 1: Employee Reservation vs Cancellation Comparison */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
+        <Card className="p-3.5 shadow-sm">
+          <div className="flex items-center justify-between border-b border-line pb-2">
             <div>
-              <h2 className="font-display text-sm font-700 text-ink">
+              <h2 className="font-display text-xs font-bold text-ink">
                 Employee Booking vs Cancellation Ratio
               </h2>
-              <p className="text-xs text-slate">
-                Confirmed (green) vs Cancelled (red) reservations by top
-                employees.
+              <p className="text-[11px] text-slate">
+                Confirmed (green) vs Cancelled (red) reservations by top employees.
               </p>
             </div>
-            <Users size={16} className="text-sky-600" />
+            <Users size={14} className="text-sky-600" />
           </div>
 
-          <div className="h-[300px] w-full pt-4">
+          <div className="h-[190px] w-full pt-2">
             {employeeComparisonData.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate">
+              <div className="flex h-full items-center justify-center text-xs text-slate">
                 No employee activity data available.
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={employeeComparisonData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
+                  margin={{ top: 5, right: 10, left: -25, bottom: 15 }}
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -1080,28 +1065,28 @@ export default function Reports() {
                   />
                   <XAxis
                     dataKey="name"
-                    tick={{ fill: '#475569', fontSize: 11 }}
-                    angle={-20}
+                    tick={{ fill: '#475569', fontSize: 10 }}
+                    angle={-15}
                     textAnchor="end"
                     interval={0}
                   />
                   <YAxis
-                    tick={{ fill: '#475569', fontSize: 11 }}
+                    tick={{ fill: '#475569', fontSize: 10 }}
                     allowDecimals={false}
                   />
                   <Tooltip content={<CustomChartTooltip />} />
-                  <Legend verticalAlign="top" height={36} />
+                  <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: '11px' }} />
                   <Bar
                     name="Confirmed"
                     dataKey="confirmed"
                     fill="#10B981"
-                    radius={[4, 4, 0, 0]}
+                    radius={[3, 3, 0, 0]}
                   />
                   <Bar
                     name="Cancelled"
                     dataKey="cancelled"
                     fill="#EF4444"
-                    radius={[4, 4, 0, 0]}
+                    radius={[3, 3, 0, 0]}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -1110,22 +1095,22 @@ export default function Reports() {
         </Card>
 
         {/* CHART 2: Status Outcome Donut Chart */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
+        <Card className="p-3.5 shadow-sm">
+          <div className="flex items-center justify-between border-b border-line pb-2">
             <div>
-              <h2 className="font-display text-sm font-700 text-ink">
+              <h2 className="font-display text-xs font-bold text-ink">
                 Reservation Outcome Breakdown
               </h2>
-              <p className="text-xs text-slate">
+              <p className="text-[11px] text-slate">
                 Proportion of successful bookings vs cancellations.
               </p>
             </div>
-            <Sparkles size={16} className="text-emerald-600" />
+            <Sparkles size={14} className="text-emerald-600" />
           </div>
 
-          <div className="h-[300px] w-full pt-2">
+          <div className="h-[190px] w-full pt-1">
             {visualStatusData.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate">
+              <div className="flex h-full items-center justify-center text-xs text-slate">
                 No status data available.
               </div>
             ) : (
@@ -1137,9 +1122,9 @@ export default function Reports() {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={70}
-                    outerRadius={105}
-                    paddingAngle={4}
+                    innerRadius={45}
+                    outerRadius={68}
+                    paddingAngle={3}
                   >
                     {visualStatusData.map((entry, index) => (
                       <Cell
@@ -1152,7 +1137,8 @@ export default function Reports() {
                   <Legend
                     verticalAlign="bottom"
                     iconType="circle"
-                    height={36}
+                    height={24}
+                    wrapperStyle={{ fontSize: '11px' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -1164,15 +1150,15 @@ export default function Reports() {
       {/* =================================================
           ROW 2: Timeline Trends & Room Popularity
       ================================================= */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         {/* CHART 3: Booking Activity Trend (Smooth Gradient Area) */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
+        <Card className="p-3.5 shadow-sm">
+          <div className="flex items-center justify-between border-b border-line pb-2">
             <div>
-              <h2 className="font-display text-sm font-700 text-ink">
+              <h2 className="font-display text-xs font-bold text-ink">
                 Reservation Volume Trendline
               </h2>
-              <p className="text-xs text-slate">
+              <p className="text-[11px] text-slate">
                 Historical reservation activity and volume patterns.
               </p>
             </div>
@@ -1181,7 +1167,7 @@ export default function Reports() {
             <div className="flex items-center rounded-lg bg-slate-100 p-0.5 text-xs">
               <button
                 onClick={() => setTrendPeriod('Monthly')}
-                className={`rounded-md px-2.5 py-1 font-bold ${
+                className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
                   trendPeriod === 'Monthly'
                     ? 'bg-white text-ink shadow-sm'
                     : 'text-slate hover:text-ink'
@@ -1191,7 +1177,7 @@ export default function Reports() {
               </button>
               <button
                 onClick={() => setTrendPeriod('Weekly')}
-                className={`rounded-md px-2.5 py-1 font-bold ${
+                className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
                   trendPeriod === 'Weekly'
                     ? 'bg-white text-ink shadow-sm'
                     : 'text-slate hover:text-ink'
@@ -1202,11 +1188,11 @@ export default function Reports() {
             </div>
           </div>
 
-          <div className="h-[280px] w-full pt-4">
+          <div className="h-[180px] w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={timelineData}
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                margin={{ top: 5, right: 10, left: -25, bottom: 0 }}
               >
                 <defs>
                   <linearGradient
@@ -1234,10 +1220,10 @@ export default function Reports() {
                 />
                 <XAxis
                   dataKey="name"
-                  tick={{ fill: '#475569', fontSize: 11 }}
+                  tick={{ fill: '#475569', fontSize: 10 }}
                 />
                 <YAxis
-                  tick={{ fill: '#475569', fontSize: 11 }}
+                  tick={{ fill: '#475569', fontSize: 10 }}
                   allowDecimals={false}
                 />
                 <Tooltip content={<CustomChartTooltip />} />
@@ -1246,7 +1232,7 @@ export default function Reports() {
                   dataKey="bookings"
                   name="Bookings"
                   stroke="#0284C7"
-                  strokeWidth={3}
+                  strokeWidth={2.5}
                   fillOpacity={1}
                   fill="url(#bookingAreaGrad)"
                 />
@@ -1256,22 +1242,22 @@ export default function Reports() {
         </Card>
 
         {/* CHART 4: Room Demand & Utilization Ranking */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
+        <Card className="p-3.5 shadow-sm">
+          <div className="flex items-center justify-between border-b border-line pb-2">
             <div>
-              <h2 className="font-display text-sm font-700 text-ink">
+              <h2 className="font-display text-xs font-bold text-ink">
                 Most Reserved Rooms & Workspaces
               </h2>
-              <p className="text-xs text-slate">
+              <p className="text-[11px] text-slate">
                 Workspace popularity ranked by total reservation volume.
               </p>
             </div>
-            <Building2 size={16} className="text-sky-600" />
+            <Building2 size={14} className="text-sky-600" />
           </div>
 
-          <div className="h-[280px] w-full pt-4">
+          <div className="h-[180px] w-full pt-2">
             {roomPopularityData.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate">
+              <div className="flex h-full items-center justify-center text-xs text-slate">
                 No room usage records found.
               </div>
             ) : (
@@ -1279,7 +1265,7 @@ export default function Reports() {
                 <BarChart
                   data={roomPopularityData}
                   layout="vertical"
-                  margin={{ top: 5, right: 20, left: 30, bottom: 5 }}
+                  margin={{ top: 5, right: 15, left: 15, bottom: 5 }}
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -1287,21 +1273,21 @@ export default function Reports() {
                   />
                   <XAxis
                     type="number"
-                    tick={{ fill: '#475569', fontSize: 11 }}
+                    tick={{ fill: '#475569', fontSize: 10 }}
                     allowDecimals={false}
                   />
                   <YAxis
                     type="category"
                     dataKey="name"
-                    tick={{ fill: '#0f172a', fontSize: 11, fontWeight: 600 }}
-                    width={110}
+                    tick={{ fill: '#0f172a', fontSize: 10, fontWeight: 600 }}
+                    width={95}
                   />
                   <Tooltip content={<CustomChartTooltip />} />
                   <Bar
                     dataKey="bookings"
                     name="Reservations"
                     fill="#0284C7"
-                    radius={[0, 6, 6, 0]}
+                    radius={[0, 4, 4, 0]}
                   >
                     {roomPopularityData.map((entry, index) => (
                       <Cell
@@ -1318,76 +1304,28 @@ export default function Reports() {
       </div>
 
       {/* =================================================
-          ROW 3: Cancellation Drivers & Peak Booking Hours
+          ROW 3: Peak Workspace Demand by Hour
       ================================================= */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* CHART 5: Cancellation Drivers & Reasons Analysis */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
+      <div>
+        {/* Peak Booking Hours Distribution */}
+        <Card className="p-3.5 shadow-sm">
+          <div className="flex items-center justify-between border-b border-line pb-2">
             <div>
-              <h2 className="font-display text-sm font-700 text-ink">
-                Top Cancellation Reasons & Drivers
-              </h2>
-              <p className="text-xs text-slate">
-                Visual breakdown of why employees cancelled their room
-                reservations.
-              </p>
-            </div>
-            <AlertTriangle size={16} className="text-[#B85450]" />
-          </div>
-
-          <div className="pt-4">
-            {cancellationReasonsData.length === 0 ? (
-              <p className="py-12 text-center text-sm text-slate">
-                No cancellations recorded under the active filters.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {cancellationReasonsData.map((item, idx) => (
-                  <div key={idx} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-ink">
-                        "{item.reason}"
-                      </span>
-                      <span className="font-bold text-red-700">
-                        {item.count} {item.count === 1 ? 'time' : 'times'} (
-                        {item.percentage}%)
-                      </span>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="h-2 w-full rounded-full bg-red-100">
-                      <div
-                        className="h-2 rounded-full bg-red-500 transition-all duration-500"
-                        style={{ width: `${item.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </Card>
-
-        {/* CHART 6: Peak Booking Hours Distribution */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-700 text-ink">
+              <h2 className="font-display text-xs font-bold text-ink">
                 Peak Workspace Demand by Hour
               </h2>
-              <p className="text-xs text-slate">
+              <p className="text-[11px] text-slate">
                 Distribution of reservations across operational office hours.
               </p>
             </div>
-            <Clock size={16} className="text-sky-600" />
+            <Clock size={14} className="text-sky-600" />
           </div>
 
-          <div className="h-[250px] w-full pt-4">
+          <div className="h-[170px] w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={hourlyDistributionData}
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                margin={{ top: 5, right: 10, left: -25, bottom: 0 }}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -1395,10 +1333,10 @@ export default function Reports() {
                 />
                 <XAxis
                   dataKey="time"
-                  tick={{ fill: '#475569', fontSize: 11 }}
+                  tick={{ fill: '#475569', fontSize: 10 }}
                 />
                 <YAxis
-                  tick={{ fill: '#475569', fontSize: 11 }}
+                  tick={{ fill: '#475569', fontSize: 10 }}
                   allowDecimals={false}
                 />
                 <Tooltip content={<CustomChartTooltip />} />
@@ -1406,13 +1344,173 @@ export default function Reports() {
                   dataKey="bookings"
                   name="Bookings at Hour"
                   fill="#6366F1"
-                  radius={[4, 4, 0, 0]}
+                  radius={[3, 3, 0, 0]}
                 />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </Card>
       </div>
+
+      {/* =====================================================
+          All Audit Records Table Modal
+      ===================================================== */}
+      <Modal
+        open={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        title="Workplace Reservation Records & Audit"
+        className="max-w-5xl"
+        footer={
+          <div className="flex w-full items-center justify-between">
+            <span className="text-xs text-slate">
+              Total {displayedTableBookings.length} bookings found
+            </span>
+            <Button size="sm" variant="secondary" onClick={() => setIsAuditModalOpen(false)}>
+              Close
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-line pb-3">
+            <p className="text-xs text-slate">
+              Showing {displayedTableBookings.length} of {bookings.length} reservations matching active filters.
+              {(timeFilter !== 'All' || moduleFilter !== 'All' || statusFilter !== 'All' || tableSearch) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimeFilter('All')
+                    setModuleFilter('All')
+                    setStatusFilter('All')
+                    setTableSearch('')
+                  }}
+                  className="ml-2 font-bold text-sky-600 hover:underline"
+                >
+                  Reset all filters
+                </button>
+              )}
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                value={tableSearch}
+                onChange={(e) => setTableSearch(e.target.value)}
+                placeholder="Search bookings, rooms, employees..."
+                className="w-full sm:w-64 rounded-xl border border-line bg-white px-3 py-1.5 text-xs text-ink outline-none focus:border-sky-500"
+              />
+              {tableSearch && (
+                <button
+                  type="button"
+                  onClick={() => setTableSearch('')}
+                  className="text-xs font-bold text-slate hover:text-ink px-1"
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto max-h-[55vh] border border-line rounded-xl">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-slate-50 border-b border-line text-[10px] font-extrabold uppercase tracking-wider text-black">
+                <tr>
+                  <th className="px-3 py-2.5 whitespace-nowrap">Booking ID</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap">Meeting Title</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap">Room</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap">Module</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap">Date</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap">Time</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap">Created By</th>
+                  <th className="px-3 py-2.5 text-center whitespace-nowrap">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="px-3 py-6 text-center text-slate">
+                      Loading booking records...
+                    </td>
+                  </tr>
+                ) : displayedTableBookings.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-3 py-6 text-center text-slate">
+                      No booking records match the active filter criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedBookings.map((booking) => (
+                    <tr
+                      key={booking.bookingId}
+                      onClick={() => openViewModal(booking)}
+                      className="cursor-pointer transition-colors duration-150 hover:bg-sky-50/70"
+                      title="Click to view full reservation details"
+                    >
+                      <td className="px-3 py-2.5 font-sans text-xs font-semibold text-ink whitespace-nowrap">
+                        {booking.bookingId}
+                      </td>
+                      <td className="px-3 py-2.5 font-medium text-ink whitespace-nowrap max-w-[180px] truncate" title={booking.title || '-'}>
+                        {booking.title || '-'}
+                      </td>
+                      <td className="px-3 py-2.5 text-slate whitespace-nowrap">
+                        {booking.roomName}
+                      </td>
+                      <td className="px-3 py-2.5 text-slate whitespace-nowrap">
+                        {booking.module}
+                      </td>
+                      <td className="px-3 py-2.5 text-slate whitespace-nowrap">
+                        {booking.date}
+                      </td>
+                      <td className="px-3 py-2.5 font-sans text-xs text-slate whitespace-nowrap">
+                        {booking.startTime && booking.endTime
+                          ? `${booking.startTime} - ${booking.endTime}`
+                          : booking.startTime || '-'}
+                      </td>
+                      <td className="px-3 py-2.5 text-slate whitespace-nowrap">
+                        {booking.createdBy}
+                      </td>
+                      <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                        <CustomStatusTag status={booking.status} />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Bar */}
+          {displayedTableBookings.length > pageSize && (
+            <div className="flex items-center justify-between border-t border-line pt-2 text-xs">
+              <span className="text-slate text-[11px]">
+                Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, displayedTableBookings.length)} of {displayedTableBookings.length} bookings
+              </span>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="px-2.5 py-0.5 text-xs h-6.5"
+                >
+                  Prev
+                </Button>
+                <span className="px-2 font-semibold text-ink text-[11px]">
+                  {currentPage} / {totalPages}
+                </span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="px-2.5 py-0.5 text-xs h-6.5"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* =====================================================
           Booking Details Modal
@@ -1446,7 +1544,7 @@ export default function Reports() {
 
             <div>
               <p className="text-xs uppercase tracking-wider text-slate font-semibold">Meeting Title</p>
-              <p className="font-semibold text-ink text-base mt-0.5">{selectedBooking.title}</p>
+              <p className="font-semibold text-ink text-base mt-0.5">{selectedBooking.title || '-'}</p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">

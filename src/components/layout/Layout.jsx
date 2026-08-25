@@ -81,11 +81,12 @@ export default function Layout() {
             so it will NOT appear on Login
            ================================= */}
 
-        {isCopilotOpen ? (
-          <SpaceBookCopilot
-            onClose={() => setIsCopilotOpen(false)}
-          />
-        ) : (
+        <SpaceBookCopilot
+          isOpen={isCopilotOpen}
+          onClose={() => setIsCopilotOpen(false)}
+        />
+
+        {!isCopilotOpen && (
           <div className="fixed top-[68px] right-6 z-[9999] flex items-center gap-3 select-none pointer-events-auto">
             {/* Floating Invitation / Help Bubble */}
             {showCopilotBubble && (
