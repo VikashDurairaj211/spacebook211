@@ -203,6 +203,13 @@ export default function MyBookings() {
 
           roomId: getRoomId(booking),
 
+          purpose:
+            booking.meetingTitle ||
+            booking.MeetingTitle ||
+            booking.purpose ||
+            booking.Purpose ||
+            "Reserved Workspace",
+
           isHotseat: false,
         }));
       } else {
@@ -1155,6 +1162,10 @@ export default function MyBookings() {
           selected.purpose?.trim() ||
           "Meeting",
 
+        meetingTitle:
+          selected.purpose?.trim() ||
+          "Meeting",
+
         participantCount:
           Number(
             selected.participantCount || 1
@@ -1308,7 +1319,7 @@ export default function MyBookings() {
               </th>
 
               <th className="px-3 py-3">
-                Purpose
+                Meeting Title
               </th>
 
               <th className="px-3 py-3">
@@ -1415,7 +1426,7 @@ export default function MyBookings() {
                     {getBookingModule(b)}
                   </td>
 
-                  {/* PURPOSE */}
+                  {/* MEETING TITLE */}
 
                   <td className="max-w-[140px] truncate px-3 py-4">
                     {b.purpose &&
@@ -1618,10 +1629,10 @@ export default function MyBookings() {
               </>
             )}
 
-            {/* PURPOSE */}
+            {/* MEETING TITLE */}
 
             <dt className="font-medium">
-              Purpose
+              Meeting Title
             </dt>
 
             <dd>
@@ -1907,7 +1918,7 @@ export default function MyBookings() {
                   </span>
                 </p>
 
-                <Field label="Purpose">
+                <Field label="Meeting Title">
 
                   <Input
                     value={
