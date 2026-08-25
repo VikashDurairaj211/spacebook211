@@ -19,6 +19,14 @@ function timeToMinutes(val) {
   return h * 60 + m
 }
 
+function formatHourLabel(hourStr) {
+  const h = Number(hourStr)
+  if (isNaN(h)) return hourStr
+  const period = h >= 12 ? 'PM' : 'AM'
+  const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h
+  return `${String(displayH).padStart(2, '0')} ${period}`
+}
+
 export default function ScrollableTimePicker({
   label,
   value,
@@ -26,7 +34,7 @@ export default function ScrollableTimePicker({
   selectedDate,
   minTime,
   error,
-  placeholder = 'Select time',
+  placeholder = 'Select time (10:00 AM - 10:00 PM)',
   className = '',
   disabled = false,
 }) {
@@ -197,11 +205,11 @@ export default function ScrollableTimePicker({
         <span
           className={
             currentValue
-              ? 'text-ink'
+              ? 'text-ink font-medium'
               : 'text-slate-500'
           }
         >
-          {currentValue || placeholder}
+          {currentValue ? `${currentValue} (${formatHourLabel(selectedHour || currentValue.slice(0, 2))})` : placeholder}
         </span>
 
         <svg
@@ -226,77 +234,85 @@ export default function ScrollableTimePicker({
       )}
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 flex w-full overflow-hidden rounded-xl border border-sky-200 bg-white shadow-xl">
-          {/* HOURS */}
-          <div className="flex flex-1 flex-col border-r border-slate-100 min-w-0">
-            <div className="bg-sky-100 text-sky-900 py-1.5 text-xs font-bold border-b border-sky-200 text-center select-none">
-              Hour
-            </div>
-
-            <div
-              ref={hourContainerRef}
-              className="max-h-48 overflow-y-auto p-1.5 space-y-1 text-center [scrollbar-width:thin]"
-            >
-              {hoursList.map((hour) => {
-                const isHourDis = isHourDisabled(hour)
-                const isSelected = selectedHour === hour
-
-                return (
-                  <button
-                    key={hour}
-                    type="button"
-                    disabled={isHourDis}
-                    data-selected={isSelected ? 'true' : 'false'}
-                    onClick={() => handleHourClick(hour)}
-                    className={`block w-full rounded-md py-1.5 text-xs font-semibold transition-colors text-center ${
-                      isHourDis
-                        ? 'cursor-not-allowed bg-slate-50 text-slate-300 opacity-50'
-                        : isSelected
-                        ? 'bg-[#2F6FE0] text-white font-bold shadow-sm'
-                        : 'text-slate-700 hover:bg-sky-50'
-                    }`}
-                  >
-                    {hour}
-                  </button>
-                )
-              })}
-            </div>
+        <div className="absolute z-50 mt-1 flex flex-col w-full overflow-hidden rounded-xl border border-sky-200 bg-white shadow-xl">
+          {/* Operating hours banner */}
+          <div className="bg-sky-50 px-3 py-1.5 text-[10.5px] font-bold text-sky-800 border-b border-sky-100 flex items-center justify-between">
+            <span>Operating: 10:00 AM – 10:00 PM</span>
+            <span className="text-sky-600 font-normal">Business Hours</span>
           </div>
 
-          {/* MINUTES */}
-          <div className="flex flex-1 flex-col min-w-0">
-            <div className="bg-sky-100 text-sky-900 py-1.5 text-xs font-bold border-b border-sky-200 text-center select-none">
-              Min
+          <div className="flex w-full">
+            {/* HOURS */}
+            <div className="flex flex-1 flex-col border-r border-slate-100 min-w-0">
+              <div className="bg-slate-50 text-slate-700 py-1.5 text-xs font-bold border-b border-slate-200 text-center select-none">
+                Hour
+              </div>
+
+              <div
+                ref={hourContainerRef}
+                className="max-h-48 overflow-y-auto p-1.5 space-y-1 text-center [scrollbar-width:thin]"
+              >
+                {hoursList.map((hour) => {
+                  const isHourDis = isHourDisabled(hour)
+                  const isSelected = selectedHour === hour
+
+                  return (
+                    <button
+                      key={hour}
+                      type="button"
+                      disabled={isHourDis}
+                      data-selected={isSelected ? 'true' : 'false'}
+                      onClick={() => handleHourClick(hour)}
+                      className={`block w-full rounded-md py-1.5 px-1 text-xs font-semibold transition-colors text-center ${
+                        isHourDis
+                          ? 'cursor-not-allowed bg-slate-50 text-slate-300 opacity-50'
+                          : isSelected
+                          ? 'bg-[#2F6FE0] text-white font-bold shadow-sm'
+                          : 'text-slate-700 hover:bg-sky-50'
+                      }`}
+                    >
+                      {formatHourLabel(hour)}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
-            <div
-              ref={minuteContainerRef}
-              className="max-h-48 overflow-y-auto p-1.5 space-y-1 text-center [scrollbar-width:thin]"
-            >
-              {minutesList.map((minute) => {
-                const hour = selectedHour || '10'
-                const isMinDis = isMinuteDisabled(hour, minute)
-                const isSelected = selectedMinute === minute
+            {/* MINUTES */}
+            <div className="flex flex-1 flex-col min-w-0">
+              <div className="bg-slate-50 text-slate-700 py-1.5 text-xs font-bold border-b border-slate-200 text-center select-none">
+                Minute
+              </div>
 
-                return (
-                  <button
-                    key={minute}
-                    type="button"
-                    disabled={isMinDis}
-                    data-selected={isSelected ? 'true' : 'false'}
-                    onClick={() => handleMinuteClick(minute)}
-                    className={`block w-full rounded-md py-1.5 text-xs font-semibold transition-colors text-center ${
-                      isMinDis
-                        ? 'cursor-not-allowed bg-slate-50 text-slate-300 opacity-50'
-                        : isSelected
-                        ? 'bg-[#2F6FE0] text-white font-bold shadow-sm'
-                        : 'text-slate-700 hover:bg-sky-50'
-                    }`}
-                  >
-                    {minute}
-                  </button>
-                )
-              })}
+              <div
+                ref={minuteContainerRef}
+                className="max-h-48 overflow-y-auto p-1.5 space-y-1 text-center [scrollbar-width:thin]"
+              >
+                {minutesList.map((minute) => {
+                  const hour = selectedHour || '10'
+                  const isMinDis = isMinuteDisabled(hour, minute)
+                  const isSelected = selectedMinute === minute
+
+                  return (
+                    <button
+                      key={minute}
+                      type="button"
+                      disabled={isMinDis}
+                      data-selected={isSelected ? 'true' : 'false'}
+                      onClick={() => handleMinuteClick(minute)}
+                      className={`block w-full rounded-md py-1.5 text-xs font-semibold transition-colors text-center ${
+                        isMinDis
+                          ? 'cursor-not-allowed bg-slate-50 text-slate-300 opacity-50'
+                          : isSelected
+                          ? 'bg-[#2F6FE0] text-white font-bold shadow-sm'
+                          : 'text-slate-700 hover:bg-sky-50'
+                      }`}
+                    >
+                      {minute}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>

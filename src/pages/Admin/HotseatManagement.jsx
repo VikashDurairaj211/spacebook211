@@ -1294,9 +1294,9 @@ export default function HotseatManagement() {
       </div>
 
       {/* =================================================
-          ROW 3: Peak Time Slots & Lifecycle Status / Cancellation Drivers
+          ROW 3: Peak Hotseat Check-In Time Slots
       ================================================= */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div>
         {/* CHART 5: Peak Check-In Time Slots */}
         <Card className="p-5 shadow-sm">
           <div className="flex items-center justify-between border-b border-line pb-3">
@@ -1315,76 +1315,12 @@ export default function HotseatManagement() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={timeSlotDistributionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="slot" tick={{ fill: '#475569', fontSize: 10 }} />
+                <XAxis dataKey="slot" tick={{ fill: '#475569', fontSize: 11 }} />
                 <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
                 <Tooltip content={<CustomChartTooltip />} />
                 <Bar dataKey="bookings" name="Check-in Slots" fill="#6366F1" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* CHART 6: Hotseat Reservation Status & Release Drivers */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-700 text-ink">
-                Hotseat Cancellation Drivers & Lifecycle
-              </h2>
-              <p className="text-xs text-slate">
-                Root causes for desk cancellations and check-in release patterns.
-              </p>
-            </div>
-            <AlertTriangle size={16} className="text-[#be534d]" />
-          </div>
-
-          <div className="pt-4 space-y-4">
-            {/* Status Breakdown Pills */}
-            <div className="grid grid-cols-3 gap-2 pb-2 border-b border-slate-100">
-              <div className="rounded-xl bg-emerald-50 p-2.5 text-center">
-                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">Approved</span>
-                <span className="text-lg font-extrabold text-emerald-700">{kpis.confirmed}</span>
-              </div>
-              <div className="rounded-xl bg-sky-50 p-2.5 text-center">
-                <span className="text-[10px] font-bold text-sky-800 uppercase tracking-wider block">Checked In</span>
-                <span className="text-lg font-extrabold text-sky-700">{kpis.checkedIn}</span>
-              </div>
-              <div className="rounded-xl bg-red-50 p-2.5 text-center">
-                <span className="text-[10px] font-bold text-red-800 uppercase tracking-wider block">Cancelled</span>
-                <span className="text-lg font-extrabold text-red-700">{kpis.cancelled}</span>
-              </div>
-            </div>
-
-            {/* Cancellation Reasons List */}
-            {cancellationReasonsData.length === 0 ? (
-              <p className="py-4 text-center text-xs text-slate">
-                No cancellations recorded under the active filters.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  Primary Cancellation Reasons:
-                </p>
-                {cancellationReasonsData.map((item, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-ink">
-                        &ldquo;{item.reason}&rdquo;
-                      </span>
-                      <span className="font-bold text-red-700">
-                        {item.count} {item.count === 1 ? 'case' : 'cases'} ({item.percentage}%)
-                      </span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-red-100">
-                      <div
-                        className="h-2 rounded-full bg-red-500 transition-all duration-500"
-                        style={{ width: `${item.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </Card>
       </div>
