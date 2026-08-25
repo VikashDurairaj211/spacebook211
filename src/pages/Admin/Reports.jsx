@@ -174,9 +174,10 @@ export default function Reports() {
       setLoading(true)
       setError(null)
 
-      const [bookingsRes, trendRes, statusRes, usageRes, dashRes] =
+      const [bookingsRes, myBookingsRes, trendRes, statusRes, usageRes, dashRes] =
         await Promise.allSettled([
           client.get('/admin/bookings'),
+          client.get('/employee/mybookings'),
           getBookingTrendReport({ reportType: trendPeriod }),
           getBookingStatusReport({}),
           getRoomUsageReport({}),
@@ -187,6 +188,51 @@ export default function Reports() {
         setDashboardMetrics(dashRes.value.data)
       }
 
+      // Map meeting titles from mybookings
+      const myBookingsMap = {}
+      if (myBookingsRes.status === 'fulfilled' && myBookingsRes.value?.data) {
+        const myData = Array.isArray(myBookingsRes.value.data)
+          ? myBookingsRes.value.data
+          : myBookingsRes.value.data?.bookings ||
+            myBookingsRes.value.data?.data ||
+            []
+
+        myData.forEach((item) => {
+          const bId = String(
+            item.bookingId ?? item.id ?? item.BookingId ?? ''
+          ).replace(/^#/, '').trim()
+
+          const mTitle =
+            item.meetingTitle ||
+            item.MeetingTitle ||
+            item.title ||
+            item.Title ||
+            item.purpose ||
+            item.Purpose
+
+          if (bId && mTitle && String(mTitle).trim()) {
+            myBookingsMap[bId] = String(mTitle).trim()
+          }
+
+          const rId =
+            item.roomId ??
+            item.RoomId ??
+            item.room?.id ??
+            item.room?.roomId ??
+            ''
+          const dateKey = String(
+            item.bookingDate || item.date || ''
+          ).split('T')[0]
+          const timeKey = String(
+            item.startTime || item.time || item.start_time || ''
+          ).slice(0, 5)
+
+          if (rId && dateKey && timeKey && mTitle && String(mTitle).trim()) {
+            myBookingsMap[`${rId}_${dateKey}_${timeKey}`] = String(mTitle).trim()
+          }
+        })
+      }
+
       // 1. Live Bookings
       if (bookingsRes.status === 'fulfilled') {
         const rawData = Array.isArray(bookingsRes.value.data)
@@ -194,6 +240,84 @@ export default function Reports() {
           : bookingsRes.value.data?.data ||
             bookingsRes.value.data?.bookings ||
             []
+
+        let localTitles = {}
+        try {
+          localTitles = JSON.parse(
+            localStorage.getItem('spacebook_meeting_titles') || '{}'
+          )
+        } catch (e) {
+          // ignore
+        }
+
+        const resolveMeetingTitle = (b) => {
+          const keyId = String(
+            b.bookingId ??
+            b.booking_id ??
+            b.BookingId ??
+            b.id ??
+            b.Id ??
+            b.reservationId ??
+            ''
+          ).replace(/^#/, '').trim()
+
+          const rId =
+            b.roomId ??
+            b.RoomId ??
+            b.room?.id ??
+            b.room?.roomId ??
+            ''
+          const dateKey = String(b.bookingDate || b.date || '').split('T')[0]
+          const timeKey = String(
+            b.startTime || b.time || b.start_time || ''
+          ).slice(0, 5)
+          const keyRoom = `${rId}_${dateKey}_${timeKey}`
+
+          const candidates = [
+            b.meetingTitle,
+            b.MeetingTitle,
+            b.meeting_title,
+            b.title,
+            b.Title,
+            b.purpose,
+            b.Purpose,
+            b.bookingPurpose,
+            b.booking_purpose,
+            b.reason,
+            b.Reason,
+            b.subject,
+            b.Subject,
+            b.meetingName,
+            b.description,
+            b.Description,
+          ]
+
+          for (const cand of candidates) {
+            if (
+              cand &&
+              typeof cand === 'string' &&
+              cand.trim() &&
+              cand.trim().toLowerCase() !== 'meeting' &&
+              cand.trim().toLowerCase() !== 'reserved workspace'
+            ) {
+              return cand.trim()
+            }
+          }
+
+          if (keyId && myBookingsMap[keyId]) return myBookingsMap[keyId]
+          if (keyRoom && myBookingsMap[keyRoom]) return myBookingsMap[keyRoom]
+
+          if (keyId && localTitles[keyId]) return localTitles[keyId]
+          if (keyRoom && localTitles[keyRoom]) return localTitles[keyRoom]
+
+          for (const cand of candidates) {
+            if (cand && typeof cand === 'string' && cand.trim()) {
+              return cand.trim()
+            }
+          }
+
+          return 'Reserved Workspace'
+        }
 
         const mapped = rawData.map((b, idx) => {
           const rawReason =
@@ -204,16 +328,21 @@ export default function Reports() {
             b.cancel_reason ||
             ''
 
-          const resolvedId = b.bookingId ?? b.booking_id ?? b.BookingId ?? b.id ?? b.reservationId ?? (idx + 1)
+          const resolvedId =
+            b.bookingId ??
+            b.booking_id ??
+            b.BookingId ??
+            b.id ??
+            b.reservationId ??
+            (idx + 1)
+          const resolvedTitle = resolveMeetingTitle(b)
 
           return {
             bookingId: resolvedId,
             id: resolvedId,
-            title:
-              b.title ??
-              b.purpose ??
-              b.meetingTitle ??
-              'Reserved Workspace',
+            title: resolvedTitle,
+            meetingTitle: resolvedTitle,
+            purpose: resolvedTitle,
             roomName:
               b.roomName ??
               b.room?.name ??
