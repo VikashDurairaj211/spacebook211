@@ -4,6 +4,202 @@ import client from "./client";
 // EMPLOYEE ROOM ENDPOINTS
 // ==========================================
 
+// Fallback constants
+export const DEFAULT_MODULES = [
+  "Module 1 - Elcot Park - CMB",
+  "Module 2 - Elcot Park - CMB",
+  "Module 1 - Tidel Park - CMB",
+];
+
+export const DEFAULT_ROOM_TYPES = [
+  { id: 1, name: "Conference" },
+  { id: 2, name: "Training" },
+  { id: 3, name: "Discussion" },
+];
+
+export const DEFAULT_FACILITIES = [
+  { id: 1, name: "Projector" },
+  { id: 2, name: "TV" },
+  { id: 3, name: "Whiteboard" },
+  { id: 4, name: "Camera" },
+  { id: 5, name: "Mic" },
+];
+
+/**
+ * Normalizes any module response into a clean list of module string names
+ */
+export function normalizeModules(data) {
+  if (!data) return DEFAULT_MODULES;
+  const rawList = Array.isArray(data)
+    ? data
+    : data.modules || data.data || data.result || [];
+
+  if (!Array.isArray(rawList) || rawList.length === 0) {
+    return DEFAULT_MODULES;
+  }
+
+  const normalized = rawList
+    .map((item) => {
+      if (typeof item === "string") return item.trim();
+      if (item && typeof item === "object") {
+        return (
+          item.name ||
+          item.moduleName ||
+          item.module ||
+          item.title ||
+          item.location ||
+          ""
+        ).trim();
+      }
+      return String(item || "").trim();
+    })
+    .filter(Boolean);
+
+  return normalized.length > 0 ? [...new Set(normalized)] : DEFAULT_MODULES;
+}
+
+/**
+ * Normalizes any room type response into an array of { id, name }
+ */
+export function normalizeRoomTypes(data) {
+  if (!data) return DEFAULT_ROOM_TYPES;
+  const rawList = Array.isArray(data)
+    ? data
+    : data.roomTypes || data.data || data.result || [];
+
+  if (!Array.isArray(rawList) || rawList.length === 0) {
+    return DEFAULT_ROOM_TYPES;
+  }
+
+  const normalized = rawList
+    .map((item, idx) => {
+      if (typeof item === "string") {
+        const lower = item.toLowerCase();
+        let id = idx + 1;
+        if (lower.includes("conf")) id = 1;
+        else if (lower.includes("train")) id = 2;
+        else if (lower.includes("disc")) id = 3;
+        return { id, name: item.trim() };
+      }
+
+      if (item && typeof item === "object") {
+        const id = Number(
+          item.id ??
+            item.roomTypeId ??
+            item.RoomTypeId ??
+            item.typeId ??
+            idx + 1
+        );
+        const name = (
+          item.name ??
+          item.roomTypeName ??
+          item.RoomTypeName ??
+          item.typeName ??
+          item.title ??
+          `Room Type ${id}`
+        ).trim();
+        return { id, name };
+      }
+
+      return null;
+    })
+    .filter(Boolean);
+
+  return normalized.length > 0 ? normalized : DEFAULT_ROOM_TYPES;
+}
+
+/**
+ * Normalizes facilities into an array of { id, name }
+ */
+export function normalizeFacilities(data) {
+  if (!data) return DEFAULT_FACILITIES;
+  const rawList = Array.isArray(data)
+    ? data
+    : data.facilities || data.data || data.result || [];
+
+  if (!Array.isArray(rawList) || rawList.length === 0) {
+    return DEFAULT_FACILITIES;
+  }
+
+  const normalized = rawList
+    .map((item, idx) => {
+      if (typeof item === "string") {
+        return { id: idx + 1, name: item.trim() };
+      }
+      if (item && typeof item === "object") {
+        const id = Number(
+          item.id ?? item.facilityId ?? item.FacilityId ?? idx + 1
+        );
+        const name = (
+          item.name ??
+          item.facilityName ??
+          item.FacilityName ??
+          `Facility ${id}`
+        ).trim();
+        return { id, name };
+      }
+      return null;
+    })
+    .filter(Boolean);
+
+  return normalized.length > 0 ? normalized : DEFAULT_FACILITIES;
+}
+
+// GET /api/employee/modules
+export async function getModules() {
+  try {
+    const { data } = await client.get("/employee/modules");
+    return normalizeModules(data);
+  } catch (error) {
+    console.warn("Failed to fetch modules from /api/employee/modules, using fallback:", error);
+    return DEFAULT_MODULES;
+  }
+}
+
+// GET /api/employee/room-types
+export async function getRoomTypes(params = {}) {
+  try {
+    const queryParams = {};
+    if (params.module) queryParams.module = params.module;
+    if (params.moduleId) queryParams.moduleId = params.moduleId;
+
+    const { data } = await client.get("/employee/room-types", {
+      params: queryParams,
+    });
+    return normalizeRoomTypes(data);
+  } catch (error) {
+    console.warn("Failed to fetch room types from /api/employee/room-types, using fallback:", error);
+    return DEFAULT_ROOM_TYPES;
+  }
+}
+
+// GET /api/employee/rooms
+export async function getEmployeeRooms(params = {}) {
+  try {
+    const queryParams = {};
+    if (params.module) queryParams.module = params.module;
+
+    const { data } = await client.get("/employee/rooms", {
+      params: queryParams,
+    });
+    return Array.isArray(data) ? data : data?.rooms || data?.data || [];
+  } catch (error) {
+    console.warn("Failed to fetch rooms from /api/employee/rooms:", error);
+    return [];
+  }
+}
+
+// GET /api/admin/facilities
+export async function getFacilities() {
+  try {
+    const { data } = await client.get("/admin/facilities");
+    return normalizeFacilities(data);
+  } catch (error) {
+    console.warn("Failed to fetch facilities from /admin/facilities, using fallback:", error);
+    return DEFAULT_FACILITIES;
+  }
+}
+
 // Get room by ID (Employee-safe fallback using availability endpoint)
 export async function getRoomById(id) {
   try {
