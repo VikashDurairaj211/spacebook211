@@ -301,50 +301,101 @@ export default function HotseatBookingApp() {
         const rawSeats = await seatsRes.json();
         const seatArray = Array.isArray(rawSeats) ? rawSeats : rawSeats?.seats || [];
 
-        // Strictly isolate Elcot Module 1 seats (EO1)
-        const module1Seats = seatArray
-          .filter((s) => {
-            const sn = String(s.seatNumber || "").toUpperCase();
-            return sn.startsWith("EO1") || sn.includes("EO1");
-          })
-          .map((s) => {
-            const num = parseInt(String(s.seatNumber).split("-").pop(), 10);
-            return {
-              id: s.seatNumber,
-              seatNumber: s.seatNumber,
-              seatId: s.seatId ?? s.id ?? num,
-              label: `Seat ${num}`,
-              number: num,
-              modulePrefix: "EO1",
-              type: "hotseat",
-              status: String(s.status || "available").toLowerCase(),
-              bookedByUserId: s.bookedByUserId || s.userId || null,
-            };
+        // 1. Strictly generate complete Elcot Module 1 seats (Seats 1 to 70)
+        const module1Seats = Array.from({ length: 70 }, (_, i) => {
+          const num = i + 1;
+          const pad3 = `WS-05-EO1-${String(num).padStart(3, "0")}`;
+          const pad2 = `EO1-${String(num).padStart(2, "0")}`;
+          const pad1 = `EO1-${num}`;
+
+          const found = seatArray.find((s) => {
+            const sn = String(s.seatNumber || "").trim().toUpperCase();
+            if (sn.includes("EO2") || (sn.startsWith("WS-04") && !sn.includes("EO1"))) {
+              return false;
+            }
+            return (
+              sn.includes("EO1") &&
+              (sn === pad3 ||
+                sn === pad2 ||
+                sn === pad1 ||
+                parseInt(sn.split("-").pop(), 10) === num)
+            );
           });
 
-        // Strictly isolate Elcot Module 2 seats (EO2)
-        const module2Seats = seatArray
-          .filter((s) => {
-            const sn = String(s.seatNumber || "").toUpperCase();
-            return sn.startsWith("EO2") || sn.includes("EO2");
-          })
-          .map((s) => {
-            const num = parseInt(String(s.seatNumber).split("-").pop(), 10);
-            return {
-              id: s.seatNumber,
-              seatNumber: s.seatNumber,
-              seatId: s.seatId ?? s.id ?? (num + 98),
-              label: `Seat ${num}`,
-              number: num,
-              modulePrefix: "EO2",
-              type: "hotseat",
-              status: String(s.status || "available").toLowerCase(),
-              bookedByUserId: s.bookedByUserId || s.userId || null,
-            };
+          const rawStatus = String(found?.status || "available").toLowerCase();
+          const isOccupied =
+            rawStatus === "occupied" ||
+            rawStatus === "booked" ||
+            rawStatus === "confirmed" ||
+            rawStatus === "approved" ||
+            rawStatus === "checked in" ||
+            rawStatus === "checkedin" ||
+            rawStatus === "1" ||
+            rawStatus === "true" ||
+            found?.isBooked === true ||
+            found?.isOccupied === true;
+
+          return {
+            id: found?.seatNumber || `EO1-${num}`,
+            seatNumber: found?.seatNumber || `EO1-${num}`,
+            seatId: found?.seatId ?? found?.id ?? num,
+            label: `Seat ${num}`,
+            number: num,
+            modulePrefix: "EO1",
+            type: "hotseat",
+            status: isOccupied ? "occupied" : rawStatus === "reserved" ? "reserved" : "available",
+            bookedByUserId: found?.bookedByUserId || found?.userId || null,
+          };
+        });
+
+        // 2. Strictly generate complete Elcot Module 2 seats (Seats 1 to 131)
+        const module2Seats = Array.from({ length: 131 }, (_, i) => {
+          const num = i + 1;
+          const pad3 = `WS-05-EO2-${String(num).padStart(3, "0")}`;
+          const pad2 = `EO2-${String(num).padStart(2, "0")}`;
+          const pad1 = `EO2-${num}`;
+
+          const found = seatArray.find((s) => {
+            const sn = String(s.seatNumber || "").trim().toUpperCase();
+            if (sn.includes("EO1") || (sn.startsWith("WS-04") && !sn.includes("EO2"))) {
+              return false;
+            }
+            return (
+              sn.includes("EO2") &&
+              (sn === pad3 ||
+                sn === pad2 ||
+                sn === pad1 ||
+                parseInt(sn.split("-").pop(), 10) === num)
+            );
           });
 
-        // Strictly isolate Tidel Park Module 1 seats (WS-04-001 to WS-04-224)
-        // Must NEVER match against EO1 or EO2 seats!
+          const rawStatus = String(found?.status || "available").toLowerCase();
+          const isOccupied =
+            rawStatus === "occupied" ||
+            rawStatus === "booked" ||
+            rawStatus === "confirmed" ||
+            rawStatus === "approved" ||
+            rawStatus === "checked in" ||
+            rawStatus === "checkedin" ||
+            rawStatus === "1" ||
+            rawStatus === "true" ||
+            found?.isBooked === true ||
+            found?.isOccupied === true;
+
+          return {
+            id: found?.seatNumber || `EO2-${num}`,
+            seatNumber: found?.seatNumber || `EO2-${num}`,
+            seatId: found?.seatId ?? found?.id ?? (num + 98),
+            label: `Seat ${num}`,
+            number: num,
+            modulePrefix: "EO2",
+            type: "hotseat",
+            status: isOccupied ? "occupied" : rawStatus === "reserved" ? "reserved" : "available",
+            bookedByUserId: found?.bookedByUserId || found?.userId || null,
+          };
+        });
+
+        // 3. Strictly generate complete Tidel Park Module 1 seats (Seats 1 to 224)
         const tidalSeats = Array.from({ length: 224 }, (_, i) => {
           const num = i + 1;
           const pad3 = `WS-04-${String(num).padStart(3, "0")}`;
@@ -353,8 +404,7 @@ export default function HotseatBookingApp() {
 
           const found = seatArray.find((s) => {
             const sn = String(s.seatNumber || "").trim().toUpperCase();
-            // Disallow any Elcot seat from matching Tidel Park
-            if (sn.includes("EO1") || sn.includes("EO2")) {
+            if (sn.includes("EO1") || sn.includes("EO2") || sn.startsWith("WS-05")) {
               return false;
             }
             return (
@@ -366,6 +416,19 @@ export default function HotseatBookingApp() {
             );
           });
 
+          const rawStatus = String(found?.status || "available").toLowerCase();
+          const isOccupied =
+            rawStatus === "occupied" ||
+            rawStatus === "booked" ||
+            rawStatus === "confirmed" ||
+            rawStatus === "approved" ||
+            rawStatus === "checked in" ||
+            rawStatus === "checkedin" ||
+            rawStatus === "1" ||
+            rawStatus === "true" ||
+            found?.isBooked === true ||
+            found?.isOccupied === true;
+
           return {
             id: found?.seatNumber || pad3,
             seatNumber: found?.seatNumber || pad3,
@@ -374,7 +437,7 @@ export default function HotseatBookingApp() {
             number: num,
             modulePrefix: "WS-04",
             type: "hotseat",
-            status: found ? String(found.status || "available").toLowerCase() : "available",
+            status: isOccupied ? "occupied" : rawStatus === "reserved" ? "reserved" : "available",
             bookedByUserId: found?.bookedByUserId || found?.userId || null,
           };
         });
@@ -558,7 +621,17 @@ export default function HotseatBookingApp() {
         }
 
         let errorMessage = "Failed to reserve hotseat.";
-        if (responseData?.errors) {
+        const fullErrStr = `${responseData?.message || ""} ${responseData?.detail || ""} ${responseData?.title || ""}`.toLowerCase();
+
+        if (
+          fullErrStr.includes("uq_seat_booking_date") ||
+          fullErrStr.includes("duplicate key") ||
+          fullErrStr.includes("unique constraint") ||
+          fullErrStr.includes("already booked")
+        ) {
+          errorMessage = "This seat has already been reserved for the selected date. Please choose another seat.";
+          await fetchOfficeData();
+        } else if (responseData?.errors) {
           errorMessage = Object.entries(responseData.errors)
             .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(", ") : messages}`)
             .join(" | ");

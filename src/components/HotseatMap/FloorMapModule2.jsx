@@ -35,29 +35,37 @@ function Seat({ seat, selected, onClick }) {
 
   // Normalize status to support both parent and internal variations
   const rawStatus = (seat.status || "").toLowerCase();
-  const isAvailable = rawStatus === "vacant" || rawStatus === "available";
-  const isMyBooked = rawStatus === "my-booked";
-  const isOccupied = rawStatus === "occupied" || rawStatus === "booked";
-  const isReserved = rawStatus === "reserved";
+  const isOccupied =
+    rawStatus === "occupied" ||
+    rawStatus === "booked" ||
+    rawStatus === "confirmed" ||
+    rawStatus === "approved" ||
+    rawStatus === "checked in" ||
+    rawStatus === "checkedin" ||
+    rawStatus === "1" ||
+    rawStatus === "true" ||
+    seat.isBooked === true ||
+    seat.isOccupied === true;
+
+  const isReserved = rawStatus === "reserved" || rawStatus === "pending";
+  const isMyBooked = rawStatus === "my-booked" || seat.isMyBooking === true;
+  const isAvailable = !isOccupied && !isReserved && !isMyBooked;
 
   let statusClass = "m2-vacant";
   if (selected || rawStatus === "selected") {
     statusClass = "m2-selected";
+  } else if (isMyBooked) {
+    statusClass = "m2-my-booked";
   } else if (isOccupied) {
     statusClass = "m2-occupied";
   } else if (isReserved) {
     statusClass = "m2-reserved";
-  } else if (isMyBooked) {
-    statusClass = "m2-my-booked";
-  } else if (isAvailable) {
+  } else {
     statusClass = "m2-vacant";
   }
 
-  // Available seats and your own booked seat are clickable.
-  const isBookable =
-    isAvailable ||
-    isMyBooked ||
-    (!isOccupied && !isReserved);
+  // Available seats and user's own booking are clickable.
+  const isBookable = isAvailable || isMyBooked;
 
   return (
     <button
