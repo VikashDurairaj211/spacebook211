@@ -98,17 +98,26 @@ export default function BookingManagement() {
         'Fetching admin booking data from Render API...'
       )
 
-      const [statsRes, bookingsRes] = await Promise.allSettled([
+      const [statsRes, bookingsRes] = await Promise.all([
         client.get('/admin/bookings/dashboard'),
         client.get('/admin/bookings'),
       ])
+
+      console.log(
+        'Booking dashboard response:',
+        statsRes.data
+      )
+
+      console.log(
+        'Bookings response:',
+        bookingsRes.data
+      )
 
       // =====================================================
       // Dashboard Statistics
       // =====================================================
 
-      if (statsRes.status === 'fulfilled' && statsRes.value?.data) {
-        const statsData = statsRes.value.data
+      if (statsRes.data) {
         setStatusCounts({
           Pending:
             statsData.pendingRequests ??
@@ -137,47 +146,29 @@ export default function BookingManagement() {
       // Booking List
       // =====================================================
 
-      const adminData = bookingsRes.status === 'fulfilled'
-        ? (Array.isArray(bookingsRes.value.data)
-            ? bookingsRes.value.data
-            : bookingsRes.value.data?.data ||
-              bookingsRes.value.data?.bookings ||
-              [])
-        : []
+      const bookingData = Array.isArray(bookingsRes.data)
+        ? bookingsRes.data
+        : bookingsRes.data?.data ||
+          bookingsRes.data?.bookings ||
+          []
 
       // =====================================================
       // Map Backend Response
       // =====================================================
 
-      const mappedBookings = adminData.map((b) => {
-        const id = b.bookingId ?? b.id
+      const mappedBookings = bookingData.map((b) => ({
+        // Booking ID
+        bookingId: b.bookingId ?? b.id,
 
-        const rawTitle =
-          b.meetingTitle ??
-          b.MeetingTitle ??
-          b.meeting_title ??
+        // Keep id for compatibility
+        id: b.bookingId ?? b.id,
+
+        // Meeting title
+        title:
           b.title ??
-          b.Title ??
-          b.meetingName ??
-          b.MeetingName ??
           b.purpose ??
-          b.Purpose ??
-          b.subject ??
-          b.description ??
-          ''
-
-        const resolvedTitle = rawTitle ? String(rawTitle).trim() : ''
-
-        return {
-          // Booking ID
-          bookingId: id,
-
-          // Keep id for compatibility
-          id: id,
-
-          // Meeting title
-          title: resolvedTitle,
-          meetingTitle: resolvedTitle,
+          b.meetingTitle ??
+          'Reserved Workspace',
 
           // Room
           roomName:
@@ -225,13 +216,11 @@ export default function BookingManagement() {
             b.employee?.name ??
             'Employee',
 
-          // Status
-          status:
-            b.status ??
-            empMatch.status ??
-            'Pending',
-        }
-      })
+        // Status
+        status:
+          b.status ??
+          'Pending',
+      }))
 
       console.log(
         'Mapped bookings:',

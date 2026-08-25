@@ -166,6 +166,56 @@ export default function MyBookings() {
       // ROOM BOOKINGS
       // =====================================================
 
+      let localTitles = {};
+      try {
+        localTitles = JSON.parse(
+          localStorage.getItem("spacebook_meeting_titles") || "{}"
+        );
+      } catch (e) {
+        // ignore
+      }
+
+      const resolveMeetingTitle = (booking) => {
+        const keyId = String(
+          booking.bookingId ?? booking.id ?? ""
+        ).replace(/^#/, "").trim();
+        const rId = getRoomId(booking);
+        const dateKey = String(
+          booking.bookingDate || booking.date || ""
+        ).split("T")[0];
+        const timeKey = String(
+          booking.startTime || booking.time || ""
+        ).slice(0, 5);
+        const keyRoom = `${rId}_${dateKey}_${timeKey}`;
+
+        const apiTitle =
+          booking.meetingTitle ||
+          booking.MeetingTitle ||
+          booking.title ||
+          booking.Title ||
+          booking.purpose ||
+          booking.Purpose ||
+          booking.reason ||
+          booking.description ||
+          booking.subject ||
+          booking.bookingPurpose;
+
+        if (
+          apiTitle &&
+          String(apiTitle).trim() &&
+          String(apiTitle).trim().toLowerCase() !== "meeting" &&
+          String(apiTitle).trim().toLowerCase() !== "reserved workspace"
+        ) {
+          return String(apiTitle).trim();
+        }
+
+        if (keyId && localTitles[keyId]) return localTitles[keyId];
+        if (keyRoom && localTitles[keyRoom]) return localTitles[keyRoom];
+        return apiTitle && String(apiTitle).trim()
+          ? String(apiTitle).trim()
+          : "Reserved Workspace";
+      };
+
       if (roomResult.status === "fulfilled") {
         const data = roomResult.value;
 
@@ -173,52 +223,44 @@ export default function MyBookings() {
           ? data
           : data?.bookings || data?.data || [];
 
-        roomBookings = bookingList.map((booking) => ({
-          ...booking,
+        roomBookings = bookingList.map((booking) => {
+          const resolvedTitle = resolveMeetingTitle(booking)
+          return {
+            ...booking,
 
-          bookingId:
-            booking.bookingId ??
-            booking.id ??
-            booking.Id,
+            bookingId:
+              booking.bookingId ??
+              booking.id ??
+              booking.Id,
 
-          meetingTitle:
-            booking.meetingTitle ||
-            booking.title ||
-            booking.meetingName ||
-            booking.purpose ||
-            "",
+            meetingTitle: resolvedTitle,
+            purpose: resolvedTitle,
 
-          purpose:
-            booking.meetingTitle ||
-            booking.title ||
-            booking.meetingName ||
-            booking.purpose ||
-            "",
+            bookingDate:
+              booking.bookingDate ??
+              booking.date ??
+              "",
 
-          bookingDate:
-            booking.bookingDate ??
-            booking.date ??
-            "",
+            startTime:
+              booking.startTime ??
+              booking.time ??
+              "",
 
-          startTime:
-            booking.startTime ??
-            booking.time ??
-            "",
+            endTime:
+              booking.endTime ??
+              "",
 
-          endTime:
-            booking.endTime ??
-            "",
+            roomName:
+              booking.roomName ||
+              booking.room?.roomName ||
+              booking.room?.name ||
+              `Room ${getRoomId(booking) || ""}`,
 
-          roomName:
-            booking.roomName ||
-            booking.room?.roomName ||
-            booking.room?.name ||
-            `Room ${getRoomId(booking) || ""}`,
+            roomId: getRoomId(booking),
 
-          roomId: getRoomId(booking),
-
-          isHotseat: false,
-        }));
+            isHotseat: false,
+          }
+        });
       } else {
         console.error(
           "Room bookings error:",
@@ -1214,6 +1256,28 @@ export default function MyBookings() {
         payload
       );
 
+      try {
+        const savedTitles = JSON.parse(
+          localStorage.getItem("spacebook_meeting_titles") || "{}"
+        );
+        if (selected.bookingId) {
+          savedTitles[
+            String(selected.bookingId).replace(/^#/, "").trim()
+          ] = selected.purpose.trim();
+        }
+        const rId = getRoomId(selected);
+        const dateKey = String(selected.bookingDate || "").split("T")[0];
+        const timeKey = String(selected.startTime || "").slice(0, 5);
+        savedTitles[`${rId}_${dateKey}_${timeKey}`] =
+          selected.purpose.trim();
+        localStorage.setItem(
+          "spacebook_meeting_titles",
+          JSON.stringify(savedTitles)
+        );
+      } catch (e) {
+        // ignore
+      }
+
       toast.addToast({
         type: "success",
         title:
@@ -1954,25 +2018,6 @@ export default function MyBookings() {
                     10:00 AM - 10:00 PM
                   </span>
                 </p>
-
-                <Field label="Meeting Title">
-
-                  <Input
-                    value={
-                      selected.meetingTitle ?? selected.purpose ?? ""
-                    }
-                    onChange={(e) =>
-                      setSelected({
-                        ...selected,
-                        meetingTitle:
-                          e.target.value,
-                        purpose:
-                          e.target.value,
-                      })
-                    }
-                  />
-
-                </Field>
               </>
 
             )}

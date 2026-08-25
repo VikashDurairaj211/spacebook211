@@ -233,8 +233,8 @@ export default function FloorMapTidalParkModule1({
       </div>
 
       <div className="tp-floor-map">
-        {/* TOP LEFT: SECTION D */}
-        <div className="tp-grid-d">
+        {/* LEFT COLUMN: SECTION D & SECTION C */}
+        <div className="tp-col-left">
           <Section
             title="SECTION D (Seats 165 – 224)"
             rows={SECTION_D}
@@ -244,31 +244,7 @@ export default function FloorMapTidalParkModule1({
             activeSeatId={activeSeatId}
             columns={6}
           />
-        </div>
 
-        {/* TOP RIGHT: RECEPTION & SECTION A */}
-        <div className="tp-grid-a-wrapper">
-          <div className="tp-reception-container">
-            <Room className="tp-reception-room">
-              RECEPTION
-            </Room>
-          </div>
-
-          <div className="tp-grid-a">
-            <Section
-              title="SECTION A (Seats 1 – 62)"
-              rows={SECTION_A}
-              rowPrefix="A"
-              seatsByNumber={seatsByNumber}
-              onSelect={onSelect}
-              activeSeatId={activeSeatId}
-              columns={7}
-            />
-          </div>
-        </div>
-
-        {/* BOTTOM LEFT: SECTION C */}
-        <div className="tp-grid-c">
           <Section
             title="SECTION C (Seats 119 – 164)"
             rows={SECTION_C}
@@ -280,8 +256,24 @@ export default function FloorMapTidalParkModule1({
           />
         </div>
 
-        {/* BOTTOM RIGHT: SECTION B */}
-        <div className="tp-grid-b">
+        {/* RIGHT COLUMN: RECEPTION, SECTION A & SECTION B */}
+        <div className="tp-col-right">
+          <div className="tp-reception-container">
+            <Room className="tp-reception-room">
+              RECEPTION
+            </Room>
+          </div>
+
+          <Section
+            title="SECTION A (Seats 1 – 62)"
+            rows={SECTION_A}
+            rowPrefix="A"
+            seatsByNumber={seatsByNumber}
+            onSelect={onSelect}
+            activeSeatId={activeSeatId}
+            columns={7}
+          />
+
           <Section
             title="SECTION B (Seats 63 – 118)"
             rows={SECTION_B}
@@ -296,74 +288,75 @@ export default function FloorMapTidalParkModule1({
 
       <style>{`
         .tp-map-wrapper {
-          --tp-seat: clamp(12px, 1.25vw, 17px);
-          --tp-label: clamp(9px, 0.9vw, 13px);
+          --tp-seat: clamp(16px, 1.8vw, 25px);
+          --tp-label: clamp(12px, 1.3vw, 19px);
 
           width: 100%;
           min-width: 0;
           box-sizing: border-box;
           margin: 0;
-          padding: 2px 4px;
+          padding: 4px 8px;
 
           display: flex;
           flex-direction: column;
+          align-items: center;
           background: transparent;
         }
 
         .tp-header-banner {
           text-align: center;
-          margin-bottom: 3px;
+          margin-bottom: 12px;
         }
 
         .tp-title {
           color: #071d61;
-          font-size: clamp(11px, 1.1vw, 14px);
+          font-size: clamp(13px, 1.3vw, 17px);
           font-weight: 800;
-          line-height: 1.1;
-          letter-spacing: 0.025em;
+          line-height: 1.2;
+          letter-spacing: 0.03em;
           text-transform: uppercase;
         }
 
         .tp-subtitle {
           color: #64748b;
-          font-size: clamp(8px, 0.75vw, 10px);
+          font-size: clamp(9px, 0.8vw, 11px);
           font-weight: 600;
-          letter-spacing: 0.04em;
-          margin-top: 1px;
+          letter-spacing: 0.03em;
+          margin-top: 2px;
         }
 
         .tp-floor-map {
           width: 100%;
-          min-width: 0;
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 6px 14px;
-          padding: 4px 6px;
+          max-width: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: flex-start;
+          gap: clamp(100px, 15vw, 240px);
+          padding: 18px 28px;
           box-sizing: border-box;
           background: #ffffff;
           border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+          border-radius: 10px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+          overflow-x: auto;
         }
 
         @media (max-width: 850px) {
           .tp-floor-map {
-            grid-template-columns: 1fr;
-            gap: 10px;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 12px;
           }
         }
 
-        .tp-grid-d {
-          display: flex;
-          justify-content: center;
-        }
-
-        .tp-grid-a-wrapper {
-          width: 100%;
+        .tp-col-left,
+        .tp-col-right {
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: flex-start;
+          gap: 10px;
+          min-width: max-content;
         }
 
         .tp-reception-container {
@@ -380,57 +373,42 @@ export default function FloorMapTidalParkModule1({
           justify-content: center;
           text-align: center;
           box-sizing: border-box;
-          width: clamp(100px, 11vw, 150px);
-          height: clamp(24px, 2.5vw, 34px);
-          border-radius: 6px;
-          font-size: clamp(8px, 0.7vw, 10.5px);
-          line-height: 1.1;
+          width: 85%;
+          max-width: 200px;
+          height: clamp(38px, 4.8vw, 54px);
+          border-radius: 8px;
+          font-size: clamp(8.5px, 0.8vw, 11.5px);
+          line-height: 1.2;
           font-weight: 800;
           letter-spacing: 0.04em;
           text-transform: uppercase;
         }
 
         .tp-reception-room {
-          background: #f5f3ff;
-          border: 1.5px solid #ddd6fe;
-          color: #7c3aed;
-        }
-
-        .tp-grid-a {
-          width: 100%;
-          display: flex;
-          justify-content: center;
-        }
-
-        .tp-grid-c {
-          display: flex;
-          justify-content: center;
-        }
-
-        .tp-grid-b {
-          display: flex;
-          justify-content: center;
+          background: #eff6ff;
+          border: 1.5px solid #bfdbfe;
+          color: #2563eb;
         }
 
         .tp-section {
           width: 100%;
-          min-width: 0;
+          min-width: max-content;
           box-sizing: border-box;
-          padding: 1px;
+          padding: 2px;
           background: transparent;
         }
 
         .tp-section-title {
           width: max-content;
           max-width: 95%;
-          margin: 0 auto 2px;
-          padding: 1.5px 8px;
+          margin: 0 auto 4px;
+          padding: 2px 10px;
           box-sizing: border-box;
           background: #062268;
           color: #ffffff;
           border-radius: 4px;
           text-align: center;
-          font-size: clamp(7.5px, 0.68vw, 9.5px);
+          font-size: clamp(7.5px, 0.7vw, 10px);
           line-height: 1.1;
           font-weight: 800;
           letter-spacing: 0.02em;
@@ -441,10 +419,10 @@ export default function FloorMapTidalParkModule1({
           display: grid;
           justify-content: center;
           align-items: center;
-          gap: 2px;
-          margin-bottom: 2px;
+          gap: 2.5px;
+          margin-bottom: 2.5px;
           color: #071d61;
-          font-size: clamp(7px, 0.6vw, 8.5px);
+          font-size: clamp(7px, 0.62vw, 9px);
           line-height: 1;
           text-align: center;
         }
@@ -457,7 +435,7 @@ export default function FloorMapTidalParkModule1({
           width: 100%;
           display: flex;
           flex-direction: column;
-          gap: 2px;
+          gap: 2.5px;
           align-items: center;
         }
 
@@ -465,96 +443,104 @@ export default function FloorMapTidalParkModule1({
           display: grid;
           justify-content: center;
           align-items: center;
-          gap: 2px;
+          gap: 2.5px;
         }
 
         .tp-row-label {
           color: #071d61;
-          font-size: clamp(7px, 0.6vw, 8.5px);
+          font-size: clamp(7px, 0.62vw, 9px);
           line-height: 1;
           font-weight: 700;
-          text-align: right;
-          padding-right: 1.5px;
+          text-align: left;
+          padding-right: 2px;
         }
 
         .tp-seat-cell {
           width: var(--tp-seat);
           height: var(--tp-seat);
+          min-width: 0;
+          min-height: 0;
           display: flex;
-          justify-content: center;
           align-items: center;
+          justify-content: center;
+          box-sizing: border-box;
         }
 
         .tp-seat {
-          width: 100%;
-          height: 100%;
+          width: 94%;
+          height: 90%;
           min-width: 0;
           min-height: 0;
-          box-sizing: border-box;
           padding: 0;
-          margin: 0;
-          border-radius: 3px;
-          font-size: clamp(6.5px, 0.55vw, 8px);
-          line-height: 1;
+          box-sizing: border-box;
+          border-radius: 4px;
+          font-size: clamp(7px, 0.65vw, 9.5px);
           font-weight: 700;
+          line-height: 1;
           display: flex;
           justify-content: center;
           align-items: center;
           cursor: pointer;
-          transition: transform 0.1s ease, box-shadow 0.1s ease;
-          border: none;
+          transition: transform 0.12s ease, box-shadow 0.12s ease;
           outline: none;
         }
 
         .tp-seat:hover:not(.tp-disabled) {
-          transform: scale(1.15);
-          z-index: 10;
-          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(15, 23, 42, 0.15);
         }
 
         .tp-vacant {
-          background-color: #22c55e;
+          background: #22c55e;
+          border: 1.5px solid #16a34a;
           color: #ffffff;
         }
 
         .tp-selected {
-          background-color: #2563eb !important;
+          background: #3b82f6 !important;
+          border: 1.5px solid #2563eb !important;
           color: #ffffff !important;
-          box-shadow: 0 0 0 1.5px #ffffff, 0 0 0 3px #2563eb;
+          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35) !important;
         }
 
         .tp-occupied {
-          background-color: #ef4444;
-          color: #ffffff;
+          background: #ef4444 !important;
+          border: 1.5px solid #dc2626 !important;
+          color: #ffffff !important;
         }
 
         .tp-reserved {
-          background-color: #f59e0b;
-          color: #ffffff;
+          background: #fef3c7;
+          border: 1.5px solid #f59e0b;
+          color: #b45309;
         }
 
         .tp-my-booked {
-          background-color: #b91c1c;
-          color: #ffffff;
-          box-shadow: 0 0 0 1.5px #fca5a5;
+          background: #ef4444 !important;
+          border: 1.5px solid #dc2626 !important;
+          color: #ffffff !important;
+          box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.30) !important;
         }
 
         .tp-disabled {
-          cursor: not-allowed;
-          opacity: 0.9;
+          cursor: not-allowed !important;
+          opacity: 0.95;
         }
 
         .tp-seat-gap {
-          width: 100%;
-          height: 100%;
+          width: 94%;
+          height: 90%;
           box-sizing: border-box;
-          border-radius: 3px;
+          border: 1px solid #e5e7eb;
+          border-radius: 4px;
+          background: #f8fafc;
+          display: grid;
+          place-items: center;
         }
 
         .tp-seat-unavailable {
-          background-color: #94a3b8;
-          border: 1px solid #64748b;
-          opacity: 0.7;
+          background: #94a3b8 !important;
+          border: 1.5px solid #64748b !important;
         }
       `}</style>
     </div>
