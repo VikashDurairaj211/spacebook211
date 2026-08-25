@@ -918,26 +918,6 @@ export default function HotseatManagement() {
             />
             <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
           </Button>
-
-          <Button
-            size="sm"
-            onClick={handleExportCSV}
-            disabled={filteredBookings.length === 0}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-xs font-bold text-white shadow-md shadow-blue-700/20 whitespace-nowrap transition-all active:scale-95 border-0"
-          >
-            <FileText size={14} className="text-blue-100" />
-            <span className="text-white">Export CSV</span>
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={handleExportExcel}
-            disabled={filteredBookings.length === 0}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-xs font-bold text-white shadow-md shadow-emerald-700/20 whitespace-nowrap transition-all active:scale-95 border-0"
-          >
-            <FileSpreadsheet size={14} className="text-emerald-100" />
-            <span>Export Excel (.xlsx)</span>
-          </Button>
         </div>
       </div>
 
@@ -1120,14 +1100,14 @@ export default function HotseatManagement() {
             </p>
           </div>
 
-          <Button
-            size="sm"
+          <button
+            type="button"
             onClick={() => setIsAuditModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#0284c7] hover:bg-[#0369a1] text-white font-semibold text-xs rounded-xl shadow-sm transition-all active:scale-95 border-0"
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#0f172a] hover:bg-[#1e293b] text-white font-semibold text-xs rounded-xl shadow-md transition-all active:scale-95 border-0 cursor-pointer"
           >
             <Eye size={15} />
             <span>View</span>
-          </Button>
+          </button>
         </div>
       </Card>
 
@@ -1366,8 +1346,8 @@ export default function HotseatManagement() {
           AUDIT TABLE MODAL (Pure Hotseat Records)
       ===================================================== */}
       {isAuditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-5xl rounded-3xl bg-white shadow-2xl p-6 relative flex flex-col max-h-[92vh] border border-slate-200 animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-5xl rounded-3xl bg-white shadow-2xl p-6 relative flex flex-col max-h-[92vh] border border-slate-200 animate-in zoom-in-95 duration-200 z-[1001]">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3">
               <h2 className="text-lg font-bold text-slate-900 font-display">
