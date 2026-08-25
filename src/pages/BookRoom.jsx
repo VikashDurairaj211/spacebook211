@@ -689,6 +689,18 @@ export default function BookRoom() {
         purpose:
           form.title.trim(),
 
+        title:
+          form.title.trim(),
+
+        Title:
+          form.title.trim(),
+
+        MeetingTitle:
+          form.title.trim(),
+
+        Purpose:
+          form.title.trim(),
+
         roomId:
           Number(form.roomId),
 
@@ -711,7 +723,30 @@ export default function BookRoom() {
         facilityIds: [],
       }
 
-      await createBooking(payload)
+      const res = await createBooking(payload)
+
+      try {
+        const bookedId =
+          res?.bookingId ||
+          res?.id ||
+          res?.data?.bookingId ||
+          res?.data?.id
+        const savedTitles = JSON.parse(
+          localStorage.getItem("spacebook_meeting_titles") || "{}"
+        )
+        if (bookedId) {
+          savedTitles[String(bookedId)] = form.title.trim()
+        }
+        const timeKey = String(form.startTime || "").slice(0, 5)
+        savedTitles[`${form.roomId}_${form.date}_${timeKey}`] =
+          form.title.trim()
+        localStorage.setItem(
+          "spacebook_meeting_titles",
+          JSON.stringify(savedTitles)
+        )
+      } catch (e) {
+        console.warn("Could not cache meeting title:", e)
+      }
 
       toast.addToast({
         type: 'success',
