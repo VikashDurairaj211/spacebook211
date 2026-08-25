@@ -1985,23 +1985,6 @@ export default function MyBookings() {
                     10:00 AM - 10:00 PM
                   </span>
                 </p>
-
-                <Field label="Meeting Title">
-
-                  <Input
-                    value={
-                      selected.purpose || ""
-                    }
-                    onChange={(e) =>
-                      setSelected({
-                        ...selected,
-                        purpose:
-                          e.target.value,
-                      })
-                    }
-                  />
-
-                </Field>
               </>
 
             )}

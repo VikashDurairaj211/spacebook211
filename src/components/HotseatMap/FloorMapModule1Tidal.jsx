@@ -331,8 +331,8 @@ export default function FloorMapTidalParkModule1({
           display: flex;
           justify-content: center;
           align-items: flex-start;
-          gap: clamp(20px, 3.5vw, 44px);
-          padding: 10px 16px;
+          gap: clamp(40px, 6vw, 84px);
+          padding: 14px 20px;
           box-sizing: border-box;
           background: #ffffff;
           border: 1px solid #e2e8f0;
@@ -344,7 +344,7 @@ export default function FloorMapTidalParkModule1({
           .tp-floor-map {
             flex-direction: column;
             align-items: center;
-            gap: 16px;
+            gap: 20px;
           }
         }
 
