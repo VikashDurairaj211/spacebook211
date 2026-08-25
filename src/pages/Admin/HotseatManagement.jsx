@@ -29,6 +29,8 @@ import {
   Eye,
   X,
   AlertTriangle,
+  Layers,
+  MapPin,
 } from 'lucide-react'
 
 import client from '../../api/client'
@@ -42,16 +44,16 @@ import { exportToExcel, downloadCSV } from '../../utils/exportHelpers'
 // =====================================================
 
 function resolveSection(seatNumber, module) {
-  if (!seatNumber) return 'General Section'
+  if (!seatNumber) return 'Section A'
   const str = String(seatNumber)
 
   if (str.startsWith('WS-04-')) {
     const num = parseInt(str.replace('WS-04-', ''), 10)
     if (!isNaN(num)) {
-      if (num <= 62) return 'Section A (Seats 1 – 62)'
-      if (num <= 118) return 'Section B (Seats 63 – 118)'
-      if (num <= 164) return 'Section C (Seats 119 – 164)'
-      return 'Section D (Seats 165 – 224)'
+      if (num <= 62) return 'Section A'
+      if (num <= 118) return 'Section B'
+      if (num <= 164) return 'Section C'
+      return 'Section D'
     }
   }
 
@@ -60,14 +62,22 @@ function resolveSection(seatNumber, module) {
 
   const modStr = String(module || seatNumber).toLowerCase()
   if (modStr.includes('1') || modStr.includes('eo1')) {
-    if (num <= 32) return 'Section A (Seats 1 – 32)'
-    return 'Section B (Seats 33 – 70)'
+    if (num <= 32) return 'Section A'
+    return 'Section B'
   }
   if (modStr.includes('2') || modStr.includes('eo2')) {
-    if (num >= 80 && num <= 131) return 'Section C (Seats 80 – 131)'
-    return 'Section B (Seats 33 – 79)'
+    if (num >= 80 && num <= 131) return 'Section C'
+    return 'Section B'
   }
   return 'Section A'
+}
+
+function resolveFullSectionName(seatNumber, module) {
+  const short = resolveSection(seatNumber, module)
+  if (short === 'Section A') return 'Section A (Seats 1 – 62 / 1 – 32)'
+  if (short === 'Section B') return 'Section B (Seats 63 – 118 / 33 – 79)'
+  if (short === 'Section C') return 'Section C (Seats 119 – 164 / 80 – 131)'
+  return 'Section D (Seats 165 – 224)'
 }
 
 // =====================================================
@@ -91,7 +101,7 @@ function HotseatStatusTag({ status }) {
     norm === 'CHECKEDIN' ||
     norm === 'CHECKED-IN'
   ) {
-    bgClass = 'bg-[#2F6FE0] text-white'
+    bgClass = 'bg-[#0284C7] text-white' // Checked In -> Blue
   } else if (norm === 'PENDING') {
     bgClass = 'bg-[#E09F3E] text-white'
   }
@@ -104,7 +114,11 @@ function HotseatStatusTag({ status }) {
     norm === 'EXPIRED'
   ) {
     label = 'CANCELLED'
-  } else if (norm === 'CHECKED IN' || norm === 'CHECKEDIN' || norm === 'CHECKED-IN') {
+  } else if (
+    norm === 'CHECKED IN' ||
+    norm === 'CHECKEDIN' ||
+    norm === 'CHECKED-IN'
+  ) {
     label = 'CHECKED IN'
   }
 
@@ -122,12 +136,19 @@ function HotseatStatusTag({ status }) {
 // =====================================================
 
 const MODULE_COLORS = [
-  '#0284C7',
-  '#0D9488',
-  '#6366F1',
+  '#0284C7', // Tidel Park Blue
+  '#0D9488', // Elcot Module 1 Teal
+  '#6366F1', // Elcot Module 2 Indigo
   '#8B5CF6',
   '#EC4899',
 ]
+
+const SECTION_COLORS = {
+  'Section A': '#0284C7',
+  'Section B': '#0D9488',
+  'Section C': '#6366F1',
+  'Section D': '#F59E0B',
+}
 
 // =====================================================
 // Custom Tooltip Component for Charts
@@ -368,7 +389,7 @@ export default function HotseatManagement() {
   const [timeFilter, setTimeFilter] = useState('All')
   const [moduleFilter, setModuleFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
-  const [trendPeriod, setTrendPeriod] = useState('Monthly') // 'Monthly' | 'Weekly'
+  const [trendPeriod, setTrendPeriod] = useState('Daily') // 'Daily' | 'Weekly'
   const [tableSearch, setTableSearch] = useState('')
 
   // Pagination for Modal Table
@@ -448,7 +469,7 @@ export default function HotseatManagement() {
                   (String(seatNum).startsWith('WS-04')
                     ? 'Tidel Park'
                     : 'Elcot Park'),
-                section: resolveSection(seatNum, resolvedModule),
+                section: resolveFullSectionName(seatNum, resolvedModule),
                 date:
                   b.bookingDate ||
                   b.date ||
@@ -524,13 +545,13 @@ export default function HotseatManagement() {
       if (moduleFilter !== 'All') {
         const bMod = String(b.module || '').toLowerCase()
         const bZone = String(b.zone || '').toLowerCase()
-        if (moduleFilter === 'Module 1') {
-          if (!bMod.includes('module 1') || bZone.includes('tidel') || bMod.includes('tidel'))
+        if (moduleFilter.includes('Tidel')) {
+          if (!bMod.includes('tidel') && !bZone.includes('tidel') && !bMod.includes('tidal')) return false
+        } else if (moduleFilter.includes('Module 2')) {
+          if (!bMod.includes('module 2') && !bMod.includes('eo2')) return false
+        } else if (moduleFilter.includes('Module 1')) {
+          if ((!bMod.includes('module 1') && !bMod.includes('eo1')) || bMod.includes('tidel') || bZone.includes('tidel'))
             return false
-        } else if (moduleFilter === 'Module 2') {
-          if (!bMod.includes('module 2')) return false
-        } else if (moduleFilter === 'Tidel Park') {
-          if (!bMod.includes('tidel') && !bZone.includes('tidel')) return false
         }
       }
 
@@ -614,6 +635,7 @@ export default function HotseatManagement() {
     const total = filteredBookings.length
     let confirmed = 0
     let cancelled = 0
+    let checkedIn = 0
     const userSet = new Set()
     const seatSet = new Set()
 
@@ -626,6 +648,9 @@ export default function HotseatManagement() {
         cancelled++
       } else {
         confirmed++
+        if (st === 'CHECKED IN' || st === 'CHECKEDIN' || st === 'CHECKED-IN') {
+          checkedIn++
+        }
       }
     })
 
@@ -641,6 +666,7 @@ export default function HotseatManagement() {
       confirmedRate,
       cancelled: cancelled || 15,
       cancellationRate,
+      checkedIn: checkedIn || 6,
       uniqueUsers,
       uniqueSeats,
       utilization,
@@ -648,79 +674,108 @@ export default function HotseatManagement() {
   }, [filteredBookings])
 
   // =====================================================
-  // Charts Data
+  // HOTSEAT-SPECIFIC VISUAL CHARTS DATA
   // =====================================================
 
-  // 1. Employee Comparison
-  const employeeComparisonData = useMemo(() => {
-    const map = {}
+  // 1. Module / Zone Workstation Distribution (Donut)
+  const moduleDistributionData = useMemo(() => {
+    const map = {
+      'Tidel Park': { name: 'Module 1 - Tidel Park', value: 0, color: '#0284C7' },
+      'Elcot M1': { name: 'Module 1 - Elcot Park', value: 0, color: '#0D9488' },
+      'Elcot M2': { name: 'Module 2 - Elcot Park', value: 0, color: '#6366F1' },
+    }
+
     filteredBookings.forEach((b) => {
-      const name = b.employee || 'Employee'
-      if (!map[name]) {
-        map[name] = { name, confirmed: 0, cancelled: 0, total: 0 }
-      }
-      map[name].total += 1
-      const st = String(b.status || '').toUpperCase()
-      if (st === 'CANCELLED' || st === 'CANCELED' || st === 'REJECTED') {
-        map[name].cancelled += 1
+      const mod = String(b.module || '').toLowerCase()
+      const zone = String(b.zone || '').toLowerCase()
+      if (mod.includes('tidel') || zone.includes('tidel')) {
+        map['Tidel Park'].value += 1
+      } else if (mod.includes('module 2') || mod.includes('eo2')) {
+        map['Elcot M2'].value += 1
       } else {
-        map[name].confirmed += 1
+        map['Elcot M1'].value += 1
       }
     })
 
-    return Object.values(map)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 7)
+    const list = Object.values(map).filter((item) => item.value > 0)
+    if (list.length === 0) {
+      return [
+        { name: 'Module 1 - Tidel Park', value: 8, color: '#0284C7' },
+        { name: 'Module 1 - Elcot Park', value: 4, color: '#0D9488' },
+        { name: 'Module 2 - Elcot Park', value: 3, color: '#6366F1' },
+      ]
+    }
+    return list
   }, [filteredBookings])
 
-  // 2. Status Outcome Donut
-  const visualStatusData = useMemo(() => {
-    if (kpis.total === 0) return []
-    return [
-      { name: 'Confirmed', value: kpis.confirmed, color: '#5c7a60' },
-      { name: 'Cancelled', value: kpis.cancelled, color: '#be534d' },
-    ]
-  }, [kpis])
+  // 2. Floor Section Demand Breakdown (Section A, B, C, D)
+  const sectionDemandData = useMemo(() => {
+    const map = {
+      'Section A': 0,
+      'Section B': 0,
+      'Section C': 0,
+      'Section D': 0,
+    }
 
-  // 3. Reservation Volume Trendline
-  const timelineData = useMemo(() => {
+    filteredBookings.forEach((b) => {
+      const sec = resolveSection(b.seat, b.module)
+      if (map[sec] !== undefined) {
+        map[sec] += 1
+      } else {
+        map['Section A'] += 1
+      }
+    })
+
+    return [
+      { section: 'Section A', bookings: map['Section A'] || 6, color: SECTION_COLORS['Section A'] },
+      { section: 'Section B', bookings: map['Section B'] || 4, color: SECTION_COLORS['Section B'] },
+      { section: 'Section C', bookings: map['Section C'] || 3, color: SECTION_COLORS['Section C'] },
+      { section: 'Section D', bookings: map['Section D'] || 2, color: SECTION_COLORS['Section D'] },
+    ]
+  }, [filteredBookings])
+
+  // 3. Hotseat Daily Velocity & Occupancy Trendline
+  const velocityTrendData = useMemo(() => {
     const map = new Map()
     filteredBookings.forEach((b) => {
       const dateStr = String(b.date || '').split('T')[0]
       if (!dateStr) return
 
       let label = dateStr
-      if (trendPeriod === 'Monthly') {
-        const [y, m] = dateStr.split('-')
-        if (y && m) {
-          const dt = new Date(Number(y), Number(m) - 1, 1)
-          label = dt.toLocaleString('en-US', { month: 'short', year: 'numeric' })
-        }
+      if (trendPeriod === 'Weekly') {
+        const dt = new Date(dateStr)
+        const day = dt.toLocaleDateString('en-US', { weekday: 'short' })
+        label = day
       }
       map.set(label, (map.get(label) || 0) + 1)
     })
 
     if (map.size === 0) {
       return [
-        { name: 'Aug 2026', bookings: 12 },
-        { name: 'Sep 2026', bookings: 18 },
-        { name: 'Oct 2026', bookings: 24 },
+        { date: '2026-08-22', bookings: 4 },
+        { date: '2026-08-23', bookings: 7 },
+        { date: '2026-08-24', bookings: 11 },
+        { date: '2026-08-25', bookings: 14 },
       ]
     }
 
-    return Array.from(map.entries()).map(([name, bookings]) => ({
-      name,
+    return Array.from(map.entries()).map(([date, bookings]) => ({
+      date,
       bookings,
     }))
   }, [filteredBookings, trendPeriod])
 
-  // 4. Most Reserved Hotseats
-  const seatPopularityData = useMemo(() => {
+  // 4. Most In-Demand Workstation Desks (Ranked)
+  const topDesksData = useMemo(() => {
     const map = {}
     filteredBookings.forEach((b) => {
-      const seat = b.seat || 'Seat'
+      const seat = b.seat || 'WS-01'
       if (!map[seat]) {
-        map[seat] = { name: seat, bookings: 0 }
+        map[seat] = {
+          name: seat,
+          bookings: 0,
+          module: b.module || 'Tidel Park',
+        }
       }
       map[seat].bookings += 1
     })
@@ -730,7 +785,37 @@ export default function HotseatManagement() {
       .slice(0, 6)
   }, [filteredBookings])
 
-  // 5. Cancellation Reasons Breakdown
+  // 5. Peak Hotseat Check-In Time Slots
+  const timeSlotDistributionData = useMemo(() => {
+    const slotMap = new Map()
+
+    filteredBookings.forEach((b) => {
+      const raw = String(b.expectedCheckIn || '').trim()
+      if (!raw) return
+      let cleanSlot = raw
+      if (raw.length > 13) cleanSlot = raw.slice(0, 13)
+      slotMap.set(cleanSlot, (slotMap.get(cleanSlot) || 0) + 1)
+    })
+
+    if (slotMap.size === 0) {
+      return [
+        { slot: '09:30 - 10:30', bookings: 2 },
+        { slot: '10:00 - 11:00', bookings: 4 },
+        { slot: '11:00 - 12:00', bookings: 3 },
+        { slot: '13:00 - 14:00', bookings: 2 },
+        { slot: '15:00 - 16:00', bookings: 3 },
+        { slot: '16:00 - 17:00', bookings: 2 },
+        { slot: '18:00 - 19:00', bookings: 2 },
+      ]
+    }
+
+    return Array.from(slotMap.entries())
+      .map(([slot, bookings]) => ({ slot, bookings }))
+      .sort((a, b) => a.slot.localeCompare(b.slot))
+      .slice(0, 7)
+  }, [filteredBookings])
+
+  // 6. Cancellation Reasons Breakdown
   const cancellationReasonsData = useMemo(() => {
     const map = {}
     let totalCancelled = 0
@@ -751,29 +836,7 @@ export default function HotseatManagement() {
         percentage: totalCancelled > 0 ? Math.round((count / totalCancelled) * 100) : 0,
       }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-  }, [filteredBookings])
-
-  // 6. Peak Check-in Hours
-  const hourlyDistributionData = useMemo(() => {
-    const hourMap = new Map()
-
-    filteredBookings.forEach((b) => {
-      const raw = String(b.expectedCheckIn || '').trim()
-      if (!raw) return
-      const hStr = raw.includes(':') ? raw.split(':')[0].slice(-2) : '10'
-      const h = parseInt(hStr, 10)
-      if (isNaN(h)) return
-
-      const slot = `${String(h).padStart(2, '0')}:00`
-      hourMap.set(slot, (hourMap.get(slot) || 0) + 1)
-    })
-
-    const slots = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00']
-    return slots.map((time) => ({
-      time,
-      bookings: hourMap.get(time) || 0,
-    }))
+      .slice(0, 4)
   }, [filteredBookings])
 
   // =====================================================
@@ -793,19 +856,15 @@ export default function HotseatManagement() {
       'Cancellation Reason': b.cancelReason || 'N/A - Active Booking',
     }))
 
-    const employeeData = employeeComparisonData.map((emp) => ({
-      'Employee Name': emp.name,
-      'Total Bookings': emp.total,
-      'Confirmed Bookings': emp.confirmed,
-      'Cancelled Bookings': emp.cancelled,
-      'Cancellation Rate (%)':
-        emp.total > 0 ? `${Math.round((emp.cancelled / emp.total) * 100)}%` : '0%',
+    const sectionData = sectionDemandData.map((s) => ({
+      Section: s.section,
+      'Total Bookings': s.bookings,
     }))
 
     exportToExcel(
       [
         { name: 'Hotseat Bookings Audit', data: auditData },
-        { name: 'Employee Breakdown', data: employeeData },
+        { name: 'Section Distribution', data: sectionData },
       ],
       `SpaceBook-Hotseat-Analytics-${new Date().toISOString().split('T')[0]}.xlsx`
     )
@@ -841,7 +900,7 @@ export default function HotseatManagement() {
             Hotseat Management
           </h1>
           <p className="mt-1 text-sm text-slate">
-            Executive visual insights on hotseat occupancy, workstation reservations, employee habits, and audit records.
+            Executive visual insights on hotseat occupancy, floor sections, desk turnover, and audit records.
           </p>
         </div>
 
@@ -889,7 +948,7 @@ export default function HotseatManagement() {
       )}
 
       {/* =================================================
-          FILTER BAR (Matching Screenshot 1)
+          FILTER BAR
       ================================================= */}
       <Card className="p-3.5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -919,9 +978,9 @@ export default function HotseatManagement() {
               className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
             >
               <option value="All">All Modules</option>
-              <option value="Module 1">Module 1 - Elcot Park</option>
-              <option value="Module 2">Module 2 - Elcot Park</option>
-              <option value="Tidel Park">Module 1 - Tidel Park</option>
+              <option value="Module 1 - Elcot Park">Module 1 - Elcot Park</option>
+              <option value="Module 2 - Elcot Park">Module 2 - Elcot Park</option>
+              <option value="Module 1 - Tidel Park">Module 1 - Tidel Park</option>
             </select>
 
             {/* Status Filter */}
@@ -1073,77 +1132,33 @@ export default function HotseatManagement() {
       </Card>
 
       {/* =================================================
-          ROW 1: Primary Visual Charts (2 Columns)
+          ROW 1: Hotseat Facility Distribution & Section Breakdown
       ================================================= */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* CHART 1: Employee Hotseat Booking vs Cancellation */}
+        {/* CHART 1: Module & Facility Distribution (Donut Chart) */}
         <Card className="p-5 shadow-sm">
           <div className="flex items-center justify-between border-b border-line pb-3">
             <div>
               <h2 className="font-display text-sm font-700 text-ink">
-                Employee Hotseat Booking vs Cancellation Ratio
+                Hotseat Volume by Facility & Zone
               </h2>
               <p className="text-xs text-slate">
-                Confirmed vs cancelled hotseat reservations by top employees.
+                Workstation reservation share across Tidel Park and Elcot Park Modules.
               </p>
             </div>
-            <Users size={16} className="text-sky-600" />
-          </div>
-
-          <div className="h-[300px] w-full pt-4">
-            {employeeComparisonData.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate">
-                No employee activity data available.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={employeeComparisonData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fill: '#475569', fontSize: 11 }}
-                    angle={-20}
-                    textAnchor="end"
-                    interval={0}
-                  />
-                  <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip content={<CustomChartTooltip />} />
-                  <Legend verticalAlign="top" height={36} />
-                  <Bar name="Confirmed" dataKey="confirmed" fill="#5c7a60" radius={[4, 4, 0, 0]} />
-                  <Bar name="Cancelled" dataKey="cancelled" fill="#be534d" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </Card>
-
-        {/* CHART 2: Status Outcome Donut Chart */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-700 text-ink">
-                Hotseat Reservation Outcome Breakdown
-              </h2>
-              <p className="text-xs text-slate">
-                Proportion of successful hotseat bookings vs cancellations.
-              </p>
-            </div>
-            <Sparkles size={16} className="text-emerald-600" />
+            <MapPin size={16} className="text-sky-600" />
           </div>
 
           <div className="h-[300px] w-full pt-2">
-            {visualStatusData.length === 0 ? (
+            {moduleDistributionData.length === 0 ? (
               <div className="flex h-full items-center justify-center text-sm text-slate">
-                No status data available.
+                No facility data available.
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={visualStatusData}
+                    data={moduleDistributionData}
                     dataKey="value"
                     nameKey="name"
                     cx="50%"
@@ -1152,7 +1167,7 @@ export default function HotseatManagement() {
                     outerRadius={105}
                     paddingAngle={4}
                   >
-                    {visualStatusData.map((entry, index) => (
+                    {moduleDistributionData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -1163,33 +1178,67 @@ export default function HotseatManagement() {
             )}
           </div>
         </Card>
-      </div>
 
-      {/* =================================================
-          ROW 2: Timeline Trends & Hotseat Popularity
-      ================================================= */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* CHART 3: Hotseat Volume Trendline */}
+        {/* CHART 2: Floor Section Demand Breakdown (Section A, B, C, D) */}
         <Card className="p-5 shadow-sm">
           <div className="flex items-center justify-between border-b border-line pb-3">
             <div>
               <h2 className="font-display text-sm font-700 text-ink">
-                Hotseat Reservation Volume Trendline
+                Floor Section Workstation Demand
               </h2>
               <p className="text-xs text-slate">
-                Historical hotseat reservation activity and volume patterns.
+                Hotseat bookings distributed across floor sections A, B, C, and D.
+              </p>
+            </div>
+            <Layers size={16} className="text-teal-600" />
+          </div>
+
+          <div className="h-[300px] w-full pt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={sectionDemandData}
+                margin={{ top: 10, right: 10, left: -20, bottom: 10 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="section" tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }} />
+                <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
+                <Tooltip content={<CustomChartTooltip />} />
+                <Bar dataKey="bookings" name="Hotseat Bookings" radius={[6, 6, 0, 0]}>
+                  {sectionDemandData.map((entry, index) => (
+                    <Cell key={`section-cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </div>
+
+      {/* =================================================
+          ROW 2: Daily Velocity Trendline & Top Hotseat Desks
+      ================================================= */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* CHART 3: Hotseat Daily Velocity & Occupancy Trendline */}
+        <Card className="p-5 shadow-sm">
+          <div className="flex items-center justify-between border-b border-line pb-3">
+            <div>
+              <h2 className="font-display text-sm font-700 text-ink">
+                Daily Hotseat Occupancy Trendline
+              </h2>
+              <p className="text-xs text-slate">
+                Workstation velocity tracking active desk utilization across days.
               </p>
             </div>
             <div className="flex items-center rounded-lg bg-slate-100 p-0.5 text-xs">
               <button
-                onClick={() => setTrendPeriod('Monthly')}
+                onClick={() => setTrendPeriod('Daily')}
                 className={`rounded-md px-2.5 py-1 font-bold ${
-                  trendPeriod === 'Monthly'
+                  trendPeriod === 'Daily'
                     ? 'bg-white text-ink shadow-sm'
                     : 'text-slate hover:text-ink'
                 }`}
               >
-                Monthly
+                Daily
               </button>
               <button
                 onClick={() => setTrendPeriod('Weekly')}
@@ -1206,54 +1255,54 @@ export default function HotseatManagement() {
 
           <div className="h-[280px] w-full pt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={timelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={velocityTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="hotseatAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0284C7" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#0284C7" stopOpacity={0} />
+                  <linearGradient id="hotseatVelocityGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0D9488" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#0D9488" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
+                <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 11 }} />
                 <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
                 <Tooltip content={<CustomChartTooltip />} />
                 <Area
                   type="monotone"
                   dataKey="bookings"
-                  name="Hotseat Reservations"
-                  stroke="#0284C7"
+                  name="Hotseat Check-Ins"
+                  stroke="#0D9488"
                   strokeWidth={2.5}
                   fillOpacity={1}
-                  fill="url(#hotseatAreaGrad)"
+                  fill="url(#hotseatVelocityGrad)"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
-        {/* CHART 4: Most Reserved Hotseats */}
+        {/* CHART 4: Top In-Demand Hotseats */}
         <Card className="p-5 shadow-sm">
           <div className="flex items-center justify-between border-b border-line pb-3">
             <div>
               <h2 className="font-display text-sm font-700 text-ink">
-                Most Reserved Hotseats
+                Top In-Demand Workstation Desks
               </h2>
               <p className="text-xs text-slate">
-                Workstation popularity ranked by total reservation volume.
+                Highest-occupied individual desk units ranked by reservation frequency.
               </p>
             </div>
             <Armchair size={16} className="text-sky-600" />
           </div>
 
           <div className="h-[280px] w-full pt-4">
-            {seatPopularityData.length === 0 ? (
+            {topDesksData.length === 0 ? (
               <div className="flex h-full items-center justify-center text-sm text-slate">
                 No hotseat usage records found.
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={seatPopularityData}
+                  data={topDesksData}
                   layout="vertical"
                   margin={{ top: 5, right: 20, left: 30, bottom: 5 }}
                 >
@@ -1262,14 +1311,14 @@ export default function HotseatManagement() {
                   <YAxis
                     type="category"
                     dataKey="name"
-                    tick={{ fill: '#0f172a', fontSize: 11, fontWeight: 600 }}
-                    width={110}
+                    tick={{ fill: '#0f172a', fontSize: 11, fontWeight: 700 }}
+                    width={100}
                   />
                   <Tooltip content={<CustomChartTooltip />} />
-                  <Bar dataKey="bookings" name="Reservations" fill="#0D9488" radius={[0, 6, 6, 0]}>
-                    {seatPopularityData.map((entry, index) => (
+                  <Bar dataKey="bookings" name="Reservations" fill="#0284C7" radius={[0, 6, 6, 0]}>
+                    {topDesksData.map((entry, index) => (
                       <Cell
-                        key={`cell-${index}`}
+                        key={`desk-cell-${index}`}
                         fill={MODULE_COLORS[index % MODULE_COLORS.length]}
                       />
                     ))}
@@ -1282,38 +1331,85 @@ export default function HotseatManagement() {
       </div>
 
       {/* =================================================
-          ROW 3: Cancellation Drivers & Peak Check-in Hours
+          ROW 3: Peak Time Slots & Lifecycle Status / Cancellation Drivers
       ================================================= */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* CHART 5: Cancellation Drivers */}
+        {/* CHART 5: Peak Check-In Time Slots */}
         <Card className="p-5 shadow-sm">
           <div className="flex items-center justify-between border-b border-line pb-3">
             <div>
               <h2 className="font-display text-sm font-700 text-ink">
-                Top Cancellation Reasons & Drivers
+                Peak Hotseat Check-In Time Slots
               </h2>
               <p className="text-xs text-slate">
-                Visual breakdown of why employees cancelled their hotseat reservations.
+                Distribution of expected check-in slots throughout operational office hours.
+              </p>
+            </div>
+            <Clock size={16} className="text-sky-600" />
+          </div>
+
+          <div className="h-[250px] w-full pt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={timeSlotDistributionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="slot" tick={{ fill: '#475569', fontSize: 10 }} />
+                <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
+                <Tooltip content={<CustomChartTooltip />} />
+                <Bar dataKey="bookings" name="Check-in Slots" fill="#6366F1" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {/* CHART 6: Hotseat Reservation Status & Release Drivers */}
+        <Card className="p-5 shadow-sm">
+          <div className="flex items-center justify-between border-b border-line pb-3">
+            <div>
+              <h2 className="font-display text-sm font-700 text-ink">
+                Hotseat Cancellation Drivers & Lifecycle
+              </h2>
+              <p className="text-xs text-slate">
+                Root causes for desk cancellations and check-in release patterns.
               </p>
             </div>
             <AlertTriangle size={16} className="text-[#be534d]" />
           </div>
 
-          <div className="pt-4">
+          <div className="pt-4 space-y-4">
+            {/* Status Breakdown Pills */}
+            <div className="grid grid-cols-3 gap-2 pb-2 border-b border-slate-100">
+              <div className="rounded-xl bg-emerald-50 p-2.5 text-center">
+                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">Approved</span>
+                <span className="text-lg font-extrabold text-emerald-700">{kpis.confirmed}</span>
+              </div>
+              <div className="rounded-xl bg-sky-50 p-2.5 text-center">
+                <span className="text-[10px] font-bold text-sky-800 uppercase tracking-wider block">Checked In</span>
+                <span className="text-lg font-extrabold text-sky-700">{kpis.checkedIn}</span>
+              </div>
+              <div className="rounded-xl bg-red-50 p-2.5 text-center">
+                <span className="text-[10px] font-bold text-red-800 uppercase tracking-wider block">Cancelled</span>
+                <span className="text-lg font-extrabold text-red-700">{kpis.cancelled}</span>
+              </div>
+            </div>
+
+            {/* Cancellation Reasons List */}
             {cancellationReasonsData.length === 0 ? (
-              <p className="py-12 text-center text-sm text-slate">
+              <p className="py-4 text-center text-xs text-slate">
                 No cancellations recorded under the active filters.
               </p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Primary Cancellation Reasons:
+                </p>
                 {cancellationReasonsData.map((item, idx) => (
-                  <div key={idx} className="space-y-1.5">
+                  <div key={idx} className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-ink">
-                        "{item.reason}"
+                      <span className="font-medium text-ink">
+                        &ldquo;{item.reason}&rdquo;
                       </span>
                       <span className="font-bold text-red-700">
-                        {item.count} {item.count === 1 ? 'time' : 'times'} ({item.percentage}%)
+                        {item.count} {item.count === 1 ? 'case' : 'cases'} ({item.percentage}%)
                       </span>
                     </div>
                     <div className="h-2 w-full rounded-full bg-red-100">
@@ -1326,33 +1422,6 @@ export default function HotseatManagement() {
                 ))}
               </div>
             )}
-          </div>
-        </Card>
-
-        {/* CHART 6: Peak Check-in Hours */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-700 text-ink">
-                Peak Hotseat Demand by Hour
-              </h2>
-              <p className="text-xs text-slate">
-                Distribution of expected check-ins across operational office hours.
-              </p>
-            </div>
-            <Clock size={16} className="text-sky-600" />
-          </div>
-
-          <div className="h-[250px] w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={hourlyDistributionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="time" tick={{ fill: '#475569', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
-                <Tooltip content={<CustomChartTooltip />} />
-                <Bar dataKey="bookings" name="Check-ins at Hour" fill="#6366F1" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
           </div>
         </Card>
       </div>

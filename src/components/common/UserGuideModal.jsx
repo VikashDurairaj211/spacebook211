@@ -29,13 +29,19 @@ const GUIDE_SECTIONS = [
     title: 'Getting Started & Policy',
     icon: Sparkles,
     badge: 'Core Policy',
-    description: 'Basic rules, office operating hours, and instant confirmation system.',
+    description: 'Basic rules, office operating hours, multi-module campuses, and instant confirmation system.',
     topics: [
       {
         title: 'Office Operating Hours (10:00 AM – 10:00 PM)',
         content:
           'SpaceBook operates during official office hours from 10:00 AM to 10:00 PM IST (Monday through Friday). All meeting room and hot-seat bookings must fall within this timeframe.',
         tips: 'The system automatically disables time slots outside 10:00 AM – 10:00 PM.',
+      },
+      {
+        title: 'Multi-Module Campus Support',
+        content:
+          'SpaceBook manages meeting rooms and workstations across 3 standard modules: Module 1 - Elcot Park - CMB, Module 2 - Elcot Park - CMB, and Module 1 - Tidel Park - CMB.',
+        tips: 'Easily filter by campus module in Room Search, Calendar, and Admin views.',
       },
       {
         title: 'Auto-Approval & Instant Confirmation',
@@ -56,16 +62,17 @@ const GUIDE_SECTIONS = [
     title: 'Booking Meeting Rooms',
     icon: Building2,
     badge: 'Meeting Rooms',
-    description: 'How to search, check amenities, and reserve meeting spaces.',
+    description: 'How to search, check amenities, and reserve meeting spaces across Elcot & Tidel Park.',
     topics: [
       {
         title: '1. Finding the Right Meeting Room',
         content:
-          'Navigate to "Search Rooms" from the sidebar. Use filters at the top to filter by Location (Module 1 / Module 2 - Elcot Park), Date, Time Slots, Capacity range, and specific Amenities.',
+          'Navigate to "Workspace Search" from the sidebar or type a room name directly into the Top Navigation search bar. Filter by Module (Elcot Park Module 1 & 2, Tidel Park Module 1), Room Type (Conference, Training, Discussion), Capacity, and technical Facilities.',
         steps: [
-          'Select your desired Date and Start/End times (between 10:00 AM and 10:00 PM).',
-          'Filter by required amenities (e.g. Video Conferencing, Smart TV, Whiteboard, Projector).',
-          'Review real-time room cards showing room capacity, standard room codes (e.g. CBE-05-EO1-001), module location, and current availability status.',
+          'Select your target Date and Start/End times (between 10:00 AM and 10:00 PM).',
+          'Choose your Room Type: Conference (up to 20 people), Training (up to 50 people), or Discussion (8 to 10 people).',
+          'Filter by required amenities (e.g. Video Conferencing, Smart TV, Whiteboard, Projector, Speaker, Wi-Fi).',
+          'Review real-time room cards showing capacity, standardized room codes (e.g. CBE-05-EO1-001), module location, and current availability status.',
         ],
       },
       {
@@ -76,7 +83,7 @@ const GUIDE_SECTIONS = [
       {
         title: '3. Instant Reservation & Confirmation',
         content:
-          'Click "Book Now", enter your Meeting Title, review the summary modal, and click "Confirm Booking". Your reservation is created immediately and added to your calendar.',
+          'Click "Book Now", enter your Meeting Title, review the summary modal, and click "Confirm Booking". Your reservation is created immediately with a clean numeric Booking ID and added to your calendar.',
       },
     ],
   },
@@ -106,7 +113,7 @@ const GUIDE_SECTIONS = [
       {
         title: '3. Booking a Workstation Desk',
         content:
-          'Select your target Date and Work Shift (Full Day 10:00 AM - 10:00 PM, Morning 10:00 AM - 04:00 PM, or Afternoon 04:00 PM - 10:00 PM). Select your Module floor, pick any Green available seat, and confirm. Your desk turns blue upon selection and red once confirmed.',
+          'Select your target Date and Work Shift (Full Day 10:00 AM - 10:00 PM, Morning 10:00 AM - 04:00 PM, or Afternoon 04:00 PM - 10:00 PM). Pick any Green available seat, and confirm.',
       },
       {
         title: '4. Checking In & QR Code Workflow',
@@ -130,14 +137,14 @@ const GUIDE_SECTIONS = [
       {
         title: '2. Rescheduling / Editing Booking Time',
         content:
-          'Need to change your meeting time? Click the "Edit / Reschedule" button on your booking card. Pick a new date or adjust the start/end time slots within 10:00 AM – 10:00 PM. The system validates conflict-free slots instantly.',
+          'Need to change your meeting time? Click the "Edit / Reschedule" button on your booking card. Pick a new date or adjust start/end time slots within 10:00 AM – 10:00 PM. The system validates conflict-free slots instantly.',
       },
       {
         title: '3. Cancelling Reservations',
         content:
           'If you no longer need a reserved space, click "Cancel" on your booking card:',
         steps: [
-          'Meeting Rooms: Enter a brief cancellation reason (e.g. Schedule Conflict, Client Postponed) to help the workplace team maintain accurate reporting.',
+          'Meeting Rooms: Enter a brief cancellation reason (e.g. Schedule Conflict, Client Postponed) to keep facilities audit logs accurate.',
           'Hot-Seats: Instant cancellation with confirmation only—no reason required.',
         ],
       },
@@ -168,12 +175,17 @@ const GUIDE_SECTIONS = [
     title: 'Aira AI Assistant',
     icon: Sparkles,
     badge: 'AI Assistant',
-    description: 'Using the built-in intelligent assistant for instant support.',
+    description: 'Using the built-in intelligent assistant with background preloading for zero-lag support.',
     topics: [
+      {
+        title: 'Instant Background Preloading',
+        content:
+          'Aira is automatically preloaded in the background upon application startup. When you click the floating Aira icon in the top navigation bar, the chat interface opens immediately without loading delays.',
+      },
       {
         title: 'Supported Prompts & Capabilities',
         content:
-          'SpaceBook features a built-in AI Assistant named Aira accessible via the floating icon in the top right corner. You can chat with Aira using these 6 supported prompts:',
+          'You can chat with Aira using these 6 supported prompts:',
         steps: [
           '1. Office Locations: "What office locations are available in the system?"',
           '2. Office Search: "Search for the office located in [City/Location Name]."',
@@ -190,41 +202,51 @@ const GUIDE_SECTIONS = [
     title: 'Admin Tools & Intelligence',
     icon: ShieldCheck,
     badge: 'Admin Only',
-    description: 'Dashboard, executive analytics, reservation audit records, and room inventory management.',
+    description: 'Executive KPIs, reservation audit modal, room management, and visual analytics.',
     topics: [
       {
-        title: '1. Dashboard & Reservation Records',
+        title: '1. Reports & Executive KPI Cards',
         content:
-          'The Dashboard gives administrators a unified control center combining high-level visual analytics with live reservation audit logs:',
+          'The Admin Reports page gives administrators a unified overview with compact, high-impact cards:',
         steps: [
-          'Top Executive KPI Cards: Real-time metrics for Total Reservations, Confirmed Rate %, Cancelled Rate %, Workforce Engagement, and Average Reservations per Person.',
-          'Workplace Reservation Records & Audit Table: Complete data grid positioned beneath KPIs displaying Booking ID, Meeting Title, Room, Module, Date, Time (HH:mm - HH:mm), Requester, and Status.',
-          'Dynamic Global Filter Bar: Instantly filter all metrics and the audit table by Timeframe (All Time, Today, Past 7 Days, Past 30 Days, Past, Upcoming), Module (Module 1 / Module 2), and Status (Confirmed / Cancelled).',
-          'In-Table Quick Search & Reset: Search reservations in real-time and use "Reset all filters" to return to all records at any time.',
-          'Multi-Format Exports: Download clean CSV audit files or comprehensive 4-sheet formatted Excel workbooks (.xlsx) with a single click.',
+          'Executive KPI Metrics: Total Reservations, Utilization %, Confirmed Bookings (with % rate), Cancelled Bookings (with % impact), and Workforce Engagement.',
+          'Compact 5-Column Sizing: All metric cards fit neatly across the screen without horizontal scrolling.',
+          'Dynamic Global Filter Bar: Filter metrics by Timeframe (All Time, Today, Past 7 Days, Past 30 Days, Past Dates), Module (Elcot Park Module 1 & 2, Tidel Park Module 1), and Status (All Status, Confirmed, Cancelled).',
+          'Export CSV: Download full reservation audit records including timestamps, requester details, and cancellation reasons.',
         ],
       },
       {
-        title: '2. Workspace Administration & Inventory',
+        title: '2. Workplace Reservation Records & Audit Modal',
         content:
-          'The Workspace Administration page allows administrators to manage room inventory and operational states across Module 1 and Module 2:',
+          'The reservation records table is accessed cleanly via the "View" button in the summary card:',
         steps: [
-          'Inventory Summary: Monitor Total Rooms, Available Rooms, Maintenance Rooms, and the live "Reserved" count showing how many rooms are currently occupied.',
-          'Status Controls: Easily toggle room operational states between "Available" and "Maintenance" with automatic persistence.',
-          'Standardized Room Naming: Room numbers consistently follow the standard format (e.g. CBE-05-EO1-001).',
+          'Dedicated Audit Modal: Clicking "View" opens a spacious audit modal showing Booking ID, Meeting Title, Room, Module, Date, Time, Created By, and Status.',
+          'Clean Numeric IDs: Booking IDs render as clean numeric values without unnecessary prefixes.',
+          'Live Search & Quick Reset: Search by employee, room, title, or booking ID, with instant filter reset.',
+          'Pagination: Browse records smoothly with 8 items per page.',
+        ],
+      },
+      {
+        title: '3. Workspace Administration & Inventory',
+        content:
+          'The Workspace Administration page allows administrators to manage room inventory and operational states across Elcot Park and Tidel Park:',
+        steps: [
+          'Inventory Metrics: Monitor Total Workspaces, Available, Reserved (currently occupied), and Maintenance counts.',
+          'Status Controls: Easily toggle room operational states between "Available" and "Maintenance".',
+          'Balanced Table Layout: Column widths are precisely distributed with compact padding to prevent text overlap or horizontal scrollbars.',
           'Add & Edit Workspaces: Create new meeting rooms or update capacities, module locations, and multimedia facilities.',
-          'TopNav Search Integration: Searching a room in the top navigation bar immediately filters the workspace administration table.',
         ],
       },
       {
-        title: '3. Visual Analytics & Usage Intelligence',
+        title: '4. Visual Analytics & Usage Intelligence',
         content:
-          'Deep visual business intelligence charts included on the Dashboard:',
+          'Compact business intelligence charts included on the Reports page:',
         steps: [
-          'Booking Volume Trends: Interactive line charts tracking monthly and weekly reservation growth.',
-          'Outcome Distribution: Donut charts illustrating confirmed vs cancelled reservation proportions.',
-          'Room Popularity & Demand: Vertical bar rankings identifying the most frequently reserved workspaces.',
-          'Cancellation Drivers: Comprehensive analysis of top reasons provided for meeting cancellations.',
+          'Employee Booking vs Cancellation Ratio: Top employee booking volume compared with cancellation rates.',
+          'Reservation Outcome Breakdown: Donut chart illustrating confirmed vs cancelled proportions.',
+          'Reservation Volume Trendline: Interactive area chart tracking monthly and weekly volume patterns.',
+          'Most Reserved Rooms: Horizontal bar ranking identifying the most frequently booked workspaces.',
+          'Peak Workspace Demand by Hour: Hourly distribution of office reservations across the workday.',
         ],
       },
     ],
@@ -242,6 +264,11 @@ const GUIDE_SECTIONS = [
           'No. The office is operational Monday through Friday. Weekend dates are restricted to prevent unnecessary energy consumption and maintain facility schedules.',
       },
       {
+        title: 'Which campus modules are supported in SpaceBook?',
+        content:
+          'SpaceBook supports Module 1 - Elcot Park - CMB, Module 2 - Elcot Park - CMB, and Module 1 - Tidel Park - CMB across Conference, Training, and Discussion rooms.',
+      },
+      {
         title: 'Is there a limit on how long I can reserve a room?',
         content:
           'Bookings must fall within official office hours (10:00 AM – 10:00 PM). Standard reservations range from 30 minutes up to full-day sessions depending on room availability.',
@@ -252,14 +279,14 @@ const GUIDE_SECTIONS = [
           'All reservations are auto-approved instantly. You will receive an on-screen confirmation and your booking will immediately show in your "My Bookings" list.',
       },
       {
-        title: 'How do administrators manage bookings and rooms?',
+        title: 'Where can I see why a reservation was cancelled?',
         content:
-          'Administrators use "Dashboard" to monitor executive KPIs, search live reservation audit records, and export reports. Room inventory, capacities, and maintenance modes are managed under "Workspace Administration".',
+          'Cancellation reasons are viewable by Admins in the "Reservation Details" modal when clicking View on any booking, as well as in the exported CSV audit report.',
       },
       {
-        title: 'How do I mark all notifications as read?',
+        title: 'How do administrators manage bookings and rooms?',
         content:
-          'Click the Notification Bell in the top bar and select "Mark all as read". Your unread badge will clear and the state is permanently saved.',
+          'Administrators use "Reports" to monitor executive KPIs, view the reservation audit modal, and export CSV reports. Room inventory, capacities, and maintenance modes are managed under "Workspace Administration".',
       },
     ],
   },

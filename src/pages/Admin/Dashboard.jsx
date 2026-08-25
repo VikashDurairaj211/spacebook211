@@ -28,7 +28,7 @@ function CustomStatusTag({ status }) {
 
   return (
     <span
-      className={`inline-flex items-center justify-center min-w-[110px] rounded-full px-3 py-1 text-[11px] font-semibold tracking-wider text-center ${bgClass}`}
+      className={`inline-flex items-center justify-center min-w-[74px] rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider text-center ${bgClass}`}
     >
       {normalized || 'UNKNOWN'}
     </span>

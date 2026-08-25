@@ -27,7 +27,7 @@ function CustomStatusTag({ status }) {
 
   return (
     <span
-      className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${bgClass}`}
+      className={`inline-block min-w-[74px] px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase text-center ${bgClass}`}
     >
       {normalized || 'CONFIRMED'}
     </span>
@@ -98,65 +98,26 @@ export default function BookingManagement() {
         'Fetching admin booking data from Render API...'
       )
 
-      const [statsRes, bookingsRes, myBookingsRes] = await Promise.allSettled([
+      const [statsRes, bookingsRes] = await Promise.all([
         client.get('/admin/bookings/dashboard'),
         client.get('/admin/bookings'),
-        client.get('/employee/mybookings'),
       ])
 
-      const statsData = statsRes.status === 'fulfilled' ? statsRes.value?.data : null
-      const bookingsDataRaw = bookingsRes.status === 'fulfilled' ? bookingsRes.value?.data : null
-      const myBookingsDataRaw = myBookingsRes.status === 'fulfilled' ? myBookingsRes.value?.data : null
+      console.log(
+        'Booking dashboard response:',
+        statsRes.data
+      )
 
-      const myBookingsMap = {}
-      if (myBookingsDataRaw) {
-        const myData = Array.isArray(myBookingsDataRaw)
-          ? myBookingsDataRaw
-          : myBookingsDataRaw?.bookings ||
-            myBookingsDataRaw?.data ||
-            []
-
-        myData.forEach((item) => {
-          const bId = String(
-            item.bookingId ?? item.id ?? item.BookingId ?? ''
-          ).replace(/^#/, '').trim()
-
-          const mTitle =
-            item.meetingTitle ||
-            item.MeetingTitle ||
-            item.title ||
-            item.Title ||
-            item.purpose ||
-            item.Purpose
-
-          if (bId && mTitle && String(mTitle).trim()) {
-            myBookingsMap[bId] = String(mTitle).trim()
-          }
-
-          const rId =
-            item.roomId ??
-            item.RoomId ??
-            item.room?.id ??
-            item.room?.roomId ??
-            ''
-          const dateKey = String(
-            item.bookingDate || item.date || ''
-          ).split('T')[0]
-          const timeKey = String(
-            item.startTime || item.time || item.start_time || ''
-          ).slice(0, 5)
-
-          if (rId && dateKey && timeKey && mTitle && String(mTitle).trim()) {
-            myBookingsMap[`${rId}_${dateKey}_${timeKey}`] = String(mTitle).trim()
-          }
-        })
-      }
+      console.log(
+        'Bookings response:',
+        bookingsRes.data
+      )
 
       // =====================================================
       // Dashboard Statistics
       // =====================================================
 
-      if (statsData) {
+      if (statsRes.data) {
         setStatusCounts({
           Pending:
             statsData.pendingRequests ??
@@ -185,151 +146,81 @@ export default function BookingManagement() {
       // Booking List
       // =====================================================
 
-      const bookingData = Array.isArray(bookingsDataRaw)
-        ? bookingsDataRaw
-        : bookingsDataRaw?.data ||
-          bookingsDataRaw?.bookings ||
+      const bookingData = Array.isArray(bookingsRes.data)
+        ? bookingsRes.data
+        : bookingsRes.data?.data ||
+          bookingsRes.data?.bookings ||
           []
-
-      let localTitles = {}
-      try {
-        localTitles = JSON.parse(
-          localStorage.getItem('spacebook_meeting_titles') || '{}'
-        )
-      } catch (e) {
-        // ignore
-      }
-
-      const resolveMeetingTitle = (b) => {
-        const keyId = String(
-          b.bookingId ??
-          b.booking_id ??
-          b.BookingId ??
-          b.id ??
-          b.Id ??
-          b.reservationId ??
-          ''
-        ).replace(/^#/, '').trim()
-
-        const rId =
-          b.roomId ??
-          b.RoomId ??
-          b.room?.id ??
-          b.room?.roomId ??
-          ''
-        const dateKey = String(b.bookingDate || b.date || '').split('T')[0]
-        const timeKey = String(
-          b.startTime || b.time || b.start_time || ''
-        ).slice(0, 5)
-        const keyRoom = `${rId}_${dateKey}_${timeKey}`
-
-        const candidates = [
-          b.meetingTitle,
-          b.MeetingTitle,
-          b.meeting_title,
-          b.title,
-          b.Title,
-          b.purpose,
-          b.Purpose,
-          b.bookingPurpose,
-          b.booking_purpose,
-          b.reason,
-          b.Reason,
-          b.subject,
-          b.Subject,
-          b.meetingName,
-          b.description,
-          b.Description,
-        ]
-
-        for (const cand of candidates) {
-          if (
-            cand &&
-            typeof cand === 'string' &&
-            cand.trim() &&
-            cand.trim().toLowerCase() !== 'meeting' &&
-            cand.trim().toLowerCase() !== 'reserved workspace'
-          ) {
-            return cand.trim()
-          }
-        }
-
-        if (keyId && myBookingsMap[keyId]) return myBookingsMap[keyId]
-        if (keyRoom && myBookingsMap[keyRoom]) return myBookingsMap[keyRoom]
-
-        if (keyId && localTitles[keyId]) return localTitles[keyId]
-        if (keyRoom && localTitles[keyRoom]) return localTitles[keyRoom]
-
-        for (const cand of candidates) {
-          if (cand && typeof cand === 'string' && cand.trim()) {
-            return cand.trim()
-          }
-        }
-
-        return 'Reserved Workspace'
-      }
 
       // =====================================================
       // Map Backend Response
       // =====================================================
 
-      const mappedBookings = bookingData.map((b) => {
-        const resolvedTitle = resolveMeetingTitle(b)
-        return {
-          // Booking ID
-          bookingId: b.bookingId ?? b.id,
+      const mappedBookings = bookingData.map((b) => ({
+        // Booking ID
+        bookingId: b.bookingId ?? b.id,
 
-          // Keep id for compatibility
-          id: b.bookingId ?? b.id,
+        // Keep id for compatibility
+        id: b.bookingId ?? b.id,
 
-          // Meeting title
-          title: resolvedTitle,
-          meetingTitle: resolvedTitle,
-          purpose: resolvedTitle,
+        // Meeting title
+        title:
+          b.title ??
+          b.purpose ??
+          b.meetingTitle ??
+          'Reserved Workspace',
 
-        // Room
-        roomName:
-          b.roomName ??
-          b.room?.name ??
-          `Room ${b.roomId ?? ''}`,
+          // Room
+          roomName:
+            b.roomName ??
+            empMatch.roomName ??
+            b.room?.name ??
+            `Room ${b.roomId ?? ''}`,
 
-        // Module
-        module:
-          b.module ??
-          b.moduleName ??
-          b.room?.module ??
-          'N/A',
+          // Module
+          module:
+            b.module ??
+            empMatch.module ??
+            b.moduleName ??
+            b.room?.module ??
+            'N/A',
 
-        // Date
-        date:
-          b.bookingDate ??
-          b.date ??
-          '',
+          // Date
+          date:
+            b.bookingDate ??
+            empMatch.bookingDate ??
+            b.date ??
+            '',
 
-        // Start time
-        startTime: b.startTime
-          ? String(b.startTime).substring(0, 5)
-          : '',
+          // Start time
+          startTime: b.startTime
+            ? String(b.startTime).substring(0, 5)
+            : empMatch.startTime
+            ? String(empMatch.startTime).substring(0, 5)
+            : '',
 
-        // End time
-        endTime: b.endTime
-          ? String(b.endTime).substring(0, 5)
-          : '',
+          // End time
+          endTime: b.endTime
+            ? String(b.endTime).substring(0, 5)
+            : empMatch.endTime
+            ? String(empMatch.endTime).substring(0, 5)
+            : '',
 
-        // Employee / creator
-        createdBy:
-          b.requestedBy ??
-          b.createdBy ??
-          b.requester ??
-          b.employeeName ??
-          b.employee?.name ??
-          'Employee',
+          // Employee / creator
+          createdBy:
+            b.requestedBy ??
+            b.createdBy ??
+            empMatch.requestedBy ??
+            b.requester ??
+            b.employeeName ??
+            b.employee?.name ??
+            'Employee',
 
         // Status
         status:
           b.status ??
           'Pending',
-      }})
+      }))
 
       console.log(
         'Mapped bookings:',

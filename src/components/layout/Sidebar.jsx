@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { LayoutDashboard, Search, CalendarRange, MapPin, ShieldCheck, Building2, BookOpenCheck, Armchair, BarChart3, Clock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import client from '../../api/client'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -15,10 +17,126 @@ const ADMIN_ITEMS = [
   { to: '/admin/hotseat-management', label: 'Hotseat Management', icon: Armchair },
 ]
 
+const DEFAULT_FACILITY_OVERVIEW = [
+  {
+    type: 'Discussion Rooms:',
+    capacity: '8 to 10 People',
+    facilities: '(Monitor, Speaker, Video Conferencing, Whiteboard, Wi-Fi)',
+  },
+  {
+    type: 'Conference Rooms:',
+    capacity: 'Up to 20 People',
+    facilities: '(Monitor, Speaker, Video Conferencing, Wi-Fi)',
+  },
+  {
+    type: 'Training Rooms:',
+    capacity: 'Up to 50 People',
+    facilities: '(Mike, Projector, Speaker, Wi-Fi)',
+  },
+]
+
 export default function Sidebar({ collapsed = true, modules = [], bookings = [] }) {
   const widthClass = collapsed ? 'w-20' : 'w-64'
   const { user } = useAuth()
   const isAdmin = user?.role === 'Admin' || user?.isAdmin === true
+  const [dynamicOverview, setDynamicOverview] = useState(DEFAULT_FACILITY_OVERVIEW)
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadDynamicFacilities() {
+      try {
+        let rooms = []
+        if (isAdmin) {
+          try {
+            const { data } = await client.get('/admin/rooms')
+            rooms = Array.isArray(data) ? data : data?.data || data?.rooms || []
+          } catch {
+            // ignore
+          }
+        } else {
+          try {
+            const todayStr = new Date().toISOString().split('T')[0]
+            const { data } = await client.get('/employee/availability', {
+              params: { date: todayStr },
+            })
+            rooms = data?.rooms || (Array.isArray(data) ? data : [])
+          } catch {
+            // ignore
+          }
+        }
+
+        if (!rooms || rooms.length === 0) {
+          try {
+            rooms = JSON.parse(localStorage.getItem('spacebook_room_inventory') || '[]')
+          } catch {
+            // ignore
+          }
+        }
+
+        if (!rooms || !rooms.length || !isMounted) return
+
+        const typeMap = {
+          discussion: { name: 'Discussion Rooms:', capacities: [], facilities: new Set() },
+          conference: { name: 'Conference Rooms:', capacities: [], facilities: new Set() },
+          training: { name: 'Training Rooms:', capacities: [], facilities: new Set() },
+        }
+
+        rooms.forEach((r) => {
+          const rawType = String(r.roomType || r.type || r.roomTypeName || '').toLowerCase()
+          let key = null
+          if (rawType.includes('discussion')) key = 'discussion'
+          else if (rawType.includes('conference')) key = 'conference'
+          else if (rawType.includes('training')) key = 'training'
+
+          if (!key) return
+
+          const cap = Number(r.capacity || r.maxCapacity || r.roomCapacity || 0)
+          if (cap > 0) typeMap[key].capacities.push(cap)
+
+          const facList = r.facilities || r.roomFacilities || []
+          facList.forEach((f) => {
+            const name = typeof f === 'object' && f !== null ? (f.name || f.facilityName) : String(f)
+            if (name && name.trim() && name.trim() !== 'undefined' && name.trim() !== 'null') {
+              typeMap[key].facilities.add(name.trim())
+            }
+          })
+        })
+
+        const computed = Object.values(typeMap).map((item, idx) => {
+          let capText = DEFAULT_FACILITY_OVERVIEW[idx].capacity
+          if (item.capacities.length > 0) {
+            const min = Math.min(...item.capacities)
+            const max = Math.max(...item.capacities)
+            capText = min === max ? `Up to ${max} People` : `${min} to ${max} People`
+          }
+
+          let facText = DEFAULT_FACILITY_OVERVIEW[idx].facilities
+          if (item.facilities.size > 0) {
+            facText = `(${Array.from(item.facilities).join(', ')})`
+          }
+
+          return {
+            type: item.name,
+            capacity: capText,
+            facilities: facText,
+          }
+        })
+
+        if (isMounted && computed.length > 0) {
+          setDynamicOverview(computed)
+        }
+      } catch (err) {
+        console.warn('Sidebar dynamic facility fetch error:', err)
+      }
+    }
+
+    loadDynamicFacilities()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   return (
     <aside className={`hidden md:fixed md:top-14 md:left-0 md:h-[calc(100%-3.5rem)] md:overflow-y-auto md:flex md:flex-col border-r border-sky-200 bg-sky-50/60 transition-all duration-200 ${widthClass}`}>
@@ -61,20 +179,14 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
                   </div>
 
                   <div className="space-y-2 pt-1">
-                    <div className="text-[11px] leading-snug">
-                      <p className="font-bold text-sky-950">Discussion Rooms:</p>
-                      <p className="text-slate-600">8 to 10 People (Monitor, Speaker, Video Conferencing, Whiteboard, Wi-Fi)</p>
-                    </div>
-
-                    <div className="text-[11px] leading-snug">
-                      <p className="font-bold text-sky-950">Conference Rooms:</p>
-                      <p className="text-slate-600">Up to 20 People (Monitor, Speaker, Video Conferencing, Wi-Fi)</p>
-                    </div>
-
-                    <div className="text-[11px] leading-snug">
-                      <p className="font-bold text-sky-950">Training Rooms:</p>
-                      <p className="text-slate-600">Up to 50 People (Mike, Projector, Speaker, Wi-Fi)</p>
-                    </div>
+                    {dynamicOverview.map((item) => (
+                      <div key={item.type} className="text-[11px] leading-snug">
+                        <p className="font-bold text-sky-950">{item.type}</p>
+                        <p className="text-slate-600">
+                          {item.capacity} {item.facilities}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
 

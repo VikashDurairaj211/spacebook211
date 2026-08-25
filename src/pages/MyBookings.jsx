@@ -223,41 +223,44 @@ export default function MyBookings() {
           ? data
           : data?.bookings || data?.data || [];
 
-        roomBookings = bookingList.map((booking) => ({
-          ...booking,
+        roomBookings = bookingList.map((booking) => {
+          const resolvedTitle = resolveMeetingTitle(booking)
+          return {
+            ...booking,
 
-          bookingId:
-            booking.bookingId ??
-            booking.id ??
-            booking.Id,
+            bookingId:
+              booking.bookingId ??
+              booking.id ??
+              booking.Id,
 
-          bookingDate:
-            booking.bookingDate ??
-            booking.date ??
-            "",
+            meetingTitle: resolvedTitle,
+            purpose: resolvedTitle,
 
-          startTime:
-            booking.startTime ??
-            booking.time ??
-            "",
+            bookingDate:
+              booking.bookingDate ??
+              booking.date ??
+              "",
 
-          endTime:
-            booking.endTime ??
-            "",
+            startTime:
+              booking.startTime ??
+              booking.time ??
+              "",
 
-          roomName:
-            booking.roomName ||
-            booking.room?.roomName ||
-            booking.room?.name ||
-            `Room ${getRoomId(booking) || ""}`,
+            endTime:
+              booking.endTime ??
+              "",
 
-          roomId: getRoomId(booking),
+            roomName:
+              booking.roomName ||
+              booking.room?.roomName ||
+              booking.room?.name ||
+              `Room ${getRoomId(booking) || ""}`,
 
-          purpose: resolveMeetingTitle(booking),
-          meetingTitle: resolveMeetingTitle(booking),
+            roomId: getRoomId(booking),
 
-          isHotseat: false,
-        }));
+            isHotseat: false,
+          }
+        });
       } else {
         console.error(
           "Room bookings error:",
@@ -323,9 +326,17 @@ export default function MyBookings() {
               booking.Module ??
               "-",
 
-            purpose:
+            meetingTitle:
+              booking.meetingTitle ||
+              booking.title ||
               booking.purpose ||
-              "Hotseat Booking",
+              (booking.seatNumber ? `Hotseat (${booking.seatNumber})` : "Hotseat Booking"),
+
+            purpose:
+              booking.meetingTitle ||
+              booking.title ||
+              booking.purpose ||
+              (booking.seatNumber ? `Hotseat (${booking.seatNumber})` : "Hotseat Booking"),
 
             roomId: null,
 
@@ -349,13 +360,33 @@ export default function MyBookings() {
       }
 
       // =====================================================
-      // COMBINE
+      // COMBINE & DEDUPLICATE
       // =====================================================
 
-      const combinedBookings = [
-        ...roomBookings,
-        ...hotseatBookings,
-      ];
+      const hotseatIdSet = new Set(
+        hotseatBookings.map((h) => String(h.bookingId))
+      );
+
+      const pureRoomBookings = roomBookings.filter((rb) => {
+        const id = String(rb.bookingId);
+        if (hotseatIdSet.has(id)) return false;
+        if (rb.seatId || rb.seatNumber || rb.isHotseat === true) return false;
+        const name = String(rb.roomName || "").toLowerCase();
+        if (name.includes("hot seat") || name.includes("hotseat")) return false;
+        const purpose = String(rb.purpose || "").toLowerCase();
+        if (purpose.includes("hotseat")) return false;
+        return true;
+      });
+
+      const combinedMap = new Map();
+      pureRoomBookings.forEach((b) => {
+        if (b.bookingId) combinedMap.set(`room-${b.bookingId}`, b);
+      });
+      hotseatBookings.forEach((b) => {
+        if (b.bookingId) combinedMap.set(`hotseat-${b.bookingId}`, b);
+      });
+
+      const combinedBookings = Array.from(combinedMap.values());
 
       // =====================================================
       // SORT BY BOOKING ID DESC
@@ -1204,11 +1235,13 @@ export default function MyBookings() {
         endTime:
           formatApiTime(endTime),
 
-        purpose:
+        meetingTitle:
+          selected.meetingTitle?.trim() ||
           selected.purpose?.trim() ||
           "Meeting",
 
-        meetingTitle:
+        purpose:
+          selected.meetingTitle?.trim() ||
           selected.purpose?.trim() ||
           "Meeting",
 
@@ -1496,11 +1529,10 @@ export default function MyBookings() {
 
                   {/* MEETING TITLE */}
 
-                  <td className="max-w-[140px] truncate px-3 py-4">
-                    {b.purpose &&
-                    b.purpose.trim()
-                      ? b.purpose
-                      : "Reserved Workspace"}
+                  <td className="max-w-[160px] truncate px-3 py-4 font-medium text-slate-900" title={b.meetingTitle || b.purpose || ""}>
+                    {b.meetingTitle ||
+                    b.purpose ||
+                    (b.isHotseat ? "Hotseat Booking" : "Workspace Reservation")}
                   </td>
 
                   {/* DATE */}
@@ -1704,8 +1736,9 @@ export default function MyBookings() {
             </dt>
 
             <dd>
-              {selected.purpose ||
-                "Reserved Workspace"}
+              {selected.meetingTitle ||
+                selected.purpose ||
+                (selected.isHotseat ? "Hotseat Booking" : "Workspace Reservation")}
             </dd>
 
             {/* DATE */}

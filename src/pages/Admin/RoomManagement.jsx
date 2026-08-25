@@ -37,7 +37,7 @@ function CustomStatusTag({ status }) {
 
   return (
     <span
-      className={`inline-block w-28 rounded-full py-1 text-center text-xs font-bold uppercase tracking-wider ${bgClass}`}
+      className={`inline-block min-w-[74px] px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-center ${bgClass}`}
     >
       {raw}
     </span>
@@ -47,6 +47,23 @@ function CustomStatusTag({ status }) {
 // =====================================================
 // GET ROOM TYPE ID
 // =====================================================
+
+function getModuleIdFromName(moduleName) {
+  const str = String(moduleName || '').toLowerCase()
+  if (str.includes('tidel') || str.includes('tidal') || str.includes('to1')) return 3
+  if (str.includes('module 2') || str.includes('m2') || str.includes('eo2')) return 2
+  return 1
+}
+
+function getModuleNameFromId(moduleId, fallbackModule) {
+  if (fallbackModule && typeof fallbackModule === 'string' && fallbackModule.includes(' - ')) {
+    return fallbackModule
+  }
+  const id = Number(moduleId)
+  if (id === 3) return 'Module 1 - Tidel Park - CMB'
+  if (id === 2) return 'Module 2 - Elcot Park - CMB'
+  return 'Module 1 - Elcot Park - CMB'
+}
 
 function getRoomTypeId(type) {
   const lower = String(type || '').toLowerCase().trim()
@@ -137,12 +154,13 @@ function normalizeFacilities(facilities, masterFacilities = []) {
 
 function formatRoomNumber(code, index = 0, moduleId = 1) {
   if (!code || code === '-' || String(code).trim() === '') {
-    const mod = Number(moduleId) === 2 ? 'EO2' : 'EO1'
+    const mod = Number(moduleId) === 3 ? 'TO1' : Number(moduleId) === 2 ? 'EO2' : 'EO1'
     const num = String(index + 1).padStart(3, '0')
-    return `CBE-05-${mod}-${num}`
+    const loc = Number(moduleId) === 3 ? 'CBE-04' : 'CBE-05'
+    return `${loc}-${mod}-${num}`
   }
   let str = String(code).trim().toUpperCase()
-  str = str.replace(/E0/g, 'EO')
+  str = str.replace(/E0/g, 'EO').replace(/T0/g, 'TO')
   return str
 }
 
@@ -311,6 +329,48 @@ const DEFAULT_INITIAL_ROOMS = [
     isBlocked: false,
     facilities: [{ id: 1, name: 'Monitor' }, { id: 2, name: 'Whiteboard' }],
   },
+  {
+    id: 9,
+    roomId: 9,
+    roomName: 'Conference Room',
+    roomNumber: 'CBE-04-TO1-001',
+    module: 'Module 1 - Tidel Park - CMB',
+    moduleId: 3,
+    roomType: 'Conference',
+    roomTypeId: 1,
+    capacity: 16,
+    status: 'Available',
+    isBlocked: false,
+    facilities: [{ id: 1, name: 'Projector' }, { id: 2, name: 'Whiteboard' }],
+  },
+  {
+    id: 10,
+    roomId: 10,
+    roomName: 'Discussion Room 1',
+    roomNumber: 'CBE-04-TO1-002',
+    module: 'Module 1 - Tidel Park - CMB',
+    moduleId: 3,
+    roomType: 'Discussion',
+    roomTypeId: 3,
+    capacity: 8,
+    status: 'Available',
+    isBlocked: false,
+    facilities: [{ id: 1, name: 'Monitor' }, { id: 2, name: 'Whiteboard' }],
+  },
+  {
+    id: 11,
+    roomId: 11,
+    roomName: 'Training Room',
+    roomNumber: 'CBE-04-TO1-003',
+    module: 'Module 1 - Tidel Park - CMB',
+    moduleId: 3,
+    roomType: 'Training',
+    roomTypeId: 2,
+    capacity: 25,
+    status: 'Available',
+    isBlocked: false,
+    facilities: [{ id: 1, name: 'Projector' }, { id: 2, name: 'Whiteboard' }, { id: 3, name: 'TV' }],
+  },
 ]
 
 function getMasterRoomInventory() {
@@ -372,6 +432,25 @@ function updateMasterRoomInventory(roomsList) {
     return merged
   } catch {
     return roomsList || []
+  }
+}
+
+function removeRoomFromMasterInventory(roomId, roomNumber) {
+  try {
+    const raw = localStorage.getItem('spacebook_room_inventory')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      const filtered = parsed.filter((r) => {
+        const rId = String(r.id ?? r.roomId ?? '')
+        const rNum = String(r.roomNumber ?? r.roomCode ?? r.code ?? '').toLowerCase()
+        if (roomId && rId === String(roomId)) return false
+        if (roomNumber && rNum === String(roomNumber).toLowerCase()) return false
+        return true
+      })
+      localStorage.setItem('spacebook_room_inventory', JSON.stringify(filtered))
+    }
+  } catch {
+    // ignore
   }
 }
 
@@ -465,21 +544,6 @@ async function fetchAdminRooms() {
     console.warn('GET /admin/rooms note:', err)
   }
 
-  // 2. Try Employee availability endpoint with valid date if needed
-  if (backendRooms.length === 0) {
-    try {
-      const now = new Date()
-      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-      const { data } = await client.get('/employee/availability', { params: { date: todayStr } })
-      const list = data?.rooms || (Array.isArray(data) ? data : [])
-      if (list.length > 0) {
-        backendRooms = list
-      }
-    } catch (err) {
-      console.warn('GET /employee/availability note:', err)
-    }
-  }
-
   // Merge live backend rooms with master inventory so blocked rooms are preserved
   return updateMasterRoomInventory(backendRooms)
 }
@@ -492,34 +556,6 @@ async function fetchAdminBookings() {
     const data = response.data
     const list = Array.isArray(data) ? data : data?.data || data?.bookings || []
     if (Array.isArray(list)) allBookings.push(...list)
-  } catch {
-    // ignore
-  }
-
-  try {
-    const response = await client.get('/employee/mybookings')
-    const data = response.data
-    const list = Array.isArray(data) ? data : data?.data || data?.bookings || []
-    if (Array.isArray(list)) allBookings.push(...list)
-  } catch {
-    // ignore
-  }
-
-  try {
-    const now = new Date()
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-    const { data } = await client.get('/employee/availability', { params: { date: todayStr } })
-    const rooms = data?.rooms || (Array.isArray(data) ? data : [])
-    rooms.forEach((r) => {
-      if (r.isAvailable === false || String(r.status || '').toLowerCase() === 'booked' || r.isBooked === true) {
-        allBookings.push({
-          roomId: r.id || r.roomId,
-          roomNumber: r.roomNumber || r.roomCode,
-          roomName: r.name || r.roomName,
-          status: 'BOOKED',
-        })
-      }
-    })
   } catch {
     // ignore
   }
@@ -743,11 +779,15 @@ export default function RoomManagement() {
         const roomNameStr = String(room.roomname ?? room.roomName ?? room.name ?? 'Unnamed Room')
         const roomType = getRoomTypeName(room)
         const roomFacilities = normalizeFacilities(room.facilities, resolvedFacData)
-        const moduleId = Number(room.moduleid ?? room.moduleId ?? (String(roomNumberRaw).includes('EO2') || String(roomNumberRaw).includes('E02') ? 2 : 1))
+        const moduleNameStr = String(room.module ?? room.moduleName ?? '')
+        const moduleId = Number(
+          room.moduleid ??
+          room.moduleId ??
+          getModuleIdFromName(moduleNameStr || roomNumberRaw)
+        )
         const moduleName =
-          room.module ??
-          room.moduleName ??
-          (moduleId === 2 ? 'Module 2 - Elcot Park - CMB' : 'Module 1 - Elcot Park - CMB')
+          moduleNameStr ||
+          getModuleNameFromId(moduleId)
 
         const formattedRoomNumber = formatRoomNumber(roomNumberRaw, idx, moduleId)
 
@@ -755,7 +795,12 @@ export default function RoomManagement() {
         let status = 'Available'
         if (overriddenStatus) {
           status = overriddenStatus === 'Maintenance' ? 'Maintenance' : 'Available'
-        } else if (String(room.status || '').toLowerCase() === 'maintenance') {
+        } else if (
+          String(room.status || '').toLowerCase() === 'maintenance' ||
+          room.isBlocked === true ||
+          room.IsBlocked === true ||
+          checkIfRoomIsBlocked(room)
+        ) {
           status = 'Maintenance'
         } else {
           status = 'Available'
@@ -875,6 +920,52 @@ export default function RoomManagement() {
     setModalMode('view')
   }
 
+  const [deletingId, setDeletingId] = useState(null)
+
+  const handleDeleteRoom = async (room) => {
+    if (!room) return
+    const id = room.id || room.roomId
+    const name = room.roomName || room.name || room.roomNumber || 'this room'
+
+    if (!window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      setDeletingId(id)
+      setError('')
+      setSuccessMessage('')
+
+      if (id) {
+        try {
+          await deleteAdminRoom(id)
+        } catch (apiErr) {
+          console.warn('DELETE /admin/rooms error note:', apiErr)
+        }
+      }
+
+      removeRoomFromMasterInventory(id, room.roomNumber)
+
+      setRooms((prev) =>
+        prev.filter((r) => {
+          const rId = String(r.id ?? r.roomId ?? '')
+          const rNum = String(r.roomNumber ?? r.roomCode ?? '').toLowerCase()
+          if (id && rId === String(id)) return false
+          if (room.roomNumber && rNum === String(room.roomNumber).toLowerCase()) return false
+          return true
+        })
+      )
+
+      setSuccessMessage(`Room "${name}" deleted successfully!`)
+      await loadInitialData()
+    } catch (err) {
+      console.error('Error deleting room:', err)
+      setError('Failed to delete room.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const closeModal = () => {
     if (submitting) return
     setModalOpen(false)
@@ -902,7 +993,7 @@ export default function RoomManagement() {
       setModalError('')
       setSuccessMessage('')
 
-      const moduleNum = parseInt(String(formData.module).replace(/\D+/g, ''), 10) || 1
+      const moduleNum = getModuleIdFromName(formData.module)
       const roomTypeId = getRoomTypeId(formData.roomType)
       const selectedStatus = formData.status === 'Maintenance' ? 'Maintenance' : 'Available'
 
@@ -910,6 +1001,7 @@ export default function RoomManagement() {
         roomName: formData.roomName.trim(),
         roomNumber: formData.roomNumber.trim(),
         moduleId: moduleNum,
+        module: formData.module,
         roomTypeId: roomTypeId,
         capacity: Number(formData.capacity) || 4,
         status: selectedStatus,
@@ -924,6 +1016,8 @@ export default function RoomManagement() {
         {
           id: selectedRoomId,
           ...payload,
+          module: formData.module,
+          moduleId: moduleNum,
           roomType: formData.roomType,
           status: selectedStatus,
         },
@@ -938,6 +1032,8 @@ export default function RoomManagement() {
                 ...r,
                 ...payload,
                 id: selectedRoomId || r.id,
+                module: formData.module,
+                moduleId: moduleNum,
                 roomType: formData.roomType,
                 status: selectedStatus,
                 facilities: formData.facilities,
@@ -954,27 +1050,34 @@ export default function RoomManagement() {
         }
         setSuccessMessage('Room added successfully!')
       } else if (modalMode === 'edit') {
-        // 1. Try PUT /admin/rooms/{id}
-        try {
-          await updateAdminRoom(selectedRoomId, payload)
-        } catch (putErr) {
-          console.warn('PUT /admin/rooms error, trying creation fallback:', putErr)
-          // 2. If room was not yet registered on backend database, create it
+        const targetId = Number(selectedRoomId) || selectedRoomId
+        const shouldBlock = selectedStatus === 'Maintenance'
+
+        // 1. Update status endpoint on backend
+        if (targetId) {
           try {
-            await createAdminRoom(payload)
-          } catch (postErr) {
-            console.warn('POST /admin/rooms fallback note:', postErr)
+            await updateAdminRoomStatus(targetId, shouldBlock)
+            console.log(`Backend status synced for room ${targetId}: isBlocked=${shouldBlock}`)
+          } catch (statusErr) {
+            console.warn('PATCH /admin/rooms/{id}/status error:', statusErr?.response?.data || statusErr.message)
+          }
+
+          // 2. Also update full room record via PUT /admin/rooms/{id}
+          try {
+            await updateAdminRoom(targetId, payload)
+          } catch (putErr) {
+            console.warn('PUT /admin/rooms/{id} note:', putErr?.response?.data || putErr.message)
+            // If room was not in backend database yet, register it
+            try {
+              await createAdminRoom(payload)
+            } catch (postErr) {
+              console.warn('POST /admin/rooms fallback note:', postErr?.response?.data || postErr.message)
+            }
           }
         }
 
-        // 3. Update status endpoint as well
-        try {
-          await updateAdminRoomStatus(selectedRoomId, isBlocked)
-        } catch {
-          // ignore
-        }
-
-        setSuccessMessage(`Room "${payload.roomName}" updated successfully!`)
+        saveBlockedRoomId(selectedRoomId, shouldBlock)
+        setSuccessMessage(`Room "${payload.roomName}" updated to ${selectedStatus}!`)
       }
 
       closeModal()
@@ -990,59 +1093,59 @@ export default function RoomManagement() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3.5">
       <div>
-        <h1 className="font-display text-xl font-700 text-ink">
+        <h1 className="font-display text-lg font-bold text-ink">
           Workspace Administration
         </h1>
-        <p className="mt-1 text-sm text-slate">
+        <p className="mt-0.5 text-xs text-slate">
           Manage workspace inventory, capacity, availability, and facilities dynamically.
         </p>
       </div>
 
       {successMessage && (
-        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+        <div className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-xs font-medium text-green-700">
           {successMessage}
         </div>
       )}
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
           {error}
         </div>
       )}
 
       {/* SUMMARY CARDS */}
-      <div className="grid gap-3 md:grid-cols-4">
-        <Card>
-          <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Total</p>
-          <p className="mt-2 text-3xl font-bold text-ink">{statusCounts.Total}</p>
-          <p className="mt-1 text-sm text-slate">All workspaces across the workplace</p>
+      <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
+        <Card className="p-2.5 shadow-sm">
+          <p className="font-mono text-[9.5px] uppercase font-bold tracking-wider text-slate">Total</p>
+          <p className="mt-0.5 text-lg font-extrabold text-ink">{statusCounts.Total}</p>
+          <p className="text-[9.5px] text-slate">All workspaces</p>
         </Card>
-        <Card>
-          <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Available</p>
-          <p className="mt-2 text-3xl font-bold text-[#658362]">{statusCounts.Available}</p>
-          <p className="mt-1 text-sm text-slate">Workspaces ready to reserve</p>
+        <Card className="p-2.5 shadow-sm">
+          <p className="font-mono text-[9.5px] uppercase font-bold tracking-wider text-slate">Available</p>
+          <p className="mt-0.5 text-lg font-extrabold text-[#658362]">{statusCounts.Available}</p>
+          <p className="text-[9.5px] text-slate">Ready to reserve</p>
         </Card>
-        <Card>
-          <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Reserved</p>
-          <p className="mt-2 text-3xl font-bold text-[#2A4365]">{statusCounts.Reserved}</p>
-          <p className="mt-1 text-sm text-slate">Facilities currently reserved / booked</p>
+        <Card className="p-2.5 shadow-sm">
+          <p className="font-mono text-[9.5px] uppercase font-bold tracking-wider text-slate">Reserved</p>
+          <p className="mt-0.5 text-lg font-extrabold text-[#2A4365]">{statusCounts.Reserved}</p>
+          <p className="text-[9.5px] text-slate">Currently booked</p>
         </Card>
-        <Card>
-          <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Maintenance</p>
-          <p className="mt-2 text-3xl font-bold text-[#E09F3E]">{statusCounts.Maintenance}</p>
-          <p className="mt-1 text-sm text-slate">Workspaces under maintenance</p>
+        <Card className="p-2.5 shadow-sm">
+          <p className="font-mono text-[9.5px] uppercase font-bold tracking-wider text-slate">Maintenance</p>
+          <p className="mt-0.5 text-lg font-extrabold text-[#E09F3E]">{statusCounts.Maintenance}</p>
+          <p className="text-[9.5px] text-slate">Under maintenance</p>
         </Card>
       </div>
 
       {/* CONTROL BAR */}
-      <Card>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <h2 className="font-display text-sm font-bold text-ink">Workspace Inventory</h2>
+      <Card className="p-2.5 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="font-display text-xs font-bold text-ink">Workspace Inventory</h2>
             {search && (
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 border border-sky-200 px-3 py-1 text-xs font-semibold text-sky-800">
+              <div className="inline-flex items-center gap-1 rounded-full bg-sky-100 border border-sky-200 px-2 py-0.2 text-[10px] font-semibold text-sky-800">
                 <span>Search: &ldquo;{search}&rdquo;</span>
                 <button
                   type="button"
@@ -1055,11 +1158,11 @@ export default function RoomManagement() {
               </div>
             )}
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-3 sm:flex-nowrap">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full sm:w-auto min-w-[130px] rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
+              className="w-full sm:w-auto rounded-xl border border-line bg-white px-2.5 py-1 text-xs text-ink outline-none h-7"
             >
               <option value="All">All Status</option>
               <option value="Available">Available</option>
@@ -1068,7 +1171,7 @@ export default function RoomManagement() {
             <select
               value={moduleFilter}
               onChange={(e) => setModuleFilter(e.target.value)}
-              className="w-full sm:w-auto min-w-[160px] rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
+              className="w-full sm:w-auto rounded-xl border border-line bg-white px-2.5 py-1 text-xs text-ink outline-none h-7"
             >
               {modules.map((mod) => (
                 <option key={mod} value={mod}>
@@ -1076,7 +1179,7 @@ export default function RoomManagement() {
                 </option>
               ))}
             </select>
-            <Button className="w-full sm:w-auto shrink-0 justify-center whitespace-nowrap px-4 py-2" onClick={openAddModal}>
+            <Button className="w-full sm:w-auto shrink-0 justify-center whitespace-nowrap px-3 py-1 text-xs font-bold h-7" onClick={openAddModal}>
               + Add Workspace
             </Button>
           </div>
@@ -1084,73 +1187,73 @@ export default function RoomManagement() {
       </Card>
 
       {/* ROOM TABLE */}
-      <Card className="overflow-x-auto">
-        <table className="w-full min-w-[900px] text-left text-sm">
+      <Card className="shadow-sm">
+        <table className="w-full table-fixed text-left text-xs">
           <thead>
-            <tr className="border-b border-line font-mono text-[11px] font-extrabold uppercase tracking-wider text-black">
-              <th className="px-4 py-3 whitespace-nowrap">Room Name</th>
-              <th className="px-4 py-3 whitespace-nowrap">Room Number</th>
-              <th className="px-4 py-3 whitespace-nowrap">Module</th>
-              <th className="px-4 py-3 whitespace-nowrap">Type</th>
-              <th className="px-4 py-3 whitespace-nowrap">Capacity</th>
-              <th className="px-4 py-3 whitespace-nowrap">Facilities</th>
-              <th className="px-4 py-3 text-center whitespace-nowrap">Status</th>
-              <th className="px-4 py-3 text-center whitespace-nowrap">Actions</th>
+            <tr className="border-b border-line font-mono text-[9.5px] font-extrabold uppercase tracking-wider text-black bg-slate-50/70">
+              <th className="w-[15%] px-2 py-1.5 whitespace-nowrap">Room Name</th>
+              <th className="w-[13%] px-2 py-1.5 whitespace-nowrap">Room Number</th>
+              <th className="w-[18%] px-2 py-1.5 whitespace-nowrap">Module</th>
+              <th className="w-[10%] px-2 py-1.5 whitespace-nowrap">Type</th>
+              <th className="w-[7%] px-2 py-1.5 whitespace-nowrap">Capacity</th>
+              <th className="w-[17%] px-2 py-1.5 whitespace-nowrap">Facilities</th>
+              <th className="w-[10%] px-2 py-1.5 text-center whitespace-nowrap">Status</th>
+              <th className="w-[10%] px-2 py-1.5 text-center whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
             {loading ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate">
+                <td colSpan={8} className="px-2 py-4 text-center text-slate">
                   Loading room inventory...
                 </td>
               </tr>
             ) : filteredRooms.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate">
+                <td colSpan={8} className="px-2 py-4 text-center text-slate">
                   No rooms match your filter criteria.
                 </td>
               </tr>
             ) : (
               filteredRooms.map((room) => (
                 <tr key={room.id} className="transition-colors hover:bg-portal-bg/70">
-                  <td className="px-4 py-3.5 font-semibold text-ink whitespace-nowrap">{room.roomName}</td>
-                  <td className="px-4 py-3.5 font-sans text-xs font-semibold text-ink whitespace-nowrap">{room.roomNumber}</td>
-                  <td className="px-4 py-3.5 text-slate whitespace-nowrap">{room.module}</td>
-                  <td className="px-4 py-3.5 text-slate whitespace-nowrap">{room.roomType}</td>
-                  <td className="px-4 py-3.5 text-slate whitespace-nowrap">{room.capacity}</td>
-                  <td className="px-4 py-3.5 text-slate">
+                  <td className="px-2 py-1.5 font-sans font-semibold text-xs text-ink truncate" title={room.roomName}>{room.roomName}</td>
+                  <td className="px-2 py-1.5 font-sans text-xs font-semibold text-ink truncate" title={room.roomNumber}>{room.roomNumber}</td>
+                  <td className="px-2 py-1.5 text-slate truncate" title={room.module}>{room.module}</td>
+                  <td className="px-2 py-1.5 text-slate truncate">{room.roomType}</td>
+                  <td className="px-2 py-1.5 text-slate">{room.capacity}</td>
+                  <td className="px-2 py-1.5 text-slate">
                     {room.facilities?.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap items-center gap-1">
                         {room.facilities.map((fac, idx) => (
                           <span
                             key={fac.id ?? idx}
-                            className="rounded bg-slate/10 px-1.5 py-0.5 text-xs font-medium text-ink"
+                            className="rounded bg-slate-100 border border-slate-200/60 px-1 py-0.2 text-[9px] font-medium text-slate-700 whitespace-nowrap"
                           >
                             {fac.name}
                           </span>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-slate">None</span>
+                      <span className="text-slate text-[10px]">-</span>
                     )}
                   </td>
-                  <td className="px-4 py-3.5 text-center">
+                  <td className="px-2 py-1.5 text-center">
                     <CustomStatusTag status={room.status} />
                   </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <div className="inline-flex items-center gap-3 font-sans text-sm">
+                  <td className="px-2 py-1.5 text-center">
+                    <div className="inline-flex items-center justify-center gap-1.5 font-sans text-xs">
                       <button
                         type="button"
                         onClick={() => openViewModal(room)}
-                        className="font-bold text-sky-600 hover:underline"
+                        className="font-bold text-sky-600 hover:underline text-xs"
                       >
                         View
                       </button>
                       <button
                         type="button"
                         onClick={() => openEditModal(room)}
-                        className="font-bold text-emerald-600 hover:underline"
+                        className="font-bold text-emerald-600 hover:underline text-xs"
                       >
                         Edit
                       </button>
@@ -1222,14 +1325,17 @@ export default function RoomManagement() {
 
           <label className="block space-y-1">
             <span className="text-xs uppercase tracking-[0.2em] text-slate">Module</span>
-            <input
+            <select
               name="module"
               value={formData.module}
               onChange={(e) => setFormData({ ...formData, module: e.target.value })}
               disabled={modalMode === 'view'}
-              required
-              className="w-full rounded-xl border border-line bg-portal-bg px-3 py-2 text-sm text-ink outline-none"
-            />
+              className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
+            >
+              <option value="Module 1 - Elcot Park - CMB">Module 1 - Elcot Park - CMB</option>
+              <option value="Module 2 - Elcot Park - CMB">Module 2 - Elcot Park - CMB</option>
+              <option value="Module 1 - Tidel Park - CMB">Module 1 - Tidel Park - CMB</option>
+            </select>
           </label>
 
           <div className="grid gap-4 md:grid-cols-2">

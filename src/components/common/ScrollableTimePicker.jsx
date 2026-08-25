@@ -197,7 +197,7 @@ export default function ScrollableTimePicker({
         <span
           className={
             currentValue
-              ? 'text-ink font-semibold'
+              ? 'text-ink'
               : 'text-slate-500'
           }
         >

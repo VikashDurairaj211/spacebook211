@@ -336,8 +336,23 @@ export default function BookRoom() {
         const mappedRooms =
           normalizeRooms(data)
 
+        const activeRooms = mappedRooms.filter((r) => {
+          const id = String(r.roomId || r.id || '').trim();
+          const code = String(r.roomNumber || r.roomCode || '').trim().toLowerCase();
+          try {
+            const overrides = JSON.parse(localStorage.getItem('spacebook_room_status_overrides') || '{}');
+            const blocked = JSON.parse(localStorage.getItem('spacebook_blocked_rooms') || '[]');
+            if (overrides[id] === 'Maintenance' || (code && overrides[code] === 'Maintenance')) return false;
+            if (id && blocked.map(String).includes(id)) return false;
+          } catch {
+            // ignore
+          }
+          const rawStatus = String(r.status || r.roomStatus || '').toLowerCase();
+          return !(rawStatus === 'maintenance' || rawStatus === 'blocked' || r.isBlocked === true || r.IsBlocked === true || r.isAvailable === false);
+        });
+
         setAvailableRooms(
-          mappedRooms
+          activeRooms
         )
 
         // ===============================================
