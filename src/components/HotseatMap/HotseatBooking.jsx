@@ -301,8 +301,8 @@ export default function HotseatBookingApp() {
         const rawSeats = await seatsRes.json();
         const seatArray = Array.isArray(rawSeats) ? rawSeats : rawSeats?.seats || [];
 
-        // 1. Strictly generate complete Elcot Module 1 seats (Seats 1 to 70)
-        const module1Seats = Array.from({ length: 70 }, (_, i) => {
+        // 1. Strictly generate complete Elcot Module 1 seats (Seats 1 to 98)
+        const module1Seats = Array.from({ length: 98 }, (_, i) => {
           const num = i + 1;
           const pad3 = `WS-05-EO1-${String(num).padStart(3, "0")}`;
           const pad2 = `EO1-${String(num).padStart(2, "0")}`;
@@ -521,12 +521,24 @@ export default function HotseatBookingApp() {
             const targetSn = String(resolvedSeatNumber).trim().toUpperCase();
             if (targetSn && sn === targetSn) return true;
 
-            const isTidel = isTidelPark || String(item.modulePrefix).startsWith("WS") || String(item.id).startsWith("WS");
-            const isMod2 = moduleId === "module2" || String(item.modulePrefix).includes("EO2") || String(item.id).includes("EO2");
+            const itemPrefix = String(item.modulePrefix || "").toUpperCase();
+            const itemId = String(item.id || item.seatNumber || "").toUpperCase();
+
+            const isTidel =
+              itemPrefix.startsWith("WS") ||
+              itemId.startsWith("WS-04") ||
+              itemId.includes("TIDEL") ||
+              itemId.includes("TIDAL");
+
+            const isMod2 =
+              itemPrefix.includes("EO2") ||
+              itemId.includes("EO2") ||
+              itemId.startsWith("WS-05-EO2");
+
             const isMod1 = !isTidel && !isMod2;
 
             if (isTidel) {
-              if (sn.includes("EO1") || sn.includes("EO2")) return false;
+              if (sn.includes("EO1") || sn.includes("EO2") || sn.startsWith("WS-05")) return false;
               return parseInt(sn.split("-").pop(), 10) === numFromId;
             }
             if (isMod2) {
