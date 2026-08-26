@@ -814,8 +814,8 @@ export default function Reports() {
             {kpis.total}
           </p>
           <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
-            <span>{kpis.uniqueRooms} Active Rooms</span>
-            <span className="font-semibold text-sky-700">100% Vol</span>
+            <span>{kpis.uniqueRooms} Active Room{kpis.uniqueRooms === 1 ? '' : 's'}</span>
+            <span className="font-semibold text-sky-700">{kpis.uniqueUsers} Employee{kpis.uniqueUsers === 1 ? '' : 's'}</span>
           </div>
           <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
             <div className="h-1 rounded-full bg-sky-600 w-full" />
