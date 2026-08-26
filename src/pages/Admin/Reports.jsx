@@ -353,13 +353,16 @@ export default function Reports() {
         trendRes,
         statusRes,
         usageRes,
-        dashRes,
+        dashBookingsRes,
+        adminDashRes,
       ] = await Promise.allSettled([
         client.get('/admin/bookings'),
         getBookingTrendReport({ reportType: trendPeriod }),
         getBookingStatusReport({}),
         getRoomUsageReport({}),
         client.get('/admin/bookings/dashboard'),
+        client.get('/admin/dashboard'),
+        client.post('/admin/dashboard', { timeframe: 'All', timeFilter: 'All' }).catch(() => null),
       ])
 
       // 1. Trend Report
@@ -389,10 +392,12 @@ export default function Reports() {
         )
       }
 
-      // 4. Dashboard Metrics
-      if (dashRes.status === 'fulfilled' && dashRes.value?.data) {
-        setDashboardMetrics(dashRes.value.data)
+      // 4. Dashboard Metrics (Merge from GET & POST /admin/dashboard)
+      const combinedDash = {
+        ...(adminDashRes.status === 'fulfilled' && adminDashRes.value?.data ? adminDashRes.value.data : {}),
+        ...(dashBookingsRes.status === 'fulfilled' && dashBookingsRes.value?.data ? dashBookingsRes.value.data : {}),
       }
+      setDashboardMetrics(combinedDash)
 
       // 5. Admin Bookings
       if (bookingsRes.status === 'fulfilled') {
@@ -425,9 +430,70 @@ export default function Reports() {
     }
   }
 
+  // Fetch filtered dashboard metrics from POST /api/admin/dashboard whenever filters change
+  const fetchFilteredDashboard = async () => {
+    try {
+      const now = new Date()
+      const formatLocalDate = (d) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+          d.getDate()
+        ).padStart(2, '0')}`
+
+      const todayStr = formatLocalDate(now)
+      const sevenDaysAgo = new Date(now)
+      sevenDaysAgo.setDate(now.getDate() - 7)
+      const sevenDaysAgoStr = formatLocalDate(sevenDaysAgo)
+
+      const thirtyDaysAgo = new Date(now)
+      thirtyDaysAgo.setDate(now.getDate() - 30)
+      const thirtyDaysAgoStr = formatLocalDate(thirtyDaysAgo)
+
+      let startDate = undefined
+      let endDate = todayStr
+
+      if (timeFilter === 'Today') {
+        startDate = todayStr
+        endDate = todayStr
+      } else if (timeFilter === 'This Week') {
+        startDate = sevenDaysAgoStr
+      } else if (timeFilter === 'This Month') {
+        startDate = thirtyDaysAgoStr
+      }
+
+      const payload = {
+        timeframe: timeFilter,
+        timeFilter,
+        module: moduleFilter !== 'All' ? moduleFilter : undefined,
+        moduleFilter: moduleFilter !== 'All' ? moduleFilter : undefined,
+        status: statusFilter !== 'All' ? statusFilter : undefined,
+        startDate,
+        endDate,
+      }
+
+      // Try POST /api/admin/dashboard with AdminDashboardFilterDto
+      const postRes = await client.post('/admin/dashboard', payload).catch(() => null)
+      if (postRes?.data) {
+        setDashboardMetrics((prev) => ({ ...(prev || {}), ...postRes.data }))
+        return
+      }
+
+      // Fallback to GET /api/admin/dashboard with query params
+      const getRes = await client.get('/admin/dashboard', { params: payload }).catch(() => null)
+      if (getRes?.data) {
+        setDashboardMetrics((prev) => ({ ...(prev || {}), ...getRes.data }))
+      }
+    } catch (err) {
+      console.warn('Dashboard metric sync error:', err)
+    }
+  }
+
   useEffect(() => {
     loadData()
   }, [])
+
+  useEffect(() => {
+    fetchFilteredDashboard()
+  }, [timeFilter, moduleFilter, statusFilter])
 
   // =====================================================
   // FILTERING LOGIC
@@ -537,26 +603,74 @@ export default function Reports() {
     const total = filteredBookings.length
     let confirmed = 0
     let cancelled = 0
+    let totalBookedMinutes = 0
     const roomSet = new Set()
     const userSet = new Set()
+    const dateSet = new Set()
 
     filteredBookings.forEach((b) => {
       if (b.roomName) roomSet.add(b.roomName)
       if (b.createdBy) userSet.add(b.createdBy)
+      if (b.date) dateSet.add(b.date)
 
       const st = normalizeStatus(b.status)
       if (st === 'CANCELLED' || st === 'REJECTED') {
         cancelled++
       } else {
         confirmed++
+        // Calculate booking duration in minutes
+        let mins = 60
+        if (b.startTime && b.endTime) {
+          const [sh, sm] = String(b.startTime).split(':').map(Number)
+          const [eh, em] = String(b.endTime).split(':').map(Number)
+          if (!isNaN(sh) && !isNaN(eh)) {
+            const startMins = sh * 60 + (sm || 0)
+            const endMins = eh * 60 + (em || 0)
+            if (endMins > startMins) mins = endMins - startMins
+          }
+        }
+        totalBookedMinutes += mins
       }
     })
 
     const confirmedRate = total > 0 ? Math.round((confirmed / total) * 100) : 0
     const cancellationRate = total > 0 ? Math.round((cancelled / total) * 100) : 0
-    const uniqueRooms = roomSet.size
+    const uniqueRooms = roomSet.size || (total > 0 ? 1 : 0)
     const uniqueUsers = userSet.size
-    const utilization = dashboardMetrics?.utilizationRate ?? '10.6'
+
+    // Determine timeframe span for utilization calculation
+    let daysCount = 1
+    if (timeFilter === 'Today') {
+      daysCount = 1
+    } else if (timeFilter === 'This Week') {
+      daysCount = 5 // 5 business days
+    } else if (timeFilter === 'This Month') {
+      daysCount = 22 // ~22 business days
+    } else {
+      daysCount = Math.max(1, dateSet.size)
+    }
+
+    // Backend overall baseline utilization
+    const rawUtil =
+      dashboardMetrics?.utilization ??
+      dashboardMetrics?.utilizationRate ??
+      dashboardMetrics?.occupancyRate
+
+    let utilization = '0.0'
+
+    if (timeFilter === 'All' && moduleFilter === 'All' && rawUtil != null && rawUtil !== '') {
+      // Use overall backend utilization for default All view
+      const num = Number(rawUtil)
+      utilization = isNaN(num) ? String(rawUtil) : num.toFixed(1)
+    } else if (total > 0 && uniqueRooms > 0) {
+      // Dynamic occupancy calculation for the selected timeframe / module:
+      // (Total Booked Minutes / (Active Rooms * Operating Hours * 60 mins)) * 100
+      const totalAvailableMinutes = uniqueRooms * (daysCount * 10 * 60) // 10 office hours/day (10:00 to 20:00)
+      const rate = totalAvailableMinutes > 0 ? (totalBookedMinutes / totalAvailableMinutes) * 100 : 0
+      utilization = Math.min(100, Math.max(0, rate)).toFixed(1)
+    } else {
+      utilization = '0.0'
+    }
 
     return {
       total,
@@ -568,7 +682,7 @@ export default function Reports() {
       uniqueUsers,
       utilization,
     }
-  }, [filteredBookings, dashboardMetrics])
+  }, [filteredBookings, dashboardMetrics, timeFilter, moduleFilter])
 
   // =====================================================
   // CHART DATA
@@ -623,11 +737,7 @@ export default function Reports() {
     })
 
     if (map.size === 0) {
-      return [
-        { name: 'Aug 2026', bookings: 14 },
-        { name: 'Sep 2026', bookings: 22 },
-        { name: 'Oct 2026', bookings: 30 },
-      ]
+      return []
     }
 
     return Array.from(map.entries()).map(([name, bookings]) => ({
@@ -963,8 +1073,8 @@ export default function Reports() {
                   type="button"
                   onClick={() => setTrendPeriod('Monthly')}
                   className={`rounded-md px-2.5 py-1 font-bold transition-all ${trendPeriod === 'Monthly'
-                      ? 'bg-white text-ink shadow-xs'
-                      : 'text-slate hover:text-ink'
+                    ? 'bg-white text-ink shadow-xs'
+                    : 'text-slate hover:text-ink'
                     }`}
                 >
                   Monthly
@@ -973,8 +1083,8 @@ export default function Reports() {
                   type="button"
                   onClick={() => setTrendPeriod('Weekly')}
                   className={`rounded-md px-2.5 py-1 font-bold transition-all ${trendPeriod === 'Weekly'
-                      ? 'bg-white text-ink shadow-xs'
-                      : 'text-slate hover:text-ink'
+                    ? 'bg-white text-ink shadow-xs'
+                    : 'text-slate hover:text-ink'
                     }`}
                 >
                   Weekly
@@ -988,8 +1098,8 @@ export default function Reports() {
                 type="button"
                 onClick={() => setActiveChart('trend')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'trend'
-                    ? 'bg-white text-sky-700 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-white text-sky-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                   }`}
               >
                 <TrendingUp size={14} className={activeChart === 'trend' ? 'text-sky-600' : 'text-slate-400'} />
@@ -1000,8 +1110,8 @@ export default function Reports() {
                 type="button"
                 onClick={() => setActiveChart('outcome')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'outcome'
-                    ? 'bg-white text-sky-700 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-white text-sky-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                   }`}
               >
                 <Sparkles size={14} className={activeChart === 'outcome' ? 'text-emerald-600' : 'text-slate-400'} />
@@ -1012,8 +1122,8 @@ export default function Reports() {
                 type="button"
                 onClick={() => setActiveChart('employee')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'employee'
-                    ? 'bg-white text-sky-700 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-white text-sky-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                   }`}
               >
                 <Users size={14} className={activeChart === 'employee' ? 'text-sky-600' : 'text-slate-400'} />
@@ -1024,8 +1134,8 @@ export default function Reports() {
                 type="button"
                 onClick={() => setActiveChart('rooms')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'rooms'
-                    ? 'bg-white text-sky-700 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-white text-sky-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                   }`}
               >
                 <Building2 size={14} className={activeChart === 'rooms' ? 'text-sky-600' : 'text-slate-400'} />
@@ -1036,8 +1146,8 @@ export default function Reports() {
                 type="button"
                 onClick={() => setActiveChart('hourly')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'hourly'
-                    ? 'bg-white text-sky-700 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-white text-sky-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                   }`}
               >
                 <Clock size={14} className={activeChart === 'hourly' ? 'text-indigo-600' : 'text-slate-400'} />
@@ -1051,29 +1161,35 @@ export default function Reports() {
         <div className="h-[360px] sm:h-[390px] w-full pt-4">
           {/* Chart 1: Volume Trendline */}
           {activeChart === 'trend' && (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={timelineData} margin={{ top: 10, right: 15, left: -15, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="bookingAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0284C7" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#0284C7" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
-                <Tooltip content={<CustomChartTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="bookings"
-                  name="Reservations"
-                  stroke="#0284C7"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#bookingAreaGrad)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            timelineData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-slate">
+                No reservation trend data available.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={timelineData} margin={{ top: 10, right: 15, left: -15, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="bookingAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0284C7" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#0284C7" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
+                  <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip content={<CustomChartTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="bookings"
+                    name="Reservations"
+                    stroke="#0284C7"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#bookingAreaGrad)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )
           )}
 
           {/* Chart 2: Outcome Breakdown */}
