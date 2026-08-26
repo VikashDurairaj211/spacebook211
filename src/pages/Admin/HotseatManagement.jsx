@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
   BarChart,
   Bar,
   PieChart,
@@ -28,12 +26,19 @@ import {
   Armchair,
   Eye,
   X,
-  AlertTriangle,
   Layers,
   MapPin,
+  Loader2,
 } from 'lucide-react'
 
 import client from '../../api/client'
+import {
+  getHotseatFilters,
+  getHotseatDashboard,
+  getHotseatAnalytics,
+  getHotseatRecords,
+  exportHotseatCsv,
+} from '../../api/adminHotseat'
 import Card from '../../components/common/Card'
 import Button from '../../components/common/Button'
 import Modal from '../../components/common/Modal'
@@ -79,6 +84,29 @@ function resolveFullSectionName(seatNumber, module) {
   if (short === 'Section B') return 'Section B (Seats 63 – 118 / 33 – 79)'
   if (short === 'Section C') return 'Section C (Seats 119 – 164 / 80 – 131)'
   return 'Section D (Seats 165 – 224)'
+}
+
+function parseToIsoDate(rawDate) {
+  if (!rawDate) return ''
+  const val = String(rawDate).trim()
+  if (val.includes('T')) return val.split('T')[0]
+  if (val.includes('-')) {
+    const parts = val.split('-')
+    if (parts[0].length === 4) {
+      return `${parts[0]}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}`
+    }
+    return `${parts[2]}-${String(parts[1]).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`
+  }
+  if (val.includes('/')) {
+    const parts = val.split('/')
+    if (parts[2]?.length === 4) {
+      return `${parts[2]}-${String(parts[1]).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`
+    }
+    if (parts[0]?.length === 4) {
+      return `${parts[0]}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}`
+    }
+  }
+  return val
 }
 
 // =====================================================
@@ -184,197 +212,6 @@ function CustomChartTooltip({ active, payload, label }) {
   )
 }
 
-// =====================================================
-// Dedicated Hotseat Demonstration Data (Hotseats Only)
-// =====================================================
-
-const INITIAL_HOTSEAT_DATA = [
-  {
-    id: 91,
-    bookingId: 91,
-    employee: 'Bharathi Ravi',
-    seat: 'EO2-88',
-    module: 'Module 2 - Elcot Park - CMB',
-    location: 'Coimbatore',
-    zone: 'Elcot Park',
-    section: 'Section C (Seats 80 – 131)',
-    date: '2026-08-25',
-    expectedCheckIn: '16:00 - 17:00',
-    status: 'APPROVED',
-  },
-  {
-    id: 90,
-    bookingId: 90,
-    employee: 'Bharathi Ravi',
-    seat: 'WS-04-012',
-    module: 'Module 1 - Tidel Park - CMB',
-    location: 'Coimbatore',
-    zone: 'Tidel Park',
-    section: 'Section A (Seats 1 – 62)',
-    date: '2026-08-25',
-    expectedCheckIn: '15:00 - 16:00',
-    status: 'APPROVED',
-  },
-  {
-    id: 89,
-    bookingId: 89,
-    employee: 'Bharathi Ravi',
-    seat: 'EO1-25',
-    module: 'Module 1 - Elcot Park - CMB',
-    location: 'Coimbatore',
-    zone: 'Elcot Park',
-    section: 'Section A (Seats 1 – 32)',
-    date: '2026-08-25',
-    expectedCheckIn: '18:00 - 19:00',
-    status: 'APPROVED',
-  },
-  {
-    id: 88,
-    bookingId: 88,
-    employee: 'Shreenithiy Karthikeyan',
-    seat: 'WS-04-085',
-    module: 'Module 1 - Tidel Park - CMB',
-    location: 'Coimbatore',
-    zone: 'Tidel Park',
-    section: 'Section B (Seats 63 – 118)',
-    date: '2026-08-25',
-    expectedCheckIn: '18:30 - 19:00',
-    status: 'APPROVED',
-  },
-  {
-    id: 87,
-    bookingId: 87,
-    employee: 'Bharathi Ravi',
-    seat: 'EO2-45',
-    module: 'Module 2 - Elcot Park - CMB',
-    location: 'Coimbatore',
-    zone: 'Elcot Park',
-    section: 'Section B (Seats 33 – 79)',
-    date: '2026-08-25',
-    expectedCheckIn: '13:00 - 14:00',
-    status: 'APPROVED',
-  },
-  {
-    id: 86,
-    bookingId: 86,
-    employee: 'Bharathi Ravi',
-    seat: 'WS-04-142',
-    module: 'Module 1 - Tidel Park - CMB',
-    location: 'Coimbatore',
-    zone: 'Tidel Park',
-    section: 'Section C (Seats 119 – 164)',
-    date: '2026-08-25',
-    expectedCheckIn: '14:00 - 15:00',
-    status: 'APPROVED',
-  },
-  {
-    id: 85,
-    bookingId: 85,
-    employee: 'Shreenithiy Karthikeyan',
-    seat: 'WS-04-032',
-    module: 'Module 1 - Tidel Park - CMB',
-    location: 'Coimbatore',
-    zone: 'Tidel Park',
-    section: 'Section A (Seats 1 – 62)',
-    date: '2026-08-25',
-    expectedCheckIn: '17:00 - 18:00',
-    status: 'CANCELLED',
-    cancelReason: 'Project rescheduled',
-  },
-  {
-    id: 84,
-    bookingId: 84,
-    employee: 'Anusha Ramanathan',
-    seat: 'EO1-18',
-    module: 'Module 1 - Elcot Park - CMB',
-    location: 'Coimbatore',
-    zone: 'Elcot Park',
-    section: 'Section A (Seats 1 – 32)',
-    date: '2026-08-24',
-    expectedCheckIn: '10:00 - 11:00',
-    status: 'APPROVED',
-  },
-  {
-    id: 83,
-    bookingId: 83,
-    employee: 'Rahul Sundaram',
-    seat: 'WS-04-190',
-    module: 'Module 1 - Tidel Park - CMB',
-    location: 'Coimbatore',
-    zone: 'Tidel Park',
-    section: 'Section D (Seats 165 – 224)',
-    date: '2026-08-24',
-    expectedCheckIn: '09:30 - 10:30',
-    status: 'APPROVED',
-  },
-  {
-    id: 82,
-    bookingId: 82,
-    employee: 'Sara Khan',
-    seat: 'EO2-95',
-    module: 'Module 2 - Elcot Park - CMB',
-    location: 'Coimbatore',
-    zone: 'Elcot Park',
-    section: 'Section C (Seats 80 – 131)',
-    date: '2026-08-24',
-    expectedCheckIn: '11:00 - 12:00',
-    status: 'CANCELLED',
-    cancelReason: 'Client meeting moved online',
-  },
-  {
-    id: 81,
-    bookingId: 81,
-    employee: 'Vikash Durairaj',
-    seat: 'WS-04-055',
-    module: 'Module 1 - Tidel Park - CMB',
-    location: 'Coimbatore',
-    zone: 'Tidel Park',
-    section: 'Section A (Seats 1 – 62)',
-    date: '2026-08-23',
-    expectedCheckIn: '10:00 - 11:00',
-    status: 'CHECKED IN',
-  },
-  {
-    id: 80,
-    bookingId: 80,
-    employee: 'Karthik Raja',
-    seat: 'EO1-31',
-    module: 'Module 1 - Elcot Park - CMB',
-    location: 'Coimbatore',
-    zone: 'Elcot Park',
-    section: 'Section A (Seats 1 – 32)',
-    date: '2026-08-23',
-    expectedCheckIn: '10:30 - 11:30',
-    status: 'APPROVED',
-  },
-  {
-    id: 79,
-    bookingId: 79,
-    employee: 'Priya Narayanan',
-    seat: 'WS-04-105',
-    module: 'Module 1 - Tidel Park - CMB',
-    location: 'Coimbatore',
-    zone: 'Tidel Park',
-    section: 'Section B (Seats 63 – 118)',
-    date: '2026-08-23',
-    expectedCheckIn: '11:00 - 12:00',
-    status: 'APPROVED',
-  },
-  {
-    id: 78,
-    bookingId: 78,
-    employee: 'Aravind Swamy',
-    seat: 'EO2-110',
-    module: 'Module 2 - Elcot Park - CMB',
-    location: 'Coimbatore',
-    zone: 'Elcot Park',
-    section: 'Section C (Seats 80 – 131)',
-    date: '2026-08-22',
-    expectedCheckIn: '14:00 - 15:00',
-    status: 'APPROVED',
-  },
-]
-
 const ITEMS_PER_PAGE = 8
 
 // =====================================================
@@ -383,14 +220,20 @@ const ITEMS_PER_PAGE = 8
 
 export default function HotseatManagement() {
   const [bookings, setBookings] = useState([])
+  const [dashboardData, setDashboardData] = useState(null)
+  const [analyticsData, setAnalyticsData] = useState(null)
+  const [filterOptions, setFilterOptions] = useState({
+    modules: [],
+    statuses: [],
+  })
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState(null)
 
   // Filters
   const [timeFilter, setTimeFilter] = useState('All')
   const [moduleFilter, setModuleFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
-  const [trendPeriod, setTrendPeriod] = useState('Daily') // 'Daily' | 'Weekly'
   const [tableSearch, setTableSearch] = useState('')
 
   // Pagination for Modal Table
@@ -412,7 +255,7 @@ export default function HotseatManagement() {
   }
 
   // =====================================================
-  // Load Pure Hotseat Data (No Room Bookings)
+  // Load Pure Hotseat Data from Backend APIs
   // =====================================================
 
   const loadData = async () => {
@@ -420,107 +263,194 @@ export default function HotseatManagement() {
       setLoading(true)
       setError(null)
 
-      let liveBookings = []
-
-      try {
-        // Strictly fetch Hotseat endpoints only
-        const [allRes, myRes] = await Promise.allSettled([
-          client.get('/Hotseat'),
-          client.get('/Hotseat/my-bookings'),
-        ])
-
-        if (myRes.status === 'fulfilled' && myRes.value.data) {
-          const raw = myRes.value.data
-          const list = Array.isArray(raw)
-            ? raw
-            : raw?.bookings || raw?.data || []
-
-          if (list.length > 0) {
-            liveBookings = list.map((b, idx) => {
-              const seatNum = b.seatNumber || b.seat || b.seatId || 'EO1-01'
-              const resolvedModule =
-                b.module ||
-                (String(seatNum).startsWith('WS-04')
-                  ? 'Module 1 - Tidel Park - CMB'
-                  : String(seatNum).includes('EO2')
-                  ? 'Module 2 - Elcot Park - CMB'
-                  : 'Module 1 - Elcot Park - CMB')
-
-              const rawTimeStr =
-                b.expectedCheckInTime ||
-                b.expectedCheckIn ||
-                b.startTime ||
-                '10:00 - 11:00'
-
-              let timeStr = String(rawTimeStr).trim()
-              if (timeStr.includes('-')) {
-                const [startT, endT] = timeStr.split('-').map((s) => s.trim())
-                timeStr = `${formatTime24(startT)} - ${formatTime24(endT)}`
-              } else {
-                timeStr = formatTime24(timeStr)
-              }
-
-              const rawDate =
-                b.bookingDate ||
-                b.date ||
-                new Date().toISOString().split('T')[0]
-
-              return {
-                id: b.id || b.bookingId || idx + 200,
-                bookingId: b.bookingId || b.id || idx + 200,
-                employee:
-                  b.employeeName ||
-                  b.userName ||
-                  b.requestedBy ||
-                  b.user?.name ||
-                  'Employee',
-                seat: seatNum,
-                module: resolvedModule,
-                location: b.location || 'Coimbatore',
-                zone:
-                  b.zone ||
-                  b.office ||
-                  (String(seatNum).startsWith('WS-04')
-                    ? 'Tidel Park'
-                    : 'Elcot Park'),
-                section: resolveFullSectionName(seatNum, resolvedModule),
-                date: formatDateWithZeros(rawDate),
-                expectedCheckIn: timeStr,
-                status: String(b.status || 'APPROVED').toUpperCase(),
-                cancelReason: b.cancelReason || b.cancellationReason || '',
-              }
-            })
-          }
-        }
-      } catch (err) {
-        console.warn('Live API hotseat sync info:', err)
+      const filterDto = {
+        timeframe: timeFilter,
+        module: moduleFilter === 'All' ? null : moduleFilter,
+        status: statusFilter === 'All' ? null : statusFilter,
       }
 
-      // Merge live bookings with demonstration items
-      const combined = [...liveBookings]
-      INITIAL_HOTSEAT_DATA.forEach((seed) => {
-        if (
-          !combined.some(
-            (item) => String(item.bookingId) === String(seed.bookingId)
+      // Fetch dynamic endpoints in parallel
+      const [recordsRes, dashboardRes, analyticsRes, filtersRes, fallbackRes] =
+        await Promise.allSettled([
+          getHotseatRecords(filterDto),
+          getHotseatDashboard(filterDto),
+          getHotseatAnalytics(filterDto),
+          getHotseatFilters(),
+          client.get('/Hotseat'),
+        ])
+
+      // 1. Process Filter Options
+      if (filtersRes.status === 'fulfilled' && filtersRes.value) {
+        const fData = filtersRes.value
+        const rawMods = Array.isArray(fData.modules)
+          ? fData.modules
+          : Array.isArray(fData)
+          ? fData
+          : []
+        const parsedMods = rawMods
+          .map((m, idx) => {
+            if (typeof m === 'object' && m !== null) {
+              return {
+                value: String(m.value ?? m.name ?? m.id ?? m.label ?? `module-${idx}`),
+                label: String(m.label ?? m.name ?? m.value ?? `Module ${idx + 1}`),
+              }
+            }
+            return { value: String(m), label: String(m) }
+          })
+          .filter(
+            (m) =>
+              m.value.toLowerCase() !== 'all' &&
+              !m.label.toLowerCase().includes('all module') &&
+              m.value !== ''
           )
-        ) {
-          combined.push(seed)
+
+        const rawStatuses = Array.isArray(fData.statuses) ? fData.statuses : []
+        const parsedStatuses = rawStatuses
+          .map((s, idx) => {
+            if (typeof s === 'object' && s !== null) {
+              return {
+                value: String(s.value ?? s.name ?? s.id ?? s.label ?? `status-${idx}`),
+                label: String(s.label ?? s.name ?? s.value ?? `Status ${idx + 1}`),
+              }
+            }
+            return { value: String(s), label: String(s) }
+          })
+          .filter(
+            (s) =>
+              s.value.toLowerCase() !== 'all' &&
+              !s.label.toLowerCase().includes('all status') &&
+              s.value !== ''
+          )
+
+        setFilterOptions({
+          modules: parsedMods,
+          statuses: parsedStatuses,
+        })
+      }
+
+      // 2. Process Dashboard KPI Summary
+      if (dashboardRes.status === 'fulfilled' && dashboardRes.value) {
+        setDashboardData(dashboardRes.value)
+      } else {
+        setDashboardData(null)
+      }
+
+      // 3. Process Analytics Data
+      if (analyticsRes.status === 'fulfilled' && analyticsRes.value) {
+        setAnalyticsData(analyticsRes.value)
+      } else {
+        setAnalyticsData(null)
+      }
+
+      // 4. Process Records
+      let rawList = []
+      if (recordsRes.status === 'fulfilled' && recordsRes.value) {
+        const rVal = recordsRes.value
+        rawList = Array.isArray(rVal)
+          ? rVal
+          : rVal?.items || rVal?.records || rVal?.bookings || rVal?.data || []
+      }
+
+      // If records endpoint returned empty or failed, fallback to /Hotseat
+      if (
+        rawList.length === 0 &&
+        fallbackRes.status === 'fulfilled' &&
+        fallbackRes.value?.data
+      ) {
+        const raw = fallbackRes.value.data
+        rawList = Array.isArray(raw)
+          ? raw
+          : raw?.bookings || raw?.data || []
+      }
+
+      const mapped = rawList.map((b, idx) => {
+        const seatNum =
+          typeof b.seat === 'object' && b.seat !== null
+            ? b.seat.seatNumber || b.seat.name || b.seat.id || ''
+            : b.seatNumber || b.seat || b.seatId || ''
+
+        const resolvedModule =
+          typeof b.module === 'object' && b.module !== null
+            ? b.module.name || b.module.title || ''
+            : b.module ||
+              b.moduleName ||
+              (String(seatNum).startsWith('WS-04')
+                ? 'Module 1 - Tidel Park - CMB'
+                : String(seatNum).includes('EO2')
+                ? 'Module 2 - Elcot Park - CMB'
+                : 'Module 1 - Elcot Park - CMB')
+
+        const rawTimeStr =
+          b.expectedCheckInTime ||
+          b.expectedCheckIn ||
+          b.startTime ||
+          ''
+
+        let timeStr = String(rawTimeStr).trim()
+        if (timeStr.includes('-')) {
+          const [startT, endT] = timeStr.split('-').map((s) => s.trim())
+          timeStr = `${formatTime24(startT)} - ${formatTime24(endT)}`
+        } else if (timeStr) {
+          timeStr = formatTime24(timeStr)
+        } else {
+          timeStr = '-'
+        }
+
+        const rawDate =
+          b.bookingDate ||
+          b.date ||
+          ''
+
+        const employeeName =
+          typeof b.user === 'object' && b.user !== null
+            ? b.user.name || b.user.fullName || b.user.email || 'Employee'
+            : b.employeeName || b.userName || b.requestedBy || b.user || 'Employee'
+
+        const statusStr =
+          typeof b.status === 'object' && b.status !== null
+            ? String(b.status.name || b.status.status || 'CONFIRMED').toUpperCase()
+            : String(b.status || 'CONFIRMED').toUpperCase()
+
+        const isoDate = parseToIsoDate(rawDate)
+
+        return {
+          id: b.id || b.bookingId || idx + 1,
+          bookingId: b.bookingId || b.id || idx + 1,
+          employee: String(employeeName),
+          seat: String(seatNum || '-'),
+          module: String(resolvedModule),
+          location: String(b.location || 'Coimbatore'),
+          zone:
+            b.zone ||
+            b.office ||
+            (String(seatNum).startsWith('WS-04')
+              ? 'Tidel Park'
+              : 'Elcot Park'),
+          section: resolveFullSectionName(seatNum, resolvedModule),
+          date: rawDate ? formatDateWithZeros(rawDate) : '-',
+          isoDate: isoDate,
+          expectedCheckIn: timeStr,
+          status: statusStr,
+          cancelReason: String(b.cancelReason || b.cancellationReason || ''),
         }
       })
 
-      // Sort descending by ID / date
-      combined.sort((a, b) => {
+      // Sort descending by ID / Date
+      mapped.sort((a, b) => {
         const idA = Number(a.bookingId) || 0
         const idB = Number(b.bookingId) || 0
         if (idA !== idB) return idB - idA
-        return String(b.date || '').localeCompare(String(a.date || ''))
+        return String(b.isoDate || b.date || '').localeCompare(String(a.isoDate || a.date || ''))
       })
 
-      setBookings(combined)
+      setBookings(mapped)
     } catch (err) {
-      console.error('Failed to load hotseat data:', err)
-      setError('Unable to load live hotseat records.')
-      setBookings(INITIAL_HOTSEAT_DATA)
+      console.error('Failed to load live hotseat data:', err)
+      setError(
+        err?.response?.data?.message ||
+          'Unable to load live hotseat records from server.'
+      )
+      setBookings([])
     } finally {
       setLoading(false)
     }
@@ -528,7 +458,7 @@ export default function HotseatManagement() {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [timeFilter, moduleFilter, statusFilter])
 
   // =====================================================
   // Filtering Logic
@@ -552,47 +482,9 @@ export default function HotseatManagement() {
     const thirtyDaysAgoStr = formatLocalDate(thirtyDaysAgo)
 
     return bookings.filter((b) => {
-      // 1. Module Filter
-      if (moduleFilter !== 'All') {
-        const bMod = String(b.module || '').toLowerCase()
-        const bZone = String(b.zone || '').toLowerCase()
-        if (moduleFilter.includes('Tidel')) {
-          if (!bMod.includes('tidel') && !bZone.includes('tidel') && !bMod.includes('tidal')) return false
-        } else if (moduleFilter.includes('Module 2')) {
-          if (!bMod.includes('module 2') && !bMod.includes('eo2')) return false
-        } else if (moduleFilter.includes('Module 1')) {
-          if ((!bMod.includes('module 1') && !bMod.includes('eo1')) || bMod.includes('tidel') || bZone.includes('tidel'))
-            return false
-        }
-      }
-
-      // 2. Status Filter
-      if (statusFilter !== 'All') {
-        const normFilter = statusFilter.toUpperCase()
-        const normStatus = String(b.status || '').toUpperCase()
-        if (normFilter === 'CONFIRMED' || normFilter === 'APPROVED') {
-          if (
-            normStatus !== 'CONFIRMED' &&
-            normStatus !== 'APPROVED' &&
-            normStatus !== 'CHECKED IN' &&
-            normStatus !== 'CHECKEDIN'
-          ) {
-            return false
-          }
-        } else if (normFilter === 'CANCELLED') {
-          if (
-            normStatus !== 'CANCELLED' &&
-            normStatus !== 'CANCELED' &&
-            normStatus !== 'REJECTED'
-          ) {
-            return false
-          }
-        }
-      }
-
-      // 3. Time Filter
-      if (timeFilter !== 'All') {
-        const bDate = String(b.date || '').split('T')[0]
+      // 1. Timeframe Filter
+      const bDate = b.isoDate || b.date
+      if (bDate && bDate !== '-') {
         if (timeFilter === 'Today') {
           if (bDate !== todayStr) return false
         } else if (timeFilter === 'This Week') {
@@ -602,7 +494,30 @@ export default function HotseatManagement() {
         } else if (timeFilter === 'Past') {
           if (bDate >= todayStr) return false
         } else if (timeFilter === 'Upcoming') {
-          if (bDate < todayStr) return false
+          if (bDate <= todayStr) return false
+        }
+      }
+
+      // 2. Module Filter
+      if (moduleFilter !== 'All') {
+        const modName = String(b.module || '').toLowerCase()
+        const target = moduleFilter.toLowerCase()
+        if (!modName.includes(target) && target !== modName) return false
+      }
+
+      // 3. Status Filter
+      if (statusFilter !== 'All') {
+        const st = String(b.status || '').toUpperCase()
+        if (statusFilter === 'Confirmed') {
+          if (st === 'CANCELLED' || st === 'CANCELED' || st === 'REJECTED') {
+            return false
+          }
+        } else if (statusFilter === 'Cancelled') {
+          if (st !== 'CANCELLED' && st !== 'CANCELED' && st !== 'REJECTED') {
+            return false
+          }
+        } else {
+          if (!st.includes(statusFilter.toUpperCase())) return false
         }
       }
 
@@ -610,117 +525,168 @@ export default function HotseatManagement() {
     })
   }, [bookings, timeFilter, moduleFilter, statusFilter])
 
-  // Search filtered bookings for Modal Table
+  // Filtered list for the modal search table
   const displayedTableBookings = useMemo(() => {
     if (!tableSearch.trim()) return filteredBookings
-    const query = tableSearch.toLowerCase().trim()
+
+    const q = tableSearch.toLowerCase()
     return filteredBookings.filter((b) => {
       return (
-        String(b.bookingId || '').toLowerCase().includes(query) ||
-        String(b.employee || '').toLowerCase().includes(query) ||
-        String(b.seat || '').toLowerCase().includes(query) ||
-        String(b.module || '').toLowerCase().includes(query) ||
-        String(b.date || '').toLowerCase().includes(query) ||
-        String(b.expectedCheckIn || '').toLowerCase().includes(query) ||
-        String(b.status || '').toLowerCase().includes(query)
+        String(b.bookingId).toLowerCase().includes(q) ||
+        String(b.employee).toLowerCase().includes(q) ||
+        String(b.seat).toLowerCase().includes(q) ||
+        String(b.module).toLowerCase().includes(q) ||
+        String(b.section).toLowerCase().includes(q) ||
+        String(b.status).toLowerCase().includes(q) ||
+        String(b.date).toLowerCase().includes(q)
       )
     })
   }, [filteredBookings, tableSearch])
 
-  // Pagination calculation
-  const totalPages = Math.ceil(displayedTableBookings.length / ITEMS_PER_PAGE) || 1
+  // Paginated records for the modal table
+  const totalPages = Math.max(
+    1,
+    Math.ceil(displayedTableBookings.length / ITEMS_PER_PAGE)
+  )
+
   const paginatedBookings = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-    return displayedTableBookings.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return displayedTableBookings.slice(start, start + ITEMS_PER_PAGE)
   }, [displayedTableBookings, currentPage])
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [tableSearch, filteredBookings])
+  }, [tableSearch, timeFilter, moduleFilter, statusFilter])
 
   // =====================================================
-  // KPIs
+  // KPIs (Pure Dynamic from Backend or Live Bookings)
   // =====================================================
 
   const kpis = useMemo(() => {
+    const raw = dashboardData || analyticsData
+
+    if (raw) {
+      const total =
+        raw.totalReservations ??
+        raw.totalBookings ??
+        raw.totalBookingsAnalyzed ??
+        filteredBookings.length
+      const confirmed =
+        raw.confirmedBookings ?? raw.confirmed ?? 0
+      const confirmedRate =
+        raw.confirmedRate ??
+        (total > 0 ? Math.round((confirmed / total) * 100) : 0)
+      const cancelled =
+        raw.cancelledBookings ?? raw.cancelled ?? 0
+      const cancellationRate =
+        raw.cancelledRate ??
+        raw.cancellationRate ??
+        (total > 0 ? Math.round((cancelled / total) * 100) : 0)
+      const uniqueSeats =
+        raw.activeHotseatsCount ??
+        raw.uniqueSeats ??
+        raw.activeSeats ??
+        0
+
+      return {
+        total,
+        confirmed,
+        confirmedRate,
+        cancelled,
+        cancellationRate,
+        uniqueSeats,
+      }
+    }
+
     const total = filteredBookings.length
     let confirmed = 0
     let cancelled = 0
-    let checkedIn = 0
-    const userSet = new Set()
     const seatSet = new Set()
 
     filteredBookings.forEach((b) => {
       const st = String(b.status || '').toUpperCase()
-      if (b.employee) userSet.add(b.employee)
-      if (b.seat) seatSet.add(b.seat)
+      if (b.seat && b.seat !== '-') seatSet.add(b.seat)
 
       if (st === 'CANCELLED' || st === 'CANCELED' || st === 'REJECTED') {
         cancelled++
       } else {
         confirmed++
-        if (st === 'CHECKED IN' || st === 'CHECKEDIN' || st === 'CHECKED-IN') {
-          checkedIn++
-        }
       }
     })
 
-    const confirmedRate = total > 0 ? Math.round((confirmed / total) * 100) : 72
-    const cancellationRate = total > 0 ? Math.round((cancelled / total) * 100) : 28
-    const uniqueUsers = userSet.size || 7
-    const uniqueSeats = seatSet.size || 6
-    const utilization = '10.6'
+    const confirmedRate = total > 0 ? Math.round((confirmed / total) * 100) : 0
+    const cancellationRate = total > 0 ? Math.round((cancelled / total) * 100) : 0
+    const uniqueSeats = seatSet.size
 
     return {
       total,
-      confirmed: confirmed || 38,
+      confirmed,
       confirmedRate,
-      cancelled: cancelled || 15,
+      cancelled,
       cancellationRate,
-      checkedIn: checkedIn || 6,
-      uniqueUsers,
       uniqueSeats,
-      utilization,
     }
-  }, [filteredBookings])
+  }, [dashboardData, analyticsData, filteredBookings])
 
   // =====================================================
-  // HOTSEAT-SPECIFIC VISUAL CHARTS DATA
+  // HOTSEAT VISUAL CHARTS DATA
   // =====================================================
 
   // 1. Module / Zone Workstation Distribution (Donut)
   const moduleDistributionData = useMemo(() => {
-    const map = {
-      'Tidel Park': { name: 'Module 1 - Tidel Park', value: 0, color: '#0284C7' },
-      'Elcot M1': { name: 'Module 1 - Elcot Park', value: 0, color: '#0D9488' },
-      'Elcot M2': { name: 'Module 2 - Elcot Park', value: 0, color: '#6366F1' },
+    const rawList =
+      analyticsData?.volumeByFacilityZone ||
+      dashboardData?.volumeByFacilityZone ||
+      analyticsData?.moduleDistribution ||
+      dashboardData?.moduleDistribution ||
+      []
+
+    const tidelItem = { name: 'Module 1 - Tidel Park', value: 0, color: '#0284C7' }
+    const elcot1Item = { name: 'Module 1 - Elcot Park', value: 0, color: '#0D9488' }
+    const elcot2Item = { name: 'Module 2 - Elcot Park', value: 0, color: '#6366F1' }
+
+    if (rawList.length > 0) {
+      rawList.forEach((item) => {
+        const name = String(
+          item.moduleName || item.label || item.facilityName || item.name || ''
+        ).toLowerCase()
+        const count = Number(item.bookingCount ?? item.value ?? item.count ?? 0)
+
+        if (name.includes('tidel')) {
+          tidelItem.value += count
+        } else if (name.includes('module 2') || name.includes('eo2')) {
+          elcot2Item.value += count
+        } else {
+          elcot1Item.value += count
+        }
+      })
+    } else {
+      filteredBookings.forEach((b) => {
+        const mod = String(b.module || '').toLowerCase()
+        const zone = String(b.zone || '').toLowerCase()
+        const seat = String(b.seat || '').toLowerCase()
+        if (mod.includes('tidel') || zone.includes('tidel') || seat.startsWith('ws-04')) {
+          tidelItem.value += 1
+        } else if (mod.includes('module 2') || mod.includes('eo2') || seat.includes('eo2')) {
+          elcot2Item.value += 1
+        } else {
+          elcot1Item.value += 1
+        }
+      })
     }
 
-    filteredBookings.forEach((b) => {
-      const mod = String(b.module || '').toLowerCase()
-      const zone = String(b.zone || '').toLowerCase()
-      if (mod.includes('tidel') || zone.includes('tidel')) {
-        map['Tidel Park'].value += 1
-      } else if (mod.includes('module 2') || mod.includes('eo2')) {
-        map['Elcot M2'].value += 1
-      } else {
-        map['Elcot M1'].value += 1
-      }
-    })
+    // Strict fixed order: 1. Tidel Park, 2. Elcot M1, 3. Elcot M2
+    return [tidelItem, elcot1Item, elcot2Item].filter((item) => item.value > 0)
+  }, [analyticsData, dashboardData, filteredBookings])
 
-    const list = Object.values(map).filter((item) => item.value > 0)
-    if (list.length === 0) {
-      return [
-        { name: 'Module 1 - Tidel Park', value: 8, color: '#0284C7' },
-        { name: 'Module 1 - Elcot Park', value: 4, color: '#0D9488' },
-        { name: 'Module 2 - Elcot Park', value: 3, color: '#6366F1' },
-      ]
-    }
-    return list
-  }, [filteredBookings])
-
-  // 2. Floor Section Demand Breakdown (Section A, B, C, D)
+  // 2. Floor Section Demand Breakdown
   const sectionDemandData = useMemo(() => {
+    const rawList =
+      analyticsData?.floorSectionDemand ||
+      dashboardData?.floorSectionDemand ||
+      analyticsData?.sectionDemand ||
+      []
+
     const map = {
       'Section A': 0,
       'Section B': 0,
@@ -728,64 +694,85 @@ export default function HotseatManagement() {
       'Section D': 0,
     }
 
-    filteredBookings.forEach((b) => {
-      const sec = resolveSection(b.seat, b.module)
-      if (map[sec] !== undefined) {
-        map[sec] += 1
-      } else {
-        map['Section A'] += 1
-      }
-    })
-
-    return [
-      { section: 'Section A', bookings: map['Section A'] || 6, color: SECTION_COLORS['Section A'] },
-      { section: 'Section B', bookings: map['Section B'] || 4, color: SECTION_COLORS['Section B'] },
-      { section: 'Section C', bookings: map['Section C'] || 3, color: SECTION_COLORS['Section C'] },
-      { section: 'Section D', bookings: map['Section D'] || 2, color: SECTION_COLORS['Section D'] },
-    ]
-  }, [filteredBookings])
-
-  // 3. Hotseat Daily Velocity & Occupancy Trendline
-  const velocityTrendData = useMemo(() => {
-    const map = new Map()
-    filteredBookings.forEach((b) => {
-      const dateStr = String(b.date || '').split('T')[0]
-      if (!dateStr) return
-
-      let label = dateStr
-      if (trendPeriod === 'Weekly') {
-        const dt = new Date(dateStr)
-        const day = dt.toLocaleDateString('en-US', { weekday: 'short' })
-        label = day
-      }
-      map.set(label, (map.get(label) || 0) + 1)
-    })
-
-    if (map.size === 0) {
-      return [
-        { date: '2026-08-22', bookings: 4 },
-        { date: '2026-08-23', bookings: 7 },
-        { date: '2026-08-24', bookings: 11 },
-        { date: '2026-08-25', bookings: 14 },
-      ]
+    if (rawList.length > 0) {
+      rawList.forEach((item) => {
+        const sec = String(item.section || '')
+        const count = Number(item.bookingCount ?? item.bookings ?? item.count ?? 0)
+        if (sec.includes('A') || sec === 'A') map['Section A'] += count
+        else if (sec.includes('B') || sec === 'B') map['Section B'] += count
+        else if (sec.includes('C') || sec === 'C') map['Section C'] += count
+        else if (sec.includes('D') || sec === 'D') map['Section D'] += count
+      })
+    } else {
+      filteredBookings.forEach((b) => {
+        const sec = resolveSection(b.seat, b.module)
+        if (map[sec] !== undefined) {
+          map[sec] += 1
+        } else {
+          map['Section A'] += 1
+        }
+      })
     }
 
-    return Array.from(map.entries()).map(([date, bookings]) => ({
-      date,
-      bookings,
-    }))
-  }, [filteredBookings, trendPeriod])
+    const isTidel =
+      moduleFilter.toLowerCase().includes('tidel') ||
+      moduleFilter === 'All'
 
-  // 4. Most In-Demand Workstation Desks (Ranked)
+    const sections = [
+      {
+        section: 'Section A',
+        bookings: map['Section A'],
+        color: SECTION_COLORS['Section A'],
+      },
+      {
+        section: 'Section B',
+        bookings: map['Section B'],
+        color: SECTION_COLORS['Section B'],
+      },
+      {
+        section: 'Section C',
+        bookings: map['Section C'],
+        color: SECTION_COLORS['Section C'],
+      },
+    ]
+
+    // Only Tidel Park has Section D
+    if (isTidel) {
+      sections.push({
+        section: 'Section D',
+        bookings: map['Section D'],
+        color: SECTION_COLORS['Section D'],
+      })
+    }
+
+    return sections
+  }, [analyticsData, dashboardData, filteredBookings, moduleFilter])
+
+  // 3. Most In-Demand Workstation Desks (Limit to Top 3 Only)
   const topDesksData = useMemo(() => {
+    const rawList =
+      analyticsData?.topInDemandDesks ||
+      dashboardData?.topInDemandDesks ||
+      analyticsData?.topDesks ||
+      []
+
+    if (rawList.length > 0) {
+      return rawList.slice(0, 3).map((d) => ({
+        name: d.deskNumber || d.seatNumber || d.name || `Seat #${d.seatId}`,
+        bookings: Number(d.reservationCount ?? d.bookings ?? d.count ?? 0),
+        module: d.moduleName || d.module || d.officeName || 'Hotseat',
+      }))
+    }
+
     const map = {}
     filteredBookings.forEach((b) => {
-      const seat = b.seat || 'WS-01'
+      const seat = b.seat
+      if (!seat || seat === '-') return
       if (!map[seat]) {
         map[seat] = {
           name: seat,
           bookings: 0,
-          module: b.module || 'Tidel Park',
+          module: b.module || 'Hotseat',
         }
       }
       map[seat].bookings += 1
@@ -793,124 +780,133 @@ export default function HotseatManagement() {
 
     return Object.values(map)
       .sort((a, b) => b.bookings - a.bookings)
-      .slice(0, 6)
-  }, [filteredBookings])
+      .slice(0, 3)
+  }, [analyticsData, dashboardData, filteredBookings])
 
-  // 5. Peak Hotseat Check-In Time Slots
+  // 4. Peak Hotseat Check-In Time Slots
   const timeSlotDistributionData = useMemo(() => {
+    const rawList =
+      analyticsData?.peakCheckInSlots ||
+      dashboardData?.peakCheckInSlots ||
+      analyticsData?.timeSlotDistribution ||
+      []
+
+    if (rawList.length > 0) {
+      return rawList.map((s) => ({
+        slot: s.timeSlot || `${s.startTime} - ${s.endTime}`,
+        bookings: Number(s.checkInSlotsCount ?? s.bookings ?? s.count ?? 0),
+      }))
+    }
+
     const slotMap = new Map()
 
     filteredBookings.forEach((b) => {
       const raw = String(b.expectedCheckIn || '').trim()
-      if (!raw) return
+      if (!raw || raw === '-') return
       let cleanSlot = raw
       if (raw.length > 13) cleanSlot = raw.slice(0, 13)
       slotMap.set(cleanSlot, (slotMap.get(cleanSlot) || 0) + 1)
     })
 
-    if (slotMap.size === 0) {
-      return [
-        { slot: '09:30 - 10:30', bookings: 2 },
-        { slot: '10:00 - 11:00', bookings: 4 },
-        { slot: '11:00 - 12:00', bookings: 3 },
-        { slot: '13:00 - 14:00', bookings: 2 },
-        { slot: '15:00 - 16:00', bookings: 3 },
-        { slot: '16:00 - 17:00', bookings: 2 },
-        { slot: '18:00 - 19:00', bookings: 2 },
-      ]
-    }
-
     return Array.from(slotMap.entries())
       .map(([slot, bookings]) => ({ slot, bookings }))
       .sort((a, b) => a.slot.localeCompare(b.slot))
       .slice(0, 7)
-  }, [filteredBookings])
-
-  // 6. Cancellation Reasons Breakdown
-  const cancellationReasonsData = useMemo(() => {
-    const map = {}
-    let totalCancelled = 0
-
-    filteredBookings.forEach((b) => {
-      const st = String(b.status || '').toUpperCase()
-      if (st === 'CANCELLED' || st === 'CANCELED' || st === 'REJECTED') {
-        const reason = b.cancelReason ? b.cancelReason.trim() : 'Schedule Conflict'
-        map[reason] = (map[reason] || 0) + 1
-        totalCancelled += 1
-      }
-    })
-
-    return Object.entries(map)
-      .map(([reason, count]) => ({
-        reason,
-        count,
-        percentage: totalCancelled > 0 ? Math.round((count / totalCancelled) * 100) : 0,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 4)
-  }, [filteredBookings])
+  }, [analyticsData, dashboardData, filteredBookings])
 
   // =====================================================
   // Export Handlers
   // =====================================================
 
-  const handleExportCSV = () => {
-    const csvData = filteredBookings.map((b) => ({
-      'Booking ID': b.bookingId,
-      'Employee Name': b.employee,
-      'Seat Number': b.seat,
-      Module: b.module,
-      Section: b.section,
-      Date: b.date,
-      'Check-In Time': b.expectedCheckIn,
-      Status: b.status,
-      'Cancellation Reason': b.cancelReason || 'N/A',
-    }))
+  const handleExportCSV = async () => {
+    try {
+      setExporting(true)
+      const filterDto = {
+        timeframe: timeFilter,
+        module: moduleFilter === 'All' ? null : moduleFilter,
+        status: statusFilter === 'All' ? null : statusFilter,
+      }
 
-    downloadCSV(
-      csvData,
-      `SpaceBook-Hotseat-Analytics-${new Date().toISOString().split('T')[0]}.csv`
-    )
+      const blobData = await exportHotseatCsv(filterDto)
+      const blob = new Blob([blobData], { type: 'text/csv;charset=utf-8;' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute(
+        'download',
+        `SpaceBook-Hotseat-Analytics-${new Date().toISOString().split('T')[0]}.csv`
+      )
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      console.warn('Backend CSV export fallback to client data:', err)
+      const csvData = filteredBookings.map((b) => ({
+        'Booking ID': b.bookingId,
+        'Employee Name': b.employee,
+        'Seat Number': b.seat,
+        Module: b.module,
+        Section: b.section,
+        Date: b.date,
+        'Check-In Time': b.expectedCheckIn,
+        Status: b.status,
+        'Cancellation Reason': b.cancelReason || 'N/A',
+      }))
+
+      downloadCSV(
+        csvData,
+        `SpaceBook-Hotseat-Analytics-${new Date().toISOString().split('T')[0]}.csv`
+      )
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* =================================================
-          HEADER & ACTIONS
+          PAGE HEADER
       ================================================= */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-3xl font-bold">
             Hotseat Management
           </h1>
-          <p className="mt-1 text-sm text-slate">
-            Executive visual insights on hotseat occupancy, floor sections, desk turnover, and audit records.
+          <p className="text-sm text-slate">
+            Executive workspace intelligence, desk utilization telemetry, and hotseat records.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-nowrap flex-shrink-0">
+        <div className="flex items-center gap-2">
           <Button
-            size="sm"
             variant="secondary"
+            size="sm"
             onClick={loadData}
             disabled={loading}
-            className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap shadow-xs hover:border-slate-400 transition-all active:scale-95 h-7"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 shadow-xs"
           >
             <RefreshCw
-              size={11}
-              className={loading ? 'animate-spin text-sky-600' : 'text-slate-600'}
+              size={14}
+              className={loading ? 'animate-spin text-sky-600' : 'text-slate-500'}
             />
-            <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
+            <span>Refresh</span>
           </Button>
 
           <Button
             size="sm"
             onClick={handleExportCSV}
-            disabled={filteredBookings.length === 0}
+            disabled={exporting || filteredBookings.length === 0}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-xs font-bold text-white shadow-md shadow-blue-700/20 whitespace-nowrap transition-all active:scale-95 border-0"
           >
-            <FileText size={14} className="text-blue-100" />
-            <span className="text-white">Export CSV</span>
+            {exporting ? (
+              <Loader2 size={14} className="animate-spin text-white" />
+            ) : (
+              <FileText size={14} className="text-blue-100" />
+            )}
+            <span className="text-white">
+              {exporting ? 'Exporting...' : 'Export CSV'}
+            </span>
           </Button>
         </div>
       </div>
@@ -952,9 +948,25 @@ export default function HotseatManagement() {
               className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
             >
               <option value="All">All Modules</option>
-              <option value="Module 1 - Elcot Park">Module 1 - Elcot Park</option>
-              <option value="Module 2 - Elcot Park">Module 2 - Elcot Park</option>
-              <option value="Module 1 - Tidel Park">Module 1 - Tidel Park</option>
+              {filterOptions.modules.length > 0 ? (
+                filterOptions.modules.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="Module 1 - Elcot Park">
+                    Module 1 - Elcot Park
+                  </option>
+                  <option value="Module 2 - Elcot Park">
+                    Module 2 - Elcot Park
+                  </option>
+                  <option value="Module 1 - Tidel Park">
+                    Module 1 - Tidel Park
+                  </option>
+                </>
+              )}
             </select>
 
             {/* Status Filter */}
@@ -964,22 +976,32 @@ export default function HotseatManagement() {
               className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
             >
               <option value="All">All Status</option>
-              <option value="Confirmed">Confirmed Bookings</option>
-              <option value="Cancelled">Cancelled Bookings</option>
+              {filterOptions.statuses.length > 0 ? (
+                filterOptions.statuses.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="Confirmed">Confirmed Bookings</option>
+                  <option value="Cancelled">Cancelled Bookings</option>
+                </>
+              )}
             </select>
           </div>
 
           <div className="flex items-center gap-2 text-xs font-semibold text-slate">
             <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            Analyzing {filteredBookings.length} total bookings
+            Analyzing {kpis.total} total bookings
           </div>
         </div>
       </Card>
 
       {/* =================================================
-          TOP 4 KPI CARDS
+          TOP 3 KPI CARDS
       ================================================= */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {/* Card 1: TOTAL RESERVATIONS */}
         <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
@@ -1000,30 +1022,7 @@ export default function HotseatManagement() {
           </div>
         </Card>
 
-        {/* Card 2: UTILIZATION */}
-        <Card className="p-3 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
-              UTILIZATION
-            </span>
-            <Activity size={14} className="text-sky-600" />
-          </div>
-          <p className="mt-1 text-2xl font-extrabold text-ink leading-tight">
-            {kpis.utilization}%
-          </p>
-          <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
-            <span>Hotseat Occupancy</span>
-            <span className="font-semibold text-sky-700">{kpis.utilization}%</span>
-          </div>
-          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
-            <div
-              className="h-1 rounded-full bg-sky-600 transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.max(0, Number(kpis.utilization) || 0))}%` }}
-            />
-          </div>
-        </Card>
-
-        {/* Card 3: CONFIRMED BOOKINGS */}
+        {/* Card 2: CONFIRMED BOOKINGS */}
         <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
@@ -1041,7 +1040,9 @@ export default function HotseatManagement() {
           </div>
           <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>Successful</span>
-            <span className="font-bold text-emerald-700">{kpis.confirmedRate}%</span>
+            <span className="font-bold text-emerald-700">
+              {kpis.confirmedRate}%
+            </span>
           </div>
           <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
             <div
@@ -1051,7 +1052,7 @@ export default function HotseatManagement() {
           </div>
         </Card>
 
-        {/* Card 4: CANCELLED BOOKINGS */}
+        {/* Card 3: CANCELLED BOOKINGS */}
         <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
@@ -1069,7 +1070,9 @@ export default function HotseatManagement() {
           </div>
           <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>Cancelled</span>
-            <span className="font-bold text-red-700">{kpis.cancellationRate}%</span>
+            <span className="font-bold text-red-700">
+              {kpis.cancellationRate}%
+            </span>
           </div>
           <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
             <div
@@ -1090,7 +1093,7 @@ export default function HotseatManagement() {
               Hotseat Reservation Records & Audit
             </h2>
             <p className="text-xs text-slate mt-0.5">
-              Showing {filteredBookings.length} of {bookings.length} hotseat reservations matching active filters.
+              Showing {filteredBookings.length} of {kpis.total} hotseat reservations matching active filters.
             </p>
           </div>
 
@@ -1113,7 +1116,7 @@ export default function HotseatManagement() {
         <Card className="p-5 shadow-sm">
           <div className="flex items-center justify-between border-b border-line pb-3">
             <div>
-              <h2 className="font-display text-sm font-700 text-ink">
+              <h2 className="font-display text-sm font-bold text-ink">
                 Hotseat Volume by Facility & Zone
               </h2>
               <p className="text-xs text-slate">
@@ -1142,44 +1145,55 @@ export default function HotseatManagement() {
                     paddingAngle={4}
                   >
                     {moduleDistributionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.color || MODULE_COLORS[index % MODULE_COLORS.length]}
+                      />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomChartTooltip />} />
-                  <Legend verticalAlign="bottom" iconType="circle" />
+                  <Legend
+                    verticalAlign="bottom"
+                    height={36}
+                    formatter={(value) => (
+                      <span className="text-xs text-slate-700 font-medium">
+                        {value}
+                      </span>
+                    )}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}
           </div>
         </Card>
 
-        {/* CHART 2: Floor Section Demand Breakdown (Section A, B, C, D) */}
+        {/* CHART 2: Floor Section Demand Breakdown */}
         <Card className="p-5 shadow-sm">
           <div className="flex items-center justify-between border-b border-line pb-3">
             <div>
-              <h2 className="font-display text-sm font-700 text-ink">
-                Floor Section Workstation Demand
+              <h2 className="font-display text-sm font-bold text-ink">
+                Floor Section Demand Breakdown
               </h2>
               <p className="text-xs text-slate">
-                Hotseat bookings distributed across floor sections A, B, C, and D.
+                Concentration of desk bookings across zoned quadrants.
               </p>
             </div>
-            <Layers size={16} className="text-teal-600" />
+            <Layers size={16} className="text-sky-600" />
           </div>
 
-          <div className="h-[300px] w-full pt-4">
+          <div className="h-[300px] w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={sectionDemandData}
-                margin={{ top: 10, right: 10, left: -20, bottom: 10 }}
+                margin={{ top: 20, right: 20, left: -20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="section" tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }} />
+                <XAxis dataKey="section" tick={{ fill: '#475569', fontSize: 11 }} />
                 <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
                 <Tooltip content={<CustomChartTooltip />} />
-                <Bar dataKey="bookings" name="Hotseat Bookings" radius={[6, 6, 0, 0]}>
+                <Bar dataKey="bookings" name="Reserved Desks" radius={[6, 6, 0, 0]}>
                   {sectionDemandData.map((entry, index) => (
-                    <Cell key={`section-cell-${index}`} fill={entry.color} />
+                    <Cell key={`sec-cell-${index}`} fill={entry.color} />
                   ))}
                 </Bar>
               </BarChart>
@@ -1189,149 +1203,95 @@ export default function HotseatManagement() {
       </div>
 
       {/* =================================================
-          ROW 2: Daily Velocity Trendline & Top Hotseat Desks
+          ROW 2: Top In-Demand Desks & Peak Check-in Times
       ================================================= */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* CHART 3: Hotseat Daily Velocity & Occupancy Trendline */}
+        {/* Ranked Top Desks */}
         <Card className="p-5 shadow-sm">
           <div className="flex items-center justify-between border-b border-line pb-3">
             <div>
-              <h2 className="font-display text-sm font-700 text-ink">
-                Daily Hotseat Occupancy Trendline
+              <h2 className="font-display text-sm font-bold text-ink">
+                Most In-Demand Desks
               </h2>
               <p className="text-xs text-slate">
-                Workstation velocity tracking active desk utilization across days.
-              </p>
-            </div>
-            <div className="flex items-center rounded-lg bg-slate-100 p-0.5 text-xs">
-              <button
-                onClick={() => setTrendPeriod('Daily')}
-                className={`rounded-md px-2.5 py-1 font-bold ${
-                  trendPeriod === 'Daily'
-                    ? 'bg-white text-ink shadow-sm'
-                    : 'text-slate hover:text-ink'
-                }`}
-              >
-                Daily
-              </button>
-              <button
-                onClick={() => setTrendPeriod('Weekly')}
-                className={`rounded-md px-2.5 py-1 font-bold ${
-                  trendPeriod === 'Weekly'
-                    ? 'bg-white text-ink shadow-sm'
-                    : 'text-slate hover:text-ink'
-                }`}
-              >
-                Weekly
-              </button>
-            </div>
-          </div>
-
-          <div className="h-[280px] w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={velocityTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="hotseatVelocityGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0D9488" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#0D9488" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
-                <Tooltip content={<CustomChartTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="bookings"
-                  name="Hotseat Check-Ins"
-                  stroke="#0D9488"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#hotseatVelocityGrad)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* CHART 4: Top In-Demand Hotseats */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-700 text-ink">
-                Top In-Demand Workstation Desks
-              </h2>
-              <p className="text-xs text-slate">
-                Highest-occupied individual desk units ranked by reservation frequency.
+                Top individual hotseats with highest booking count.
               </p>
             </div>
             <Armchair size={16} className="text-sky-600" />
           </div>
 
-          <div className="h-[280px] w-full pt-4">
+          <div className="mt-4 space-y-3">
             {topDesksData.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate">
-                No hotseat usage records found.
-              </div>
+              <p className="text-xs text-slate py-8 text-center">
+                No desk reservation data available.
+              </p>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={topDesksData}
-                  layout="vertical"
-                  margin={{ top: 5, right: 20, left: 30, bottom: 5 }}
+              topDesksData.map((desk, idx) => (
+                <div
+                  key={desk.name}
+                  className="flex items-center justify-between rounded-xl bg-slate-50/80 p-2.5 transition-colors hover:bg-slate-100/80"
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis type="number" tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    tick={{ fill: '#0f172a', fontSize: 11, fontWeight: 700 }}
-                    width={100}
-                  />
-                  <Tooltip content={<CustomChartTooltip />} />
-                  <Bar dataKey="bookings" name="Reservations" fill="#0284C7" radius={[0, 6, 6, 0]}>
-                    {topDesksData.map((entry, index) => (
-                      <Cell
-                        key={`desk-cell-${index}`}
-                        fill={MODULE_COLORS[index % MODULE_COLORS.length]}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-100 text-xs font-bold text-sky-800">
+                      #{idx + 1}
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold text-ink">{desk.name}</p>
+                      <p className="text-[11px] text-slate">{desk.module}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-extrabold text-sky-950">
+                      {desk.bookings}
+                    </span>
+                    <span className="text-[10px] text-slate ml-1">
+                      {desk.bookings === 1 ? 'booking' : 'bookings'}
+                    </span>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </Card>
-      </div>
 
-      {/* =================================================
-          ROW 3: Peak Hotseat Check-In Time Slots
-      ================================================= */}
-      <div>
-        {/* CHART 5: Peak Check-In Time Slots */}
+        {/* Peak Check-In Times */}
         <Card className="p-5 shadow-sm">
           <div className="flex items-center justify-between border-b border-line pb-3">
             <div>
-              <h2 className="font-display text-sm font-700 text-ink">
-                Peak Hotseat Check-In Time Slots
+              <h2 className="font-display text-sm font-bold text-ink">
+                Peak Check-In Arrival Hours
               </h2>
               <p className="text-xs text-slate">
-                Distribution of expected check-in slots throughout operational office hours.
+                Hourly frequency of employee hotseat occupancy.
               </p>
             </div>
             <Clock size={16} className="text-sky-600" />
           </div>
 
           <div className="h-[250px] w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={timeSlotDistributionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="slot" tick={{ fill: '#475569', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
-                <Tooltip content={<CustomChartTooltip />} />
-                <Bar dataKey="bookings" name="Check-in Slots" fill="#6366F1" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {timeSlotDistributionData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-slate">
+                No arrival time data available.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={timeSlotDistributionData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="slot" tick={{ fill: '#475569', fontSize: 11 }} />
+                  <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip content={<CustomChartTooltip />} />
+                  <Bar
+                    dataKey="bookings"
+                    name="Check-in Slots"
+                    fill="#6366F1"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </Card>
       </div>
@@ -1343,19 +1303,19 @@ export default function HotseatManagement() {
         createPortal(
           <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
             <div className="w-full max-w-5xl rounded-3xl bg-white shadow-2xl p-6 relative flex flex-col max-h-[92vh] border border-slate-200 animate-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3">
-              <h2 className="text-lg font-bold text-slate-900 font-display">
-                Hotseat Reservation Records & Audit
-              </h2>
-              <button
-                type="button"
-                onClick={() => setIsAuditModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-lg hover:bg-slate-100"
-              >
-                <X size={18} />
-              </button>
-            </div>
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-3">
+                <h2 className="text-lg font-bold text-slate-900 font-display">
+                  Hotseat Reservation Records & Audit
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setIsAuditModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-lg hover:bg-slate-100"
+                >
+                  <X size={18} />
+                </button>
+              </div>
 
               {/* Subheader with Filter Count & Search */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-2.5">
@@ -1452,9 +1412,8 @@ export default function HotseatManagement() {
                 </div>
               </div>
 
-              {/* Modal Footer (Matching 2-Row Layout) */}
+              {/* Modal Footer */}
               <div className="mt-4 flex flex-col gap-3 pt-1 border-t border-slate-100">
-                {/* Row 1 */}
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-slate-500">
                     Showing {displayedTableBookings.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}–{Math.min(currentPage * ITEMS_PER_PAGE, displayedTableBookings.length)} of {displayedTableBookings.length} hotseat bookings
@@ -1483,16 +1442,14 @@ export default function HotseatManagement() {
                   </div>
                 </div>
 
-                {/* Row 2 */}
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-slate-500">
-                    Total {displayedTableBookings.length} bookings found
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-xs text-slate-400">
+                    Total {bookings.length} bookings found
                   </p>
-
                   <button
                     type="button"
                     onClick={() => setIsAuditModalOpen(false)}
-                    className="rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-all shadow-xs"
+                    className="rounded-xl border border-slate-200 bg-white px-5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
                   >
                     Close
                   </button>
@@ -1504,44 +1461,19 @@ export default function HotseatManagement() {
         )}
 
       {/* =====================================================
-          SINGLE HOTSEAT RESERVATION DETAIL MODAL
+          RESERVATION DETAIL MODAL
       ===================================================== */}
-      {selectedBooking && (
+      {isDetailModalOpen && selectedBooking && (
         <Modal
-          open={isDetailModalOpen}
+          isOpen={isDetailModalOpen}
           onClose={closeDetailModal}
-          title="Hotseat Reservation Details"
-          footer={
-            <div className="flex w-full items-center justify-end">
-              <Button size="sm" variant="secondary" onClick={closeDetailModal}>
-                Close
-              </Button>
-            </div>
-          }
+          title={`Hotseat Reservation #${selectedBooking.bookingId}`}
+          className="max-w-md"
         >
-          <div className="space-y-4 text-sm text-slate">
-            <div className="grid grid-cols-2 gap-3 border-b border-line pb-3">
-              <div>
-                <p className="text-xs uppercase tracking-wider text-slate font-semibold">
-                  Booking ID
-                </p>
-                <p className="font-bold text-ink text-base">
-                  {selectedBooking.bookingId}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wider text-slate font-semibold">
-                  Status
-                </p>
-                <div className="mt-1">
-                  <HotseatStatusTag status={selectedBooking.status} />
-                </div>
-              </div>
-            </div>
-
-            <div>
+          <div className="space-y-4">
+            <div className="rounded-xl bg-slate-50 p-3.5">
               <p className="text-xs uppercase tracking-wider text-slate font-semibold">
-                Employee
+                Reserved By
               </p>
               <p className="font-semibold text-ink text-base mt-0.5">
                 {selectedBooking.employee}
@@ -1583,7 +1515,7 @@ export default function HotseatManagement() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wider text-slate font-semibold">
-                  Expected Check-In
+                  Expected Arrival
                 </p>
                 <p className="font-medium text-ink mt-0.5">
                   {selectedBooking.expectedCheckIn}
@@ -1591,24 +1523,30 @@ export default function HotseatManagement() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wider text-slate font-semibold">
-                  Location
+                  Status
                 </p>
-                <p className="font-medium text-ink mt-0.5">
-                  {selectedBooking.location || 'Coimbatore'} ({selectedBooking.zone || 'Elcot Park'})
-                </p>
+                <div className="mt-1">
+                  <HotseatStatusTag status={selectedBooking.status} />
+                </div>
               </div>
             </div>
 
             {selectedBooking.cancelReason && (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-3">
-                <p className="text-xs font-bold uppercase tracking-wider text-red-800">
-                  Cancellation Reason
+              <div className="rounded-xl border border-red-200 bg-red-50/50 p-3">
+                <p className="text-xs font-semibold text-red-800">
+                  Cancellation Reason:
                 </p>
-                <p className="mt-1 text-sm font-medium text-red-900">
-                  &ldquo;{selectedBooking.cancelReason}&rdquo;
+                <p className="mt-0.5 text-xs text-red-700">
+                  {selectedBooking.cancelReason}
                 </p>
               </div>
             )}
+
+            <div className="flex justify-end pt-2">
+              <Button variant="secondary" onClick={closeDetailModal}>
+                Close
+              </Button>
+            </div>
           </div>
         </Modal>
       )}
