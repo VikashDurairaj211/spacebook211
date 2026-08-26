@@ -152,7 +152,7 @@ const GUIDE_SECTIONS = [
   },
   {
     id: 'availability-calendar',
-    title: 'Availability Calendar',
+    title: 'Workspace Availability',
     icon: Clock,
     badge: 'Schedule Grid',
     description: 'Visual time-grid matrix of all rooms across the workplace.',
@@ -160,7 +160,7 @@ const GUIDE_SECTIONS = [
       {
         title: 'How to Check Workspace Availability',
         content:
-          'The "Availability Calendar" page provides a bird’s-eye view matrix of all office meeting rooms across hourly time slots (10:00 AM to 10:00 PM).',
+          'The "Workspace Availability" page provides a bird’s-eye view matrix of all office meeting rooms across hourly time slots (10:00 AM to 10:00 PM).',
         steps: [
           'Select any date to inspect room schedules for that day.',
           'On weekends (Saturday/Sunday), the calendar automatically looks ahead to the next working business day.',

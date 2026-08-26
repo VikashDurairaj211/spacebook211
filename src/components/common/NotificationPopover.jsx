@@ -50,9 +50,10 @@ export default function NotificationPopover({ onClose }) {
         </div>
 
         <button
+          type="button"
           onClick={handleMarkAllRead}
           disabled={!hasUnread || loading}
-          className="rounded-xl border border-line px-3 py-1.5 text-xs text-slate hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed transition"
+          className="rounded-xl border border-line px-3 py-1.5 text-xs text-slate hover:text-ink focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:opacity-40 disabled:cursor-not-allowed transition"
         >
           Mark all as read
         </button>

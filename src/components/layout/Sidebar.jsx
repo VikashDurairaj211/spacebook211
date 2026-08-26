@@ -7,7 +7,7 @@ import client from '../../api/client'
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/search-rooms', label: 'Workspace Search', icon: Search },
-  { to: '/availability-calendar', label: 'Availability Calendar', icon: CalendarRange },
+  { to: '/availability-calendar', label: 'Workspace Availability', icon: CalendarRange },
   { to: '/office-map', label: 'Hotseat Reservation', icon: MapPin },
 ]
 

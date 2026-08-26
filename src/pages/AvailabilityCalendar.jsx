@@ -1019,13 +1019,11 @@ export default function AvailabilityCalendar() {
 
             </div>
 
-            {/* BOOKING */}
+            {/* BOOKING (Only for reserved/booked slots) */}
 
-            {selectedSlot.booking && (
+            {selectedSlot.status !== "Available" && selectedSlot.booking?.title && (
               <p>
-                Booking:{" "}
-                {selectedSlot.booking.title ||
-                  "Reserved workspace"}
+                Booking: {selectedSlot.booking.title}
               </p>
             )}
 

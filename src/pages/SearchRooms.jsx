@@ -475,7 +475,9 @@ export default function SearchRooms() {
   // ===================================================
 
   async function handleSearch(e) {
-    e.preventDefault();
+    if (e?.preventDefault) {
+      e.preventDefault();
+    }
 
     setCapacityExceeded(false);
     setSearchMessage("");

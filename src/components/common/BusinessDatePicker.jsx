@@ -175,10 +175,23 @@ export default function BusinessDatePicker({
 
       {/* TRIGGER BUTTON */}
       <div
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
         onClick={() => {
           if (!disabled) setIsOpen((prev) => !prev)
         }}
-        className={`flex h-10 w-full min-w-[190px] cursor-pointer items-center justify-between gap-2 rounded-lg border bg-white hover:bg-slate-50/80 px-3 text-sm shadow-sm transition-colors ${
+        onKeyDown={(e) => {
+          if (disabled) return
+          if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+            e.preventDefault()
+            setIsOpen((prev) => !prev)
+          } else if (e.key === 'Escape') {
+            setIsOpen(false)
+          }
+        }}
+        className={`flex h-10 w-full min-w-[190px] cursor-pointer items-center justify-between gap-2 rounded-lg border bg-white hover:bg-slate-50/80 px-3 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 ${
           disabled
             ? 'cursor-not-allowed bg-slate-100 opacity-60'
             : error
