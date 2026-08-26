@@ -25,8 +25,7 @@ export default function Modal({
         const targetTag = e.target?.tagName?.toLowerCase();
         if (targetTag === "textarea") return;
 
-        const formEl = modalRef.current?.querySelector("form");
-        if (formEl && formEl.contains(e.target)) {
+        if (targetTag === "button" && e.target?.type === "button") {
           return;
         }
 
@@ -36,8 +35,28 @@ export default function Modal({
           return;
         }
 
+        const formEl = modalRef.current?.querySelector("form");
+        if (formEl) {
+          e.preventDefault();
+          if (typeof formEl.requestSubmit === "function") {
+            formEl.requestSubmit();
+          } else {
+            const submitBtn = formEl.querySelector(
+              'button[type="submit"]:not([disabled]), button:not([type="button"]):not([disabled])'
+            );
+            if (submitBtn) {
+              submitBtn.click();
+            } else {
+              formEl.dispatchEvent(
+                new Event("submit", { cancelable: true, bubbles: true })
+              );
+            }
+          }
+          return;
+        }
+
         const confirmBtn = modalRef.current?.querySelector(
-          '.border-t button:last-child:not([disabled]), footer button:last-child:not([disabled]), button[type="submit"]:not([disabled])'
+          '.border-t button:last-child:not([disabled]), footer button:last-child:not([disabled]), button[type="submit"]:not([disabled]), .flex.justify-end button:last-child:not([disabled])'
         );
 
         if (confirmBtn && e.target !== confirmBtn) {

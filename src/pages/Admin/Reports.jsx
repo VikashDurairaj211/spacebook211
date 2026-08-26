@@ -28,6 +28,7 @@ import {
   Activity,
   Eye,
   X,
+  TrendingUp,
 } from 'lucide-react'
 
 import client from '../../api/client'
@@ -215,6 +216,7 @@ export default function Reports() {
   const [moduleFilter, setModuleFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
   const [trendPeriod, setTrendPeriod] = useState('Monthly')
+  const [activeChart, setActiveChart] = useState('trend')
 
   // MODAL / SEARCH
   const [selectedBooking, setSelectedBooking] = useState(null)
@@ -926,140 +928,131 @@ export default function Reports() {
       </Card>
 
       {/* =================================================
-          ROW 1: Primary Visual Charts (2 Columns)
+          MASTER INTERACTIVE CHART CARD
       ================================================= */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* CHART 1: Employee Reservation vs Cancellation Comparison */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-700 text-ink">
-                Employee Booking vs Cancellation Ratio
+      <Card className="p-4 sm:p-5 shadow-sm">
+        {/* CHART CONTROLS & TABS */}
+        <div className="flex flex-col gap-3 pb-4 border-b border-line lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <h2 className="font-display text-base font-bold text-ink">
+                {activeChart === 'trend' && 'Reservation Volume Trendline'}
+                {activeChart === 'outcome' && 'Reservation Outcome Breakdown'}
+                {activeChart === 'employee' && 'Employee Booking vs Cancellation Ratio'}
+                {activeChart === 'rooms' && 'Workspace Ranking'}
+                {activeChart === 'hourly' && 'Peak Workspace Demand by Hour'}
               </h2>
-              <p className="text-xs text-slate">
-                Confirmed vs cancelled reservations by top employees.
-              </p>
+              <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-[10px] font-bold text-sky-800 whitespace-nowrap shrink-0 inline-flex items-center">
+                Visual Analytics
+              </span>
             </div>
-            <Users size={16} className="text-sky-600" />
+            <p className="text-xs text-slate mt-0.5">
+              {activeChart === 'trend' && 'Historical reservation activity and volume patterns over time.'}
+              {activeChart === 'outcome' && 'Proportion of successful confirmed bookings versus cancellations.'}
+              {activeChart === 'employee' && 'Confirmed vs cancelled reservations by top employees.'}
+              {activeChart === 'rooms' && 'Workspace popularity ranked by total reservation volume.'}
+              {activeChart === 'hourly' && 'Distribution of reservations across operational office hours (10:00 to 22:00 IST).'}
+            </p>
           </div>
 
-          <div className="h-[300px] w-full pt-4">
-            {employeeComparisonData.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate">
-                No employee activity data available.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={employeeComparisonData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* MONTHLY / WEEKLY TOGGLE (for Volume Trendline) */}
+            {activeChart === 'trend' && (
+              <div className="flex items-center rounded-lg bg-slate-100 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setTrendPeriod('Monthly')}
+                  className={`rounded-md px-2.5 py-1 font-bold transition-all ${trendPeriod === 'Monthly'
+                      ? 'bg-white text-ink shadow-xs'
+                      : 'text-slate hover:text-ink'
+                    }`}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fill: '#475569', fontSize: 11 }}
-                    angle={-20}
-                    textAnchor="end"
-                    interval={0}
-                  />
-                  <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip content={<CustomChartTooltip />} />
-                  <Legend verticalAlign="top" height={36} />
-                  <Bar name="Confirmed" dataKey="confirmed" fill="#658362" radius={[4, 4, 0, 0]} />
-                  <Bar name="Cancelled" dataKey="cancelled" fill="#B85450" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </Card>
-
-        {/* CHART 2: Status Outcome Donut Chart */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-700 text-ink">
-                Reservation Outcome Breakdown
-              </h2>
-              <p className="text-xs text-slate">
-                Proportion of successful bookings vs cancellations.
-              </p>
-            </div>
-            <Sparkles size={16} className="text-emerald-600" />
-          </div>
-
-          <div className="h-[300px] w-full pt-2">
-            {visualStatusData.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate">
-                No status data available.
+                  Monthly
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrendPeriod('Weekly')}
+                  className={`rounded-md px-2.5 py-1 font-bold transition-all ${trendPeriod === 'Weekly'
+                      ? 'bg-white text-ink shadow-xs'
+                      : 'text-slate hover:text-ink'
+                    }`}
+                >
+                  Weekly
+                </button>
               </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={visualStatusData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={65}
-                    outerRadius={105}
-                    paddingAngle={4}
-                  >
-                    {visualStatusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomChartTooltip />} />
-                  <Legend verticalAlign="bottom" iconType="circle" />
-                </PieChart>
-              </ResponsiveContainer>
             )}
-          </div>
-        </Card>
-      </div>
 
-      {/* =================================================
-          ROW 2: Timeline Trends & Room Popularity
-      ================================================= */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* CHART 3: Reservation Volume Trendline */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-700 text-ink">
-                Reservation Volume Trendline
-              </h2>
-              <p className="text-xs text-slate">
-                Historical reservation activity and volume patterns.
-              </p>
-            </div>
-            <div className="flex items-center rounded-lg bg-slate-100 p-0.5 text-xs">
+            {/* TAB PILLS */}
+            <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl flex-wrap">
               <button
-                onClick={() => setTrendPeriod('Monthly')}
-                className={`rounded-md px-2.5 py-1 font-bold ${
-                  trendPeriod === 'Monthly'
-                    ? 'bg-white text-ink shadow-sm'
-                    : 'text-slate hover:text-ink'
-                }`}
+                type="button"
+                onClick={() => setActiveChart('trend')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'trend'
+                    ? 'bg-white text-sky-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  }`}
               >
-                Monthly
+                <TrendingUp size={14} className={activeChart === 'trend' ? 'text-sky-600' : 'text-slate-400'} />
+                <span>Volume Trend</span>
               </button>
+
               <button
-                onClick={() => setTrendPeriod('Weekly')}
-                className={`rounded-md px-2.5 py-1 font-bold ${
-                  trendPeriod === 'Weekly'
-                    ? 'bg-white text-ink shadow-sm'
-                    : 'text-slate hover:text-ink'
-                }`}
+                type="button"
+                onClick={() => setActiveChart('outcome')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'outcome'
+                    ? 'bg-white text-sky-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  }`}
               >
-                Weekly
+                <Sparkles size={14} className={activeChart === 'outcome' ? 'text-emerald-600' : 'text-slate-400'} />
+                <span>Outcomes</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveChart('employee')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'employee'
+                    ? 'bg-white text-sky-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  }`}
+              >
+                <Users size={14} className={activeChart === 'employee' ? 'text-sky-600' : 'text-slate-400'} />
+                <span>Employee Ratio</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveChart('rooms')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'rooms'
+                    ? 'bg-white text-sky-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  }`}
+              >
+                <Building2 size={14} className={activeChart === 'rooms' ? 'text-sky-600' : 'text-slate-400'} />
+                <span>Workspace Ranking</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveChart('hourly')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'hourly'
+                    ? 'bg-white text-sky-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  }`}
+              >
+                <Clock size={14} className={activeChart === 'hourly' ? 'text-indigo-600' : 'text-slate-400'} />
+                <span>Hourly Demand</span>
               </button>
             </div>
           </div>
+        </div>
 
-          <div className="h-[280px] w-full pt-4">
+        {/* ACTIVE CHART DISPLAY */}
+        <div className="h-[360px] sm:h-[390px] w-full pt-4">
+          {/* Chart 1: Volume Trendline */}
+          {activeChart === 'trend' && (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={timelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={timelineData} margin={{ top: 10, right: 15, left: -15, bottom: 0 }}>
                 <defs>
                   <linearGradient id="bookingAreaGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#0284C7" stopOpacity={0.4} />
@@ -1081,25 +1074,71 @@ export default function Reports() {
                 />
               </AreaChart>
             </ResponsiveContainer>
-          </div>
-        </Card>
+          )}
 
-        {/* CHART 4: Room Ranking */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-700 text-ink">
-                Most Reserved Rooms & Workspaces
-              </h2>
-              <p className="text-xs text-slate">
-                Workspace popularity ranked by total reservation volume.
-              </p>
-            </div>
-            <Building2 size={16} className="text-sky-600" />
-          </div>
+          {/* Chart 2: Outcome Breakdown */}
+          {activeChart === 'outcome' && (
+            visualStatusData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-slate">
+                No status data available.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={visualStatusData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={75}
+                    outerRadius={120}
+                    paddingAngle={4}
+                  >
+                    {visualStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomChartTooltip />} />
+                  <Legend verticalAlign="bottom" iconType="circle" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            )
+          )}
 
-          <div className="h-[280px] w-full pt-4">
-            {roomPopularityData.length === 0 ? (
+          {/* Chart 3: Employee Ratio */}
+          {activeChart === 'employee' && (
+            employeeComparisonData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-slate">
+                No employee activity data available.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={employeeComparisonData}
+                  margin={{ top: 10, right: 15, left: -15, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fill: '#475569', fontSize: 11 }}
+                    angle={-20}
+                    textAnchor="end"
+                    interval={0}
+                  />
+                  <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip content={<CustomChartTooltip />} />
+                  <Legend verticalAlign="top" height={36} />
+                  <Bar name="Confirmed" dataKey="confirmed" fill="#658362" radius={[4, 4, 0, 0]} />
+                  <Bar name="Cancelled" dataKey="cancelled" fill="#B85450" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )
+          )}
+
+          {/* Chart 4: Room Rankings */}
+          {activeChart === 'rooms' && (
+            roomPopularityData.length === 0 ? (
               <div className="flex h-full items-center justify-center text-sm text-slate">
                 No room usage records found.
               </div>
@@ -1116,7 +1155,7 @@ export default function Reports() {
                     type="category"
                     dataKey="name"
                     tick={{ fill: '#0f172a', fontSize: 11, fontWeight: 600 }}
-                    width={110}
+                    width={130}
                   />
                   <Tooltip content={<CustomChartTooltip />} />
                   <Bar dataKey="bookings" name="Reservations" fill="#0284C7" radius={[0, 6, 6, 0]}>
@@ -1129,31 +1168,13 @@ export default function Reports() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            )}
-          </div>
-        </Card>
-      </div>
+            )
+          )}
 
-      {/* =================================================
-          ROW 3: Peak Check-in Hours
-      ================================================= */}
-      <div>
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-700 text-ink">
-                Peak Workspace Demand by Hour
-              </h2>
-              <p className="text-xs text-slate">
-                Distribution of reservations across operational office hours.
-              </p>
-            </div>
-            <Clock size={16} className="text-sky-600" />
-          </div>
-
-          <div className="h-[260px] w-full pt-4">
+          {/* Chart 5: Hourly Demand */}
+          {activeChart === 'hourly' && (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={hourlyDistributionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={hourlyDistributionData} margin={{ top: 10, right: 15, left: -15, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="time" tick={{ fill: '#475569', fontSize: 11 }} />
                 <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
@@ -1161,9 +1182,9 @@ export default function Reports() {
                 <Bar dataKey="bookings" name="Bookings at Hour" fill="#6366F1" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
+          )}
+        </div>
+      </Card>
 
       {/* =====================================================
           AUDIT TABLE MODAL

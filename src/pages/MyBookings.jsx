@@ -1179,11 +1179,42 @@ export default function MyBookings() {
   };
 
   // =====================================================
+  // KEYBOARD ENTER / ESCAPE IN MODALS
+  // =====================================================
+
+  useEffect(() => {
+    if (!mode || mode === "details") return;
+
+    function handleKeyDown(e) {
+      if (e.key === "Enter") {
+        const targetTag = e.target?.tagName?.toLowerCase();
+        if (targetTag === "textarea") return;
+
+        if (mode === "cancel") {
+          e.preventDefault();
+          cancelBooking();
+        } else if (mode === "edit") {
+          e.preventDefault();
+          save(e);
+        }
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        closeModal();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mode, selected, cancelReason]);
+
+  // =====================================================
   // SAVE / UPDATE BOOKING
   // =====================================================
 
   async function save(e) {
-    e.preventDefault();
+    if (e?.preventDefault) {
+      e.preventDefault();
+    }
 
     if (!selected) {
       return;
