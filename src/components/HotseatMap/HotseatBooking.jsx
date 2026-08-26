@@ -1327,6 +1327,29 @@ function BookingDialog({
     }
   }
 
+  useEffect(() => {
+    if (!confirmation) return;
+
+    function handleKeyDown(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (!saving) {
+          confirm();
+        }
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        if (!saving) {
+          setConfirmation(null);
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [confirmation, saving]);
+
   return (
     <Dialog
       title={isEditing ? "Edit booking time" : "Book Hotseat"}

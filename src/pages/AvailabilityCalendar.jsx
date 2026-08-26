@@ -749,6 +749,31 @@ export default function AvailabilityCalendar() {
   }
 
   // =====================================================
+  // KEYBOARD ENTER TO CONTINUE BOOKING
+  // =====================================================
+
+  useEffect(() => {
+    if (!selectedSlot) return;
+
+    function handleKeyDown(e) {
+      if (e.key === "Enter" && selectedSlot?.status === "Available") {
+        e.preventDefault();
+        const link = bookingLink(selectedSlot);
+        setSelectedSlot(null);
+        window.location.href = link;
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setSelectedSlot(null);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedSlot, selectedDate, filters]);
+
+  // =====================================================
   // STATUS BADGE
   // =====================================================
 

@@ -689,6 +689,33 @@ export default function BookRoom() {
   }
 
   // =====================================================
+  // KEYBOARD ENTER TO CONFIRM
+  // =====================================================
+
+  useEffect(() => {
+    if (!confirming) return
+
+    function handleKeyDown(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        if (!submitting) {
+          confirmBooking()
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        if (!submitting) {
+          setConfirming(false)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [confirming, submitting, form])
+
+  // =====================================================
   // CONFIRM BOOKING
   // =====================================================
 
