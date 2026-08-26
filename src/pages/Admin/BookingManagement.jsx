@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import client from '../../api/client'
 import { deleteAdminBooking } from '../../api/adminBookings'
+import { formatTime24, formatDateWithZeros } from '../../utils/timeUtils'
 
 import Card from '../../components/common/Card'
 import Button from '../../components/common/Button'
@@ -185,20 +186,13 @@ export default function BookingManagement() {
           'N/A',
 
         // Date
-        date:
-          b.bookingDate ??
-          b.date ??
-          '',
+        date: formatDateWithZeros(b.bookingDate ?? b.date ?? ''),
 
         // Start time
-        startTime: b.startTime
-          ? String(b.startTime).substring(0, 5)
-          : '',
+        startTime: formatTime24(b.startTime ?? ''),
 
         // End time
-        endTime: b.endTime
-          ? String(b.endTime).substring(0, 5)
-          : '',
+        endTime: formatTime24(b.endTime ?? ''),
 
         // Employee / creator
         createdBy:
@@ -389,7 +383,7 @@ export default function BookingManagement() {
       ================================================= */}
 
       <div>
-        <h1 className="font-display text-xl font-700 text-ink">
+        <h1 className="font-display text-3xl font-bold">
           Booking Management
         </h1>
 

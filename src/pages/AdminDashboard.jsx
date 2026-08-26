@@ -7,6 +7,7 @@ import NotificationCard from '../components/cards/NotificationCard'
 import Card from '../components/common/Card'
 import Button from '../components/common/Button'
 import StatusTag from '../components/common/StatusTag'
+import { formatTime24, formatDateWithZeros } from '../utils/timeUtils'
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null)
@@ -79,7 +80,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <h1 className="font-display text-xl font-700 text-ink">
+        <h1 className="font-display text-3xl font-bold">
           Admin Dashboard
         </h1>
 
@@ -95,7 +96,7 @@ export default function AdminDashboard() {
   if (error) {
     return (
       <div className="space-y-4">
-        <h1 className="font-display text-xl font-700 text-ink">
+        <h1 className="font-display text-3xl font-bold">
           Admin Dashboard
         </h1>
 
@@ -125,7 +126,7 @@ export default function AdminDashboard() {
   if (!data) {
     return (
       <div className="space-y-4">
-        <h1 className="font-display text-xl font-700 text-ink">
+        <h1 className="font-display text-3xl font-bold">
           Admin Dashboard
         </h1>
 
@@ -222,7 +223,7 @@ export default function AdminDashboard() {
       ====================================================== */}
 
       <div>
-        <h1 className="font-display text-xl font-700 text-ink">
+        <h1 className="font-display text-3xl font-bold">
           Admin Dashboard
         </h1>
 
@@ -322,21 +323,17 @@ export default function AdminDashboard() {
 
                       <p className="text-xs text-slate">
 
-                        {booking.bookingDate ||
+                        {formatDateWithZeros(booking.bookingDate ||
                           booking.date ||
-                          '—'}
+                          '')}
 
                         {' • '}
 
-                        {booking.startTime
-                          ? booking.startTime.substring(0, 5)
-                          : ''}
+                        {formatTime24(booking.startTime || '')}
 
                         {'–'}
 
-                        {booking.endTime
-                          ? booking.endTime.substring(0, 5)
-                          : ''}
+                        {formatTime24(booking.endTime || '')}
 
                       </p>
 

@@ -17,17 +17,21 @@ const formatTime = (value) => {
     return "";
   }
 
-  const text = String(value);
+  const text = String(value).trim();
+  let timePart = text;
 
   if (text.includes("T")) {
-    const timePart = text.split("T")[1];
-
-    return timePart
-      ? timePart.substring(0, 5)
-      : "";
+    timePart = text.split("T")[1] || "";
   }
 
-  return text.substring(0, 5);
+  const parts = timePart.split(":");
+  if (parts.length >= 2) {
+    const h = String(parts[0]).padStart(2, "0");
+    const m = String(parts[1]).padStart(2, "0");
+    return `${h}:${m}`;
+  }
+
+  return timePart.substring(0, 5);
 };
 
 const padNumber = (value) => String(value).padStart(2, "0");

@@ -1023,7 +1023,7 @@ function OfficeMapTab({
 
   return (
     <div className="office-map-tab">
-      <h1 className="text-xl font-bold text-slate-900 mb-1">
+      <h1 className="font-display text-3xl font-bold mb-1">
         Hotseat Reservation
       </h1>
 

@@ -13,7 +13,7 @@ export default function DashboardCard({ title, value, description, tone = 'defau
   const content = (
     <>
       <p className="font-mono text-[11px] uppercase tracking-wider opacity-70">{title}</p>
-      <p className="mt-2 font-display text-2xl font-700">{value}</p>
+      <p className="mt-2 font-display text-2xl font-700">{value ?? 0}</p>
       {description ? <p className="mt-1 text-sm opacity-80">{description}</p> : null}
     </>
   )

@@ -807,7 +807,7 @@ export default function AvailabilityCalendar() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
         <div>
-          <h1 className="font-display text-2xl font-700 text-ink">
+          <h1 className="font-display text-3xl font-bold">
             Workspace Availability
           </h1>
 

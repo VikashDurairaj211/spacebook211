@@ -49,21 +49,39 @@ function formatDisplayTime(time) {
   if (!time) return ''
   const value = String(time).trim()
   if (!value) return ''
+  let timePart = value
   if (value.includes('T')) {
-    const timePart = value.split('T')[1] || ''
-    return timePart.substring(0, 5)
+    timePart = value.split('T')[1] || ''
   }
-  return value.substring(0, 5)
+  const parts = timePart.split(':')
+  if (parts.length >= 2) {
+    const h = String(parts[0]).padStart(2, '0')
+    const m = String(parts[1]).padStart(2, '0')
+    return `${h}:${m}`
+  }
+  return timePart.substring(0, 5)
 }
 
 function formatDisplayDate(date) {
   if (!date) return ''
   const value = String(date).trim()
   if (!value) return ''
-  if (value.includes('T')) {
-    return value.split('T')[0]
+  const dateOnly = value.includes('T') ? value.split('T')[0] : value.substring(0, 10)
+  const parts = dateOnly.split(/[-/]/)
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      const y = parts[0]
+      const m = String(parts[1]).padStart(2, '0')
+      const d = String(parts[2]).padStart(2, '0')
+      return `${y}-${m}-${d}`
+    } else {
+      const d = String(parts[0]).padStart(2, '0')
+      const m = String(parts[1]).padStart(2, '0')
+      const y = parts[2]
+      return `${d}/${m}/${y}`
+    }
   }
-  return value.substring(0, 10)
+  return dateOnly
 }
 
 // =====================================================
@@ -682,7 +700,7 @@ export default function Reports() {
       ================================================= */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-xl font-700 text-ink">
+          <h1 className="font-display text-3xl font-bold">
             Reports & Analytics
           </h1>
           <p className="mt-1 text-sm text-slate">
@@ -1243,10 +1261,10 @@ export default function Reports() {
                             <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
                               {booking.module}
                             </td>
-                            <td className="px-4 py-3.5 text-slate-600 font-mono whitespace-nowrap">
+                            <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
                               {booking.date}
                             </td>
-                            <td className="px-4 py-3.5 text-slate-600 font-mono whitespace-nowrap">
+                            <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
                               {booking.startTime && booking.endTime
                                 ? `${booking.startTime} - ${booking.endTime}`
                                 : booking.startTime || '-'}

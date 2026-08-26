@@ -38,6 +38,7 @@ import Card from '../../components/common/Card'
 import Button from '../../components/common/Button'
 import Modal from '../../components/common/Modal'
 import { downloadCSV } from '../../utils/exportHelpers'
+import { formatTime24, formatDateWithZeros } from '../../utils/timeUtils'
 
 // =====================================================
 // Helper: Resolve Section from Seat Number
@@ -445,11 +446,24 @@ export default function HotseatManagement() {
                   ? 'Module 2 - Elcot Park - CMB'
                   : 'Module 1 - Elcot Park - CMB')
 
-              const timeStr =
+              const rawTimeStr =
                 b.expectedCheckInTime ||
                 b.expectedCheckIn ||
                 b.startTime ||
                 '10:00 - 11:00'
+
+              let timeStr = String(rawTimeStr).trim()
+              if (timeStr.includes('-')) {
+                const [startT, endT] = timeStr.split('-').map((s) => s.trim())
+                timeStr = `${formatTime24(startT)} - ${formatTime24(endT)}`
+              } else {
+                timeStr = formatTime24(timeStr)
+              }
+
+              const rawDate =
+                b.bookingDate ||
+                b.date ||
+                new Date().toISOString().split('T')[0]
 
               return {
                 id: b.id || b.bookingId || idx + 200,
@@ -470,10 +484,7 @@ export default function HotseatManagement() {
                     ? 'Tidel Park'
                     : 'Elcot Park'),
                 section: resolveFullSectionName(seatNum, resolvedModule),
-                date:
-                  b.bookingDate ||
-                  b.date ||
-                  new Date().toISOString().split('T')[0],
+                date: formatDateWithZeros(rawDate),
                 expectedCheckIn: timeStr,
                 status: String(b.status || 'APPROVED').toUpperCase(),
                 cancelReason: b.cancelReason || b.cancellationReason || '',
@@ -869,7 +880,7 @@ export default function HotseatManagement() {
       ================================================= */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-xl font-700 text-ink">
+          <h1 className="font-display text-3xl font-bold">
             Hotseat Management
           </h1>
           <p className="mt-1 text-sm text-slate">
@@ -896,9 +907,9 @@ export default function HotseatManagement() {
             size="sm"
             onClick={handleExportCSV}
             disabled={filteredBookings.length === 0}
-            className="flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-[11px] font-bold text-white shadow-xs whitespace-nowrap transition-all active:scale-95 border-0 h-7"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-xs font-bold text-white shadow-md shadow-blue-700/20 whitespace-nowrap transition-all active:scale-95 border-0"
           >
-            <FileText size={12} className="text-blue-100" />
+            <FileText size={14} className="text-blue-100" />
             <span className="text-white">Export CSV</span>
           </Button>
         </div>
@@ -1086,7 +1097,7 @@ export default function HotseatManagement() {
           <button
             type="button"
             onClick={() => setIsAuditModalOpen(true)}
-            className="flex items-center gap-1 px-2.5 py-1 bg-[#0284c7] hover:bg-[#0369a1] text-white font-semibold text-[11px] rounded-lg shadow-xs transition-all active:scale-95 border-0 h-7"
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#0284c7] hover:bg-[#0369a1] text-white font-semibold text-xs rounded-xl shadow-sm transition-all active:scale-95 border-0"
           >
             <Eye size={12} />
             <span>View</span>
@@ -1331,20 +1342,20 @@ export default function HotseatManagement() {
       {isAuditModalOpen &&
         createPortal(
           <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
-            <div className="w-full max-w-5xl rounded-3xl bg-white shadow-2xl p-6 relative flex flex-col max-h-[90vh] border border-slate-200 animate-in zoom-in-95 duration-150">
-              {/* Modal Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <h2 className="text-lg font-bold text-slate-900 font-display">
-                  Hotseat Reservation Records & Audit
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setIsAuditModalOpen(false)}
-                  className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-lg hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+            <div className="w-full max-w-5xl rounded-3xl bg-white shadow-2xl p-6 relative flex flex-col max-h-[92vh] border border-slate-200 animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3">
+              <h2 className="text-lg font-bold text-slate-900 font-display">
+                Hotseat Reservation Records & Audit
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsAuditModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-lg hover:bg-slate-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
               {/* Subheader with Filter Count & Search */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-2.5">
@@ -1415,7 +1426,7 @@ export default function HotseatManagement() {
                             <td className="px-4 py-3.5 font-medium text-slate-800 whitespace-nowrap">
                               {booking.employee}
                             </td>
-                            <td className="px-4 py-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">
+                            <td className="px-4 py-3.5 font-bold text-slate-900 whitespace-nowrap">
                               {booking.seat}
                             </td>
                             <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
@@ -1424,10 +1435,10 @@ export default function HotseatManagement() {
                             <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
                               {booking.section}
                             </td>
-                            <td className="px-4 py-3.5 text-slate-600 font-mono whitespace-nowrap">
+                            <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
                               {booking.date}
                             </td>
-                            <td className="px-4 py-3.5 text-slate-600 font-mono whitespace-nowrap">
+                            <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
                               {booking.expectedCheckIn || '10:00 AM'}
                             </td>
                             <td className="px-4 py-3.5 text-center whitespace-nowrap">
@@ -1542,7 +1553,7 @@ export default function HotseatManagement() {
                 <p className="text-xs uppercase tracking-wider text-slate font-semibold">
                   Seat Number
                 </p>
-                <p className="font-mono font-bold text-sky-700 mt-0.5">
+                <p className="font-bold text-sky-700 mt-0.5">
                   {selectedBooking.seat}
                 </p>
               </div>

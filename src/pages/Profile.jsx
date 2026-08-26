@@ -35,7 +35,7 @@ export default function Profile() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-xl font-700">My Profile</h1>
+        <h1 className="font-display text-3xl font-bold">My Profile</h1>
         <p className="mt-1 text-sm text-slate">Manage your personal details and preferences.</p>
       </div>
 

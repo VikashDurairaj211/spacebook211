@@ -124,14 +124,21 @@ export default function MyBookings() {
   const formatDisplayTime = (time) => {
     if (!time) return "";
 
-    const value = String(time);
+    const value = String(time).trim();
+    let timePart = value;
 
     if (value.includes("T")) {
-      const timePart = value.split("T")[1] || "";
-      return timePart.substring(0, 5);
+      timePart = value.split("T")[1] || "";
     }
 
-    return value.substring(0, 5);
+    const segments = timePart.split(":");
+    if (segments.length >= 2) {
+      const h = String(segments[0]).padStart(2, "0");
+      const m = String(segments[1]).padStart(2, "0");
+      return `${h}:${m}`;
+    }
+
+    return timePart.substring(0, 5);
   };
 
   // =====================================================
@@ -1437,7 +1444,7 @@ export default function MyBookings() {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-4xl font-semibold">
+          <h1 className="font-display text-3xl font-bold">
             My Bookings
           </h1>
 
