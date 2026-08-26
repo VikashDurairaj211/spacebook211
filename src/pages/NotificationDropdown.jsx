@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import client from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import {
+  getNotifications,
+  markAllNotificationsAsRead,
+  clearAllNotifications,
+  clearNotification,
+} from '../api/notifications'
 
 export default function NotificationDropdown({ onClose }) {
   const [notifications, setNotifications] = useState([])
@@ -100,14 +105,10 @@ export default function NotificationDropdown({ onClose }) {
     try {
       setLoading(true)
 
-      const endpoint = isAdmin
-        ? '/admin/notifications'
-        : '/employee/notifications'
-
-      const response = await client.get(endpoint)
-      const rawList = Array.isArray(response.data)
-        ? response.data
-        : response.data?.notifications || []
+      const responseData = await getNotifications()
+      const rawList = Array.isArray(responseData)
+        ? responseData
+        : responseData?.notifications || []
 
       const readIds = new Set(getReadNotificationIds().map(String))
       const clearedIds = new Set(getClearedNotificationIds().map(String))
@@ -144,18 +145,10 @@ export default function NotificationDropdown({ onClose }) {
 
   const handleMarkAllAsRead = async () => {
     try {
-      const endpoint = isAdmin
-        ? '/admin/notifications/read-all'
-        : '/employee/notifications/read-all'
-
       try {
-        await client.patch(endpoint, {})
+        await markAllNotificationsAsRead()
       } catch (err) {
-        try {
-          await client.put(endpoint, {})
-        } catch (e) {
-          // ignore
-        }
+        // ignore
       }
 
       const currentIds = notifications.map((n, idx) =>
@@ -177,6 +170,48 @@ export default function NotificationDropdown({ onClose }) {
         error
       )
     }
+  }
+
+  // =====================================================
+  // Clear All Notifications
+  // =====================================================
+
+  const handleClearAll = async () => {
+    try {
+      const currentIds = notifications.map((n, idx) =>
+        String(n.notificationId ?? n.id ?? n._id ?? idx)
+      )
+      saveClearedNotificationIds(currentIds)
+      saveReadNotificationIds(currentIds)
+      setNotifications([])
+
+      try {
+        await clearAllNotifications()
+      } catch (e) {
+        // ignore
+      }
+
+      window.dispatchEvent(new Event('notificationsRead'))
+    } catch (error) {
+      console.error('Failed to clear notifications:', error)
+    }
+  }
+
+  const handleClearSingle = async (e, notificationId) => {
+    e.stopPropagation()
+    const idStr = String(notificationId)
+    saveClearedNotificationIds([idStr])
+    setNotifications((prev) =>
+      prev.filter((n) => String(n.notificationId ?? n.id) !== idStr)
+    )
+
+    try {
+      await clearNotification(notificationId)
+    } catch (e) {
+      // ignore
+    }
+
+    window.dispatchEvent(new Event('notificationsRead'))
   }
 
   // =====================================================
@@ -213,6 +248,8 @@ export default function NotificationDropdown({ onClose }) {
   // Render
   // =====================================================
 
+  const hasUnread = notifications.some((item) => !item.isRead)
+
   return (
     <div className="absolute right-0 top-full z-50 mt-2 w-[420px] max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
 
@@ -231,15 +268,17 @@ export default function NotificationDropdown({ onClose }) {
           </p>
         </div>
 
-        {notifications.some((item) => !item.isRead) && (
-          <button
-            type="button"
-            onClick={handleMarkAllAsRead}
-            className="text-xs font-semibold text-slate-700 underline hover:text-slate-900"
-          >
-            Mark all as read
-          </button>
-        )}
+        <div>
+          {notifications.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Notifications List */}
@@ -280,9 +319,19 @@ export default function NotificationDropdown({ onClose }) {
                   )}
                 </div>
 
-                <span className="whitespace-nowrap font-mono text-[10px] uppercase text-slate-400">
-                  {item.timeAgo}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="whitespace-nowrap font-mono text-[10px] uppercase text-slate-400">
+                    {item.timeAgo}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => handleClearSingle(e, item.notificationId)}
+                    className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+                    title="Dismiss notification"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
 
               {/* Employee */}

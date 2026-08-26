@@ -15,6 +15,12 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useState, useMemo, useRef, useEffect } from 'react'
 
 import client from '../../api/client'
+import {
+  getNotifications,
+  markAllNotificationsAsRead,
+  clearAllNotifications,
+  clearNotification,
+} from '../../api/notifications'
 import NotificationDropdown from '../common/NotificationDropdown'
 
 export default function TopNav({
@@ -217,14 +223,10 @@ export default function TopNav({
         return
       }
 
-      const endpoint = isAdmin
-        ? '/admin/notifications'
-        : '/employee/notifications'
-
-      const response = await client.get(endpoint)
-      const rawList = Array.isArray(response.data)
-        ? response.data
-        : response.data?.notifications || []
+      const responseData = await getNotifications()
+      const rawList = Array.isArray(responseData)
+        ? responseData
+        : responseData?.notifications || []
 
       const readIds = new Set(getReadNotificationIds().map(String))
       const clearedIds = new Set(getClearedNotificationIds().map(String))
@@ -267,19 +269,11 @@ export default function TopNav({
         return
       }
 
-      const endpoint = isAdmin
-        ? '/admin/notifications/read-all'
-        : '/employee/notifications/read-all'
-
-      // Call backend
+      // Call backend API
       try {
-        await client.patch(endpoint, {})
+        await markAllNotificationsAsRead()
       } catch (err) {
-        try {
-          await client.put(endpoint, {})
-        } catch (e) {
-          // ignore
-        }
+        // ignore
       }
 
       // Persist read IDs locally
@@ -288,12 +282,59 @@ export default function TopNav({
       )
       saveReadNotificationIds(currentIds)
 
-      setNotifications([])
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, isRead: true }))
+      )
 
       window.dispatchEvent(new Event('notificationsRead'))
     } catch (error) {
       console.error('Failed to mark notifications as read:', error)
     }
+  }
+
+  // =====================================================
+  // Clear All Notifications
+  // =====================================================
+
+  const handleClearAll = async () => {
+    try {
+      const currentIds = notifications.map((n, idx) =>
+        String(n.notificationId ?? n.id ?? n._id ?? idx)
+      )
+      saveClearedNotificationIds(currentIds)
+      saveReadNotificationIds(currentIds)
+      setNotifications([])
+
+      try {
+        await clearAllNotifications()
+      } catch (e) {
+        // ignore
+      }
+
+      window.dispatchEvent(new Event('notificationsRead'))
+    } catch (error) {
+      console.error('Failed to clear notifications in TopNav:', error)
+    }
+  }
+
+  // =====================================================
+  // Clear Single Notification
+  // =====================================================
+
+  const handleClearOne = async (id) => {
+    const idStr = String(id)
+    saveClearedNotificationIds([idStr])
+    setNotifications((prev) =>
+      prev.filter((n) => String(n.notificationId ?? n.id) !== idStr)
+    )
+
+    try {
+      await clearNotification(id)
+    } catch (e) {
+      // ignore
+    }
+
+    window.dispatchEvent(new Event('notificationsRead'))
   }
 
   // =====================================================
@@ -788,6 +829,12 @@ export default function TopNav({
               }
               onMarkAllRead={
                 handleMarkAllRead
+              }
+              onClearAll={
+                handleClearAll
+              }
+              onClearOne={
+                handleClearOne
               }
               onViewAll={() => {
                 navigate(

@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
 import NotificationCard from '../components/cards/NotificationCard'
 import { useAuth } from '../context/AuthContext'
-import client from '../api/client'
+import {
+  getNotifications,
+  markAllNotificationsAsRead,
+  clearAllNotifications as clearAllNotificationsApi,
+  clearNotification as clearNotificationApi,
+} from '../api/notifications'
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([])
@@ -109,14 +114,10 @@ export default function Notifications() {
         return
       }
 
-      const endpoint = isAdmin
-        ? '/admin/notifications'
-        : '/employee/notifications'
-
-      const response = await client.get(endpoint)
-      const rawList = Array.isArray(response.data)
-        ? response.data
-        : response.data?.notifications || []
+      const responseData = await getNotifications()
+      const rawList = Array.isArray(responseData)
+        ? responseData
+        : responseData?.notifications || []
 
       const readIds = new Set(getReadNotificationIds().map(String))
       const clearedIds = new Set(getClearedNotificationIds().map(String))
@@ -168,19 +169,11 @@ export default function Notifications() {
         return
       }
 
-      const endpoint = isAdmin
-        ? '/admin/notifications/read-all'
-        : '/employee/notifications/read-all'
-
-      // Call backend
+      // Call backend API
       try {
-        await client.patch(endpoint, {})
+        await markAllNotificationsAsRead()
       } catch (err) {
-        try {
-          await client.put(endpoint, {})
-        } catch (e) {
-          // ignore
-        }
+        // ignore
       }
 
       // Persist read IDs locally
@@ -245,10 +238,7 @@ export default function Notifications() {
     setNotifications([])
 
     try {
-      const endpoint = isAdmin
-        ? '/admin/notifications/clear'
-        : '/employee/notifications/clear'
-      await client.delete(endpoint)
+      await clearAllNotificationsApi()
     } catch (e) {
       // ignore
     }
@@ -256,10 +246,17 @@ export default function Notifications() {
     window.dispatchEvent(new Event('notificationsRead'))
   }
 
-  const clearNotification = (notificationId) => {
+  const clearNotification = async (notificationId) => {
     const idStr = String(notificationId)
     saveClearedNotificationIds([idStr])
     setNotifications((prev) => prev.filter((item) => String(item.notificationId) !== idStr))
+
+    try {
+      await clearNotificationApi(notificationId)
+    } catch (e) {
+      // ignore
+    }
+
     window.dispatchEvent(new Event('notificationsRead'))
   }
 
@@ -293,7 +290,7 @@ export default function Notifications() {
       </div>
 
 
-      {/* Unread Count */}
+      {/* Notification Status Banner */}
 
       <div className="flex items-center justify-between rounded-2xl border border-line bg-white p-4">
 
@@ -303,27 +300,18 @@ export default function Notifications() {
           </p>
 
           <p className="mt-1 text-xs text-slate">
-            {unreadCount} unread notification
-            {unreadCount === 1 ? '' : 's'}
+            {notifications.length === 0
+              ? 'No notifications'
+              : `${notifications.length} notification${notifications.length === 1 ? '' : 's'}`}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {unreadCount > 0 && (
-            <button
-              type="button"
-              onClick={markAllAsRead}
-              className="rounded-xl bg-[#17324D] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
-            >
-              Mark all as read
-            </button>
-          )}
-
+        <div>
           {notifications.length > 0 && (
             <button
               type="button"
               onClick={clearAllNotifications}
-              className="rounded-xl border border-line bg-white px-4 py-2 text-xs font-semibold text-ink transition hover:bg-portal-bg"
+              className="rounded-xl bg-[#17324D] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
             >
               Clear all
             </button>

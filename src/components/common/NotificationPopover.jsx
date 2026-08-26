@@ -1,17 +1,66 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getNotifications, markAllNotificationsAsRead } from "../../api/notifications";
+import {
+  getNotifications,
+  markAllNotificationsAsRead,
+  clearAllNotifications,
+  clearNotification,
+} from "../../api/notifications";
 
 export default function NotificationPopover({ onClose }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Helper to get locally marked read notification IDs
+  const getReadNotificationIds = () => {
+    try {
+      const raw = localStorage.getItem('spacebook_read_notifications');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  // Helper to get locally cleared/dismissed notification IDs
+  const getClearedNotificationIds = () => {
+    try {
+      const raw = localStorage.getItem('spacebook_cleared_notifications');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  const saveClearedNotificationIds = (ids) => {
+    try {
+      const existing = getClearedNotificationIds();
+      const merged = Array.from(new Set([...existing, ...ids]));
+      localStorage.setItem('spacebook_cleared_notifications', JSON.stringify(merged));
+    } catch (e) {
+      // ignore
+    }
+  };
+
   const fetchNotifications = async () => {
     try {
       setLoading(true);
       const data = await getNotifications();
-      const list = Array.isArray(data) ? data : data.notifications || [];
-      setNotifications(list);
+      const rawList = Array.isArray(data) ? data : data.notifications || [];
+      const readIds = new Set(getReadNotificationIds().map(String));
+      const clearedIds = new Set(getClearedNotificationIds().map(String));
+
+      const mapped = rawList
+        .map((n, idx) => {
+          const id = String(n.notificationId ?? n.id ?? idx);
+          return {
+            ...n,
+            notificationId: id,
+            isRead: n.isRead === true || n.is_read === true || readIds.has(id),
+          };
+        })
+        .filter((n) => !clearedIds.has(String(n.notificationId)));
+
+      setNotifications(mapped);
     } catch (err) {
       console.error("Failed to load notifications:", err);
       setNotifications([]);
@@ -22,6 +71,15 @@ export default function NotificationPopover({ onClose }) {
 
   useEffect(() => {
     fetchNotifications();
+
+    const handleRefresh = () => {
+      fetchNotifications();
+    };
+
+    window.addEventListener("notificationsRead", handleRefresh);
+    return () => {
+      window.removeEventListener("notificationsRead", handleRefresh);
+    };
   }, []);
 
   const handleMarkAllRead = async () => {
@@ -30,12 +88,46 @@ export default function NotificationPopover({ onClose }) {
       setNotifications((prev) =>
         prev.map((n) => ({ ...n, isRead: true }))
       );
+      window.dispatchEvent(new Event("notificationsRead"));
     } catch (err) {
       console.error("Failed to mark notifications as read:", err);
       setNotifications((prev) =>
         prev.map((n) => ({ ...n, isRead: true }))
       );
     }
+  };
+
+  const handleClearAll = async () => {
+    const currentIds = notifications.map((n, idx) =>
+      String(n.notificationId ?? n.id ?? idx)
+    );
+    saveClearedNotificationIds(currentIds);
+    setNotifications([]);
+
+    try {
+      await clearAllNotifications();
+    } catch (e) {
+      // ignore
+    }
+
+    window.dispatchEvent(new Event("notificationsRead"));
+  };
+
+  const handleClearSingle = async (e, id) => {
+    e.stopPropagation();
+    const idStr = String(id);
+    saveClearedNotificationIds([idStr]);
+    setNotifications((prev) =>
+      prev.filter((n) => String(n.notificationId ?? n.id) !== idStr)
+    );
+
+    try {
+      await clearNotification(id);
+    } catch (e) {
+      // ignore
+    }
+
+    window.dispatchEvent(new Event("notificationsRead"));
   };
 
   const hasUnread = notifications.some((n) => !n.isRead);
@@ -49,14 +141,18 @@ export default function NotificationPopover({ onClose }) {
           <p className="text-xs text-slate mt-0.5">Recent alerts for your account.</p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleMarkAllRead}
-          disabled={!hasUnread || loading}
-          className="rounded-xl border border-line px-3 py-1.5 text-xs text-slate hover:text-ink focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:opacity-40 disabled:cursor-not-allowed transition"
-        >
-          Mark all as read
-        </button>
+        <div>
+          {notifications.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              disabled={loading}
+              className="rounded-xl border border-line px-2.5 py-1 text-xs font-semibold text-slate hover:text-ink focus:outline-none transition"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Notification Items List */}
@@ -80,28 +176,37 @@ export default function NotificationPopover({ onClose }) {
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     {/* DTO Title */}
-                    <p className="text-xs font-bold text-slate-900">
-                      {item.title || "Notification"}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-slate-900 truncate">
+                        {item.title || "Notification"}
+                      </p>
+                      {isUnread && (
+                        <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                      )}
+                    </div>
                     {/* DTO Message */}
                     {item.message && (
-                      <p className="text-xs text-slate-600 mt-1">
+                      <p className="text-xs text-slate-600 mt-1 line-clamp-2">
                         {item.message}
                       </p>
                     )}
+                    {/* DTO TimeAgo / CreatedOn */}
+                    <p className="mt-1.5 text-[10px] text-slate-400 font-mono">
+                      {item.timeAgo || item.createdOn || "Just now"}
+                    </p>
                   </div>
 
-                  {isUnread && (
-                    <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0 mt-1" />
-                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => handleClearSingle(e, notificationId)}
+                    className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-ink transition"
+                    title="Dismiss notification"
+                  >
+                    ✕
+                  </button>
                 </div>
-
-                {/* DTO TimeAgo / CreatedOn */}
-                <p className="mt-1.5 text-[10px] text-slate-400 font-mono">
-                  {item.timeAgo || item.createdOn || "Just now"}
-                </p>
               </div>
             );
           })
