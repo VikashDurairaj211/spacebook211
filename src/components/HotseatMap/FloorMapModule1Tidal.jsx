@@ -54,28 +54,37 @@ function Seat({ seat, selected, onClick }) {
   }
 
   const rawStatus = (seat.status || "").toLowerCase();
-  const isAvailable = rawStatus === "vacant" || rawStatus === "available";
-  const isMyBooked = rawStatus === "my-booked";
-  const isOccupied = rawStatus === "occupied" || rawStatus === "booked";
-  const isReserved = rawStatus === "reserved";
+  const isOccupied =
+    rawStatus === "occupied" ||
+    rawStatus === "booked" ||
+    rawStatus === "confirmed" ||
+    rawStatus === "approved" ||
+    rawStatus === "checked in" ||
+    rawStatus === "checkedin" ||
+    rawStatus === "1" ||
+    rawStatus === "true" ||
+    seat.isBooked === true ||
+    seat.isOccupied === true;
+
+  const isReserved = rawStatus === "reserved" || rawStatus === "pending";
+  const isMyBooked = rawStatus === "my-booked" || seat.isMyBooking === true;
+  const isAvailable = !isOccupied && !isReserved && !isMyBooked;
 
   let statusClass = "tp-vacant";
   if (selected || rawStatus === "selected") {
     statusClass = "tp-selected";
+  } else if (isMyBooked) {
+    statusClass = "tp-my-booked";
   } else if (isOccupied) {
     statusClass = "tp-occupied";
   } else if (isReserved) {
     statusClass = "tp-reserved";
-  } else if (isMyBooked) {
-    statusClass = "tp-my-booked";
-  } else if (isAvailable) {
+  } else {
     statusClass = "tp-vacant";
   }
 
-  const isBookable =
-    isAvailable ||
-    isMyBooked ||
-    (!isOccupied && !isReserved);
+  // Available seats and user's own booking are clickable.
+  const isBookable = isAvailable || isMyBooked;
 
   const formattedSeatId = `WS-04-${String(seat.number).padStart(3, "0")}`;
 

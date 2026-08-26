@@ -19,6 +19,17 @@ function timeToMinutes(val) {
   return h * 60 + m
 }
 
+function formatTimeWithAmPm(val) {
+  if (!val) return ''
+  const [hStr, mStr] = String(val).substring(0, 5).split(':')
+  const h = Number(hStr)
+  const m = Number(mStr || 0)
+  if (isNaN(h)) return val
+  const period = h >= 12 ? 'PM' : 'AM'
+  const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h
+  return `${String(displayH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`
+}
+
 function formatHourLabel(hourStr) {
   const h = Number(hourStr)
   if (isNaN(h)) return hourStr
@@ -147,6 +158,7 @@ export default function ScrollableTimePicker({
 
     if (isMinuteDisabled(hour, minute)) return
     onChange?.(`${hour}:${minute}`)
+    setIsOpen(false)
   }
 
   // Scroll active item into view on open
@@ -209,7 +221,7 @@ export default function ScrollableTimePicker({
               : 'text-slate-500 font-normal'
           }
         >
-          {currentValue ? `${currentValue} (${formatHourLabel(selectedHour || currentValue.slice(0, 2))})` : placeholder}
+          {currentValue ? formatTimeWithAmPm(currentValue) : placeholder}
         </span>
 
         <svg

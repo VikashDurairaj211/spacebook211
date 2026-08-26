@@ -1095,10 +1095,10 @@ export default function RoomManagement() {
   return (
     <div className="space-y-3.5">
       <div>
-        <h1 className="font-display text-lg font-bold text-ink">
+        <h1 className="font-display text-3xl font-bold">
           Workspace Administration
         </h1>
-        <p className="mt-0.5 text-xs text-slate">
+        <p className="mt-1 text-sm text-slate">
           Manage workspace inventory, capacity, availability, and facilities dynamically.
         </p>
       </div>

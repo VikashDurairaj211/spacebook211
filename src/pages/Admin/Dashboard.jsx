@@ -5,6 +5,7 @@ import client from '../../api/client'
 
 import Card from '../../components/common/Card'
 import DashboardCard from '../../components/cards/DashboardCard'
+import { formatTime24, formatDateWithZeros } from '../../utils/timeUtils'
 
 // =====================================================
 // Status Badge
@@ -238,7 +239,7 @@ export default function AdminDashboard() {
       ================================================= */}
 
       <div>
-        <h1 className="font-display text-xl font-700 text-ink">
+        <h1 className="font-display text-3xl font-bold">
           Admin Dashboard
         </h1>
 
@@ -336,19 +337,11 @@ export default function AdminDashboard() {
                         </p>
 
                         <p className="text-xs text-slate">
-                          {booking.bookingDate}
+                          {formatDateWithZeros(booking.bookingDate)}
                           {' • '}
-                          {booking.startTime
-                            ? String(
-                                booking.startTime
-                              ).substring(0, 5)
-                            : ''}
-                          –
-                          {booking.endTime
-                            ? String(
-                                booking.endTime
-                              ).substring(0, 5)
-                            : ''}
+                          {formatTime24(booking.startTime || '')}
+                          {' – '}
+                          {formatTime24(booking.endTime || '')}
                         </p>
 
                       </div>

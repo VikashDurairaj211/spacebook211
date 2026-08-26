@@ -38,8 +38,10 @@ function formatTime(time) {
       ? "PM"
       : "AM";
 
-  return `${hour % 12 || 12}:${String(
-    minute
+  const displayH = hour % 12 || 12;
+
+  return `${String(displayH).padStart(2, "0")}:${String(
+    minute || 0
   ).padStart(2, "0")} ${suffix}`;
 }
 

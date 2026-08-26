@@ -41,31 +41,15 @@ export default function NotificationDropdown({ onClose }) {
 
   const formatTime = (time) => {
     if (!time) return ''
-
-    // Handles "08:00:00"
-    const parts = time.split(':')
-
-    if (parts.length < 2) {
-      return time
+    const val = String(time).trim()
+    const timePart = val.includes('T') ? val.split('T')[1] || '' : val
+    const parts = timePart.split(':')
+    if (parts.length >= 2) {
+      const hours = String(parts[0]).padStart(2, '0')
+      const minutes = String(parts[1]).padStart(2, '0')
+      return `${hours}:${minutes}`
     }
-
-    const hours = Number(parts[0])
-    const minutes = Number(parts[1])
-
-    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-      return time
-    }
-
-    const date = new Date()
-
-    date.setHours(hours)
-    date.setMinutes(minutes)
-    date.setSeconds(0)
-
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+    return timePart.substring(0, 5)
   }
 
   // Helper to get locally marked read notification IDs

@@ -79,34 +79,42 @@ export default function MyBookings() {
   const getBookingModule = (booking) => {
     if (!booking) return "-";
 
-    if (booking.isHotseat || booking.seatNumber) {
-      const seat = String(booking.seatNumber || booking.roomName || "").toUpperCase();
-      const mod = String(booking.module || "").toLowerCase();
-      if (
-        seat.startsWith("WS-04") ||
-        seat.startsWith("WS") ||
-        mod.includes("tidel") ||
-        mod.includes("tidal")
-      ) {
-        return "Module 1 - Tidel Park - CMB";
-      }
-      if (seat.includes("EO2") || mod.includes("module 2") || mod.includes("eo2")) {
-        return "Module 2 - Elcot Park - CMB";
-      }
-      if (seat.includes("EO1") || mod.includes("module 1") || mod.includes("eo1")) {
-        return "Module 1 - Elcot Park - CMB";
-      }
-    }
-
-    const mod =
+    // 1. Direct API / DB module fields have strict top priority
+    const apiModule =
       booking.module ||
+      booking.moduleName ||
       booking.Module ||
       booking.room?.module ||
       booking.room?.Module;
 
-    return mod && String(mod).trim() !== ""
-      ? mod
-      : "-";
+    if (apiModule && String(apiModule).trim() !== "" && String(apiModule).trim() !== "-") {
+      return String(apiModule).trim();
+    }
+
+    // 2. Derive accurately from building / seatNumber if module is null/missing
+    const building = String(booking.building || "").toLowerCase();
+    const seat = String(booking.seatNumber || booking.roomName || "").toUpperCase();
+
+    if (building.includes("tidel") || building.includes("tidal")) {
+      return "Module 1 - Tidel Park - CMB";
+    }
+
+    if (building.includes("elcot")) {
+      if (seat.includes("EO2")) return "Module 2 - Elcot Park - CMB";
+      return "Module 1 - Elcot Park - CMB";
+    }
+
+    if (seat.includes("EO2")) {
+      return "Module 2 - Elcot Park - CMB";
+    }
+    if (seat.includes("EO1")) {
+      return "Module 1 - Elcot Park - CMB";
+    }
+    if (seat.startsWith("WS-04") || seat.includes("TIDEL") || seat.includes("TIDAL")) {
+      return "Module 1 - Tidel Park - CMB";
+    }
+
+    return "-";
   };
 
   // =====================================================
@@ -116,14 +124,21 @@ export default function MyBookings() {
   const formatDisplayTime = (time) => {
     if (!time) return "";
 
-    const value = String(time);
+    const value = String(time).trim();
+    let timePart = value;
 
     if (value.includes("T")) {
-      const timePart = value.split("T")[1] || "";
-      return timePart.substring(0, 5);
+      timePart = value.split("T")[1] || "";
     }
 
-    return value.substring(0, 5);
+    const segments = timePart.split(":");
+    if (segments.length >= 2) {
+      const h = String(segments[0]).padStart(2, "0");
+      const m = String(segments[1]).padStart(2, "0");
+      return `${h}:${m}`;
+    }
+
+    return timePart.substring(0, 5);
   };
 
   // =====================================================
@@ -314,22 +329,31 @@ export default function MyBookings() {
               : "") ||
             "";
 
-          let resolvedModule = booking.module ?? booking.Module ?? "";
+          // Strict priority: use the module provided directly by the API / DB
+          let resolvedModule =
+            booking.module ||
+            booking.moduleName ||
+            booking.Module ||
+            "";
+
           const seatUpper = String(seatNum).toUpperCase();
+          const building = String(booking.building || "").toLowerCase();
+
           if (!resolvedModule || resolvedModule === "-" || resolvedModule === "null") {
-            if (
-              seatUpper.startsWith("WS-04") ||
-              seatUpper.startsWith("WS") ||
-              seatUpper.includes("TIDEL") ||
-              seatUpper.includes("TIDAL")
-            ) {
+            if (building.includes("tidel") || building.includes("tidal")) {
               resolvedModule = "Module 1 - Tidel Park - CMB";
+            } else if (building.includes("elcot")) {
+              resolvedModule = seatUpper.includes("EO2")
+                ? "Module 2 - Elcot Park - CMB"
+                : "Module 1 - Elcot Park - CMB";
             } else if (seatUpper.includes("EO2")) {
               resolvedModule = "Module 2 - Elcot Park - CMB";
             } else if (seatUpper.includes("EO1")) {
               resolvedModule = "Module 1 - Elcot Park - CMB";
-            } else {
+            } else if (seatUpper.startsWith("WS-04") || seatUpper.includes("TIDEL") || seatUpper.includes("TIDAL")) {
               resolvedModule = "Module 1 - Tidel Park - CMB";
+            } else {
+              resolvedModule = "-";
             }
           }
 
@@ -1420,7 +1444,7 @@ export default function MyBookings() {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-4xl font-semibold">
+          <h1 className="font-display text-3xl font-bold">
             My Bookings
           </h1>
 

@@ -33,30 +33,38 @@ function Seat({ seat, selected, onClick }) {
 
   // Normalize status to handle both parent variations ("available") and internal variations ("vacant")
   const rawStatus = (seat.status || "").toLowerCase();
-  const isAvailable = rawStatus === "vacant" || rawStatus === "available";
-  const isMyBooked = rawStatus === "my-booked";
-  const isOccupied = rawStatus === "occupied" || rawStatus === "booked";
-  const isReserved = rawStatus === "reserved";
+  const isOccupied =
+    rawStatus === "occupied" ||
+    rawStatus === "booked" ||
+    rawStatus === "confirmed" ||
+    rawStatus === "approved" ||
+    rawStatus === "checked in" ||
+    rawStatus === "checkedin" ||
+    rawStatus === "1" ||
+    rawStatus === "true" ||
+    seat.isBooked === true ||
+    seat.isOccupied === true;
+
+  const isReserved = rawStatus === "reserved" || rawStatus === "pending";
+  const isMyBooked = rawStatus === "my-booked" || seat.isMyBooking === true;
+  const isAvailable = !isOccupied && !isReserved && !isMyBooked;
 
   // Map status class correctly for CSS styling
   let statusClass = "m1-vacant";
   if (selected || rawStatus === "selected") {
     statusClass = "m1-selected";
+  } else if (isMyBooked) {
+    statusClass = "m1-my-booked";
   } else if (isOccupied) {
     statusClass = "m1-occupied";
   } else if (isReserved) {
     statusClass = "m1-reserved";
-  } else if (isMyBooked) {
-    statusClass = "m1-my-booked";
-  } else if (isAvailable) {
+  } else {
     statusClass = "m1-vacant";
   }
 
-  // Available seats, user's own booking, or vacant slots can be clicked.
-  const isBookable =
-    isAvailable ||
-    isMyBooked ||
-    (!isOccupied && !isReserved);
+  // Available seats and user's own booking are clickable.
+  const isBookable = isAvailable || isMyBooked;
 
   return (
     <button

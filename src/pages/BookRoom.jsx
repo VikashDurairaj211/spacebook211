@@ -827,7 +827,7 @@ export default function BookRoom() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
 
-      <h1 className="font-display text-xl font-700">
+      <h1 className="font-display text-3xl font-bold">
         Booking
       </h1>
 
