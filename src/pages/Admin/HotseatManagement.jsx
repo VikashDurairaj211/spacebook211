@@ -29,6 +29,9 @@ import {
   Layers,
   MapPin,
   Loader2,
+  UserCheck,
+  LogOut,
+  AlertCircle,
 } from 'lucide-react'
 
 import client from '../../api/client'
@@ -44,6 +47,33 @@ import Button from '../../components/common/Button'
 import Modal from '../../components/common/Modal'
 import { downloadCSV } from '../../utils/exportHelpers'
 import { formatTime24, formatDateWithZeros } from '../../utils/timeUtils'
+
+// =====================================================
+// Helper: Convert any date format into YYYY-MM-DD
+// =====================================================
+
+function toStandardIsoDate(dateVal) {
+  if (!dateVal || dateVal === '-') return ''
+  const str = String(dateVal).trim()
+  const dateOnly = str.includes('T') ? str.split('T')[0] : str.substring(0, 10)
+  const parts = dateOnly.split(/[-/.]/)
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      // YYYY-MM-DD
+      const y = parts[0]
+      const m = String(parts[1]).padStart(2, '0')
+      const d = String(parts[2]).padStart(2, '0')
+      return `${y}-${m}-${d}`
+    } else if (parts[2].length === 4) {
+      // DD-MM-YYYY
+      const y = parts[2]
+      const m = String(parts[1]).padStart(2, '0')
+      const d = String(parts[0]).padStart(2, '0')
+      return `${y}-${m}-${d}`
+    }
+  }
+  return dateOnly
+}
 
 // =====================================================
 // Helper: Resolve Section from Seat Number
@@ -84,29 +114,6 @@ function resolveFullSectionName(seatNumber, module) {
   if (short === 'Section B') return 'Section B (Seats 63 – 118 / 33 – 79)'
   if (short === 'Section C') return 'Section C (Seats 119 – 164 / 80 – 131)'
   return 'Section D (Seats 165 – 224)'
-}
-
-function parseToIsoDate(rawDate) {
-  if (!rawDate) return ''
-  const val = String(rawDate).trim()
-  if (val.includes('T')) return val.split('T')[0]
-  if (val.includes('-')) {
-    const parts = val.split('-')
-    if (parts[0].length === 4) {
-      return `${parts[0]}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}`
-    }
-    return `${parts[2]}-${String(parts[1]).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`
-  }
-  if (val.includes('/')) {
-    const parts = val.split('/')
-    if (parts[2]?.length === 4) {
-      return `${parts[2]}-${String(parts[1]).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`
-    }
-    if (parts[0]?.length === 4) {
-      return `${parts[0]}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}`
-    }
-  }
-  return val
 }
 
 // =====================================================
@@ -263,20 +270,29 @@ export default function HotseatManagement() {
       setLoading(true)
       setError(null)
 
+      const normalizeTimeframe = (tf) => {
+        if (!tf || tf === 'All') return null
+        if (tf === 'Today') return 'daily'
+        if (tf === 'This Week') return 'weekly'
+        if (tf === 'This Month') return 'monthly'
+        return tf.toLowerCase()
+      }
+
       const filterDto = {
-        timeframe: timeFilter,
+        timeframe: normalizeTimeframe(timeFilter),
         module: moduleFilter === 'All' ? null : moduleFilter,
         status: statusFilter === 'All' ? null : statusFilter,
+        page: 1,
+        pageSize: 1000,
       }
 
       // Fetch dynamic endpoints in parallel
-      const [recordsRes, dashboardRes, analyticsRes, filtersRes, fallbackRes] =
+      const [recordsRes, dashboardRes, analyticsRes, filtersRes] =
         await Promise.allSettled([
           getHotseatRecords(filterDto),
           getHotseatDashboard(filterDto),
           getHotseatAnalytics(filterDto),
           getHotseatFilters(),
-          client.get('/Hotseat'),
         ])
 
       // 1. Process Filter Options
@@ -285,17 +301,40 @@ export default function HotseatManagement() {
         const rawMods = Array.isArray(fData.modules)
           ? fData.modules
           : Array.isArray(fData)
-          ? fData
-          : []
+            ? fData
+            : []
+        const formatCleanModuleLabel = (str) => {
+          if (!str) return str
+          const lower = str.toLowerCase()
+          if (lower.includes('tidel') || lower.includes('tidal')) {
+            return 'Module 1 - Tidel Park'
+          }
+          if (lower.includes('module 2') || lower.includes('eo2')) {
+            return 'Module 2 - Elcot Park'
+          }
+          if (lower.includes('module 1') || lower.includes('elcot')) {
+            return 'Module 1 - Elcot Park'
+          }
+          return str
+        }
+
         const parsedMods = rawMods
           .map((m, idx) => {
             if (typeof m === 'object' && m !== null) {
+              const rawLabel = String(
+                m.label ?? m.name ?? m.value ?? `Module ${idx + 1}`
+              )
               return {
-                value: String(m.value ?? m.name ?? m.id ?? m.label ?? `module-${idx}`),
-                label: String(m.label ?? m.name ?? m.value ?? `Module ${idx + 1}`),
+                value: String(
+                  m.value ?? m.name ?? m.id ?? m.label ?? `module-${idx}`
+                ),
+                label: formatCleanModuleLabel(rawLabel),
               }
             }
-            return { value: String(m), label: String(m) }
+            return {
+              value: String(m),
+              label: formatCleanModuleLabel(String(m)),
+            }
           })
           .filter(
             (m) =>
@@ -303,6 +342,21 @@ export default function HotseatManagement() {
               !m.label.toLowerCase().includes('all module') &&
               m.value !== ''
           )
+
+        // Strict order: 1. Tidel Park, 2. Elcot Module 1, 3. Elcot Module 2
+        parsedMods.sort((a, b) => {
+          const textA = (a.label + ' ' + a.value).toLowerCase()
+          const textB = (b.label + ' ' + b.value).toLowerCase()
+
+          const getRank = (text) => {
+            if (text.includes('tidel') || text.includes('tidal')) return 1
+            if (text.includes('module 2') || text.includes('eo2')) return 3
+            if (text.includes('module 1') || text.includes('elcot')) return 2
+            return 4
+          }
+
+          return getRank(textA) - getRank(textB)
+        })
 
         const rawStatuses = Array.isArray(fData.statuses) ? fData.statuses : []
         const parsedStatuses = rawStatuses
@@ -351,18 +405,6 @@ export default function HotseatManagement() {
           : rVal?.items || rVal?.records || rVal?.bookings || rVal?.data || []
       }
 
-      // If records endpoint returned empty or failed, fallback to /Hotseat
-      if (
-        rawList.length === 0 &&
-        fallbackRes.status === 'fulfilled' &&
-        fallbackRes.value?.data
-      ) {
-        const raw = fallbackRes.value.data
-        rawList = Array.isArray(raw)
-          ? raw
-          : raw?.bookings || raw?.data || []
-      }
-
       const mapped = rawList.map((b, idx) => {
         const seatNum =
           typeof b.seat === 'object' && b.seat !== null
@@ -373,10 +415,10 @@ export default function HotseatManagement() {
           typeof b.module === 'object' && b.module !== null
             ? b.module.name || b.module.title || ''
             : b.module ||
-              b.moduleName ||
-              (String(seatNum).startsWith('WS-04')
-                ? 'Module 1 - Tidel Park - CMB'
-                : String(seatNum).includes('EO2')
+            b.moduleName ||
+            (String(seatNum).startsWith('WS-04')
+              ? 'Module 1 - Tidel Park - CMB'
+              : String(seatNum).includes('EO2')
                 ? 'Module 2 - Elcot Park - CMB'
                 : 'Module 1 - Elcot Park - CMB')
 
@@ -406,12 +448,32 @@ export default function HotseatManagement() {
             ? b.user.name || b.user.fullName || b.user.email || 'Employee'
             : b.employeeName || b.userName || b.requestedBy || b.user || 'Employee'
 
-        const statusStr =
+        const rawStatus =
           typeof b.status === 'object' && b.status !== null
-            ? String(b.status.name || b.status.status || 'CONFIRMED').toUpperCase()
-            : String(b.status || 'CONFIRMED').toUpperCase()
+            ? b.status.name || b.status.status || ''
+            : b.status || b.bookingStatus || b.statusName || ''
 
-        const isoDate = parseToIsoDate(rawDate)
+        let statusStr = String(rawStatus).toUpperCase()
+        if (
+          b.cancelReason ||
+          b.cancellationReason ||
+          statusStr.includes('CANCEL') ||
+          statusStr === 'REJECTED'
+        ) {
+          statusStr = 'CANCELLED'
+        } else if (
+          b.actualCheckInTime ||
+          b.checkInTime ||
+          statusStr.includes('CHECK')
+        ) {
+          statusStr = 'CHECKED IN'
+        } else if (statusStr.includes('RELEASE')) {
+          statusStr = 'RELEASED'
+        } else if (statusStr.includes('EXPIR')) {
+          statusStr = 'EXPIRED'
+        } else {
+          statusStr = 'CONFIRMED'
+        }
 
         return {
           id: b.id || b.bookingId || idx + 1,
@@ -428,7 +490,7 @@ export default function HotseatManagement() {
               : 'Elcot Park'),
           section: resolveFullSectionName(seatNum, resolvedModule),
           date: rawDate ? formatDateWithZeros(rawDate) : '-',
-          isoDate: isoDate,
+          isoDate: toStandardIsoDate(rawDate),
           expectedCheckIn: timeStr,
           status: statusStr,
           cancelReason: String(b.cancelReason || b.cancellationReason || ''),
@@ -440,7 +502,7 @@ export default function HotseatManagement() {
         const idA = Number(a.bookingId) || 0
         const idB = Number(b.bookingId) || 0
         if (idA !== idB) return idB - idA
-        return String(b.isoDate || b.date || '').localeCompare(String(a.isoDate || a.date || ''))
+        return String(b.date || '').localeCompare(String(a.date || ''))
       })
 
       setBookings(mapped)
@@ -448,7 +510,7 @@ export default function HotseatManagement() {
       console.error('Failed to load live hotseat data:', err)
       setError(
         err?.response?.data?.message ||
-          'Unable to load live hotseat records from server.'
+        'Unable to load live hotseat records from server.'
       )
       setBookings([])
     } finally {
@@ -466,58 +528,105 @@ export default function HotseatManagement() {
 
   const filteredBookings = useMemo(() => {
     const now = new Date()
-    const formatLocalDate = (d) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-        d.getDate()
-      ).padStart(2, '0')}`
-
-    const todayStr = formatLocalDate(now)
+    const todayStr = now.toISOString().split('T')[0]
 
     const sevenDaysAgo = new Date(now)
     sevenDaysAgo.setDate(now.getDate() - 7)
-    const sevenDaysAgoStr = formatLocalDate(sevenDaysAgo)
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0]
 
     const thirtyDaysAgo = new Date(now)
     thirtyDaysAgo.setDate(now.getDate() - 30)
-    const thirtyDaysAgoStr = formatLocalDate(thirtyDaysAgo)
+    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0]
 
     return bookings.filter((b) => {
+      const bDate = b.isoDate || toStandardIsoDate(b.date)
+
       // 1. Timeframe Filter
-      const bDate = b.isoDate || b.date
-      if (bDate && bDate !== '-') {
-        if (timeFilter === 'Today') {
-          if (bDate !== todayStr) return false
-        } else if (timeFilter === 'This Week') {
-          if (bDate < sevenDaysAgoStr || bDate > todayStr) return false
-        } else if (timeFilter === 'This Month') {
-          if (bDate < thirtyDaysAgoStr || bDate > todayStr) return false
-        } else if (timeFilter === 'Past') {
-          if (bDate >= todayStr) return false
-        } else if (timeFilter === 'Upcoming') {
-          if (bDate <= todayStr) return false
-        }
+      if (timeFilter === 'Today') {
+        if (bDate !== todayStr) return false
+      } else if (timeFilter === 'This Week') {
+        if (!bDate || bDate < sevenDaysAgoStr || bDate > todayStr) return false
+      } else if (timeFilter === 'This Month') {
+        if (!bDate || bDate < thirtyDaysAgoStr || bDate > todayStr) return false
+      } else if (timeFilter === 'Past') {
+        if (!bDate || bDate >= todayStr) return false
+      } else if (timeFilter === 'Upcoming') {
+        if (!bDate || bDate <= todayStr) return false
       }
 
       // 2. Module Filter
       if (moduleFilter !== 'All') {
         const modName = String(b.module || '').toLowerCase()
+        const zoneName = String(b.zone || '').toLowerCase()
+        const seatStr = String(b.seat || '').toUpperCase()
         const target = moduleFilter.toLowerCase()
-        if (!modName.includes(target) && target !== modName) return false
+
+        const isTidel = target.includes('tidel') || target.includes('tidal')
+        const isElcotM2 = target.includes('module 2') || target.includes('eo2')
+        const isElcotM1 =
+          (target.includes('module 1') && target.includes('elcot')) ||
+          (target.includes('elcot') && !target.includes('module 2'))
+
+        let matches =
+          modName.includes(target) ||
+          target.includes(modName) ||
+          target.includes(zoneName)
+
+        if (isTidel) {
+          matches =
+            matches ||
+            modName.includes('tidel') ||
+            modName.includes('tidal') ||
+            zoneName.includes('tidel') ||
+            seatStr.startsWith('WS-04')
+        } else if (isElcotM2) {
+          matches =
+            matches ||
+            modName.includes('module 2') ||
+            modName.includes('eo2') ||
+            seatStr.includes('EO2')
+        } else if (isElcotM1) {
+          matches =
+            matches ||
+            ((modName.includes('module 1') || modName.includes('elcot')) &&
+              !modName.includes('module 2') &&
+              !modName.includes('tidel') &&
+              !seatStr.includes('EO2') &&
+              !seatStr.startsWith('WS-04'))
+        }
+
+        if (!matches) return false
       }
 
       // 3. Status Filter
       if (statusFilter !== 'All') {
         const st = String(b.status || '').toUpperCase()
-        if (statusFilter === 'Confirmed') {
-          if (st === 'CANCELLED' || st === 'CANCELED' || st === 'REJECTED') {
+        const target = statusFilter.toUpperCase()
+
+        if (target === 'CONFIRMED') {
+          if (!st.includes('CONFIRM') && st !== 'APPROVED' && st !== 'ACTIVE') {
             return false
           }
-        } else if (statusFilter === 'Cancelled') {
-          if (st !== 'CANCELLED' && st !== 'CANCELED' && st !== 'REJECTED') {
+        } else if (target === 'CANCELLED' || target === 'CANCELED') {
+          if (!st.includes('CANCEL') && st !== 'REJECTED') {
+            return false
+          }
+        } else if (target.includes('CHECK')) {
+          if (!st.includes('CHECK')) {
+            return false
+          }
+        } else if (target === 'RELEASED') {
+          if (!st.includes('RELEASE')) {
+            return false
+          }
+        } else if (target === 'EXPIRED') {
+          if (!st.includes('EXPIR')) {
             return false
           }
         } else {
-          if (!st.includes(statusFilter.toUpperCase())) return false
+          if (!st.includes(target) && !target.includes(st)) {
+            return false
+          }
         }
       }
 
@@ -563,30 +672,89 @@ export default function HotseatManagement() {
   // =====================================================
 
   const kpis = useMemo(() => {
-    const raw = dashboardData || analyticsData
+    let liveConfirmed = 0
+    let liveCancelled = 0
+    let liveCheckedIn = 0
+    let liveReleased = 0
+    let liveExpired = 0
 
-    if (raw) {
+    filteredBookings.forEach((b) => {
+      const st = String(b.status || '').toUpperCase()
+
+      if (st.includes('RELEASE')) {
+        liveReleased++
+      } else if (st.includes('EXPIR')) {
+        liveExpired++
+      } else if (st.includes('CHECK') || st === 'CHECKED IN' || st === 'CHECKED-IN') {
+        liveCheckedIn++
+        liveConfirmed++
+      } else if (st.includes('CANCEL') || st === 'REJECTED') {
+        liveCancelled++
+      } else {
+        liveConfirmed++
+      }
+    })
+
+    const raw = dashboardData || analyticsData
+    const isGlobal = timeFilter === 'All' && moduleFilter === 'All' && statusFilter === 'All'
+
+    if (raw && isGlobal) {
       const total =
         raw.totalReservations ??
         raw.totalBookings ??
         raw.totalBookingsAnalyzed ??
         filteredBookings.length
-      const confirmed =
-        raw.confirmedBookings ?? raw.confirmed ?? 0
-      const confirmedRate =
-        raw.confirmedRate ??
-        (total > 0 ? Math.round((confirmed / total) * 100) : 0)
+
       const cancelled =
-        raw.cancelledBookings ?? raw.cancelled ?? 0
+        raw.cancelledBookings ?? raw.cancelled ?? liveCancelled
+
       const cancellationRate =
         raw.cancelledRate ??
-        raw.cancellationRate ??
-        (total > 0 ? Math.round((cancelled / total) * 100) : 0)
-      const uniqueSeats =
-        raw.activeHotseatsCount ??
-        raw.uniqueSeats ??
-        raw.activeSeats ??
-        0
+        (total > 0 ? Number(((cancelled / total) * 100).toFixed(1)) : 0)
+
+      const confirmed = total >= cancelled ? total - cancelled : liveConfirmed
+
+      const confirmedRate =
+        raw.confirmedRate ??
+        (total > 0 ? Number(((confirmed / total) * 100).toFixed(1)) : 0)
+
+      const trendlineCheckIns = Array.isArray(raw.dailyOccupancyTrendline)
+        ? raw.dailyOccupancyTrendline.reduce(
+            (acc, curr) => acc + Number(curr.checkInsCount ?? curr.checkIns ?? 0),
+            0
+          )
+        : 0
+
+      const checkedIn =
+        raw.checkedInBookings ??
+        raw.checkedIn ??
+        raw.totalCheckIns ??
+        raw.checkInsCount ??
+        (trendlineCheckIns > 0 ? trendlineCheckIns : liveCheckedIn)
+
+      const checkedInRate =
+        raw.checkedInRate ??
+        (total > 0 ? Number(((checkedIn / total) * 100).toFixed(1)) : 0)
+
+      const released =
+        raw.releasedBookings ??
+        raw.released ??
+        raw.totalReleased ??
+        liveReleased
+
+      const releasedRate =
+        raw.releasedRate ??
+        (total > 0 ? Number(((released / total) * 100).toFixed(1)) : 0)
+
+      const expired =
+        raw.expiredBookings ??
+        raw.expired ??
+        raw.totalExpired ??
+        liveExpired
+
+      const expiredRate =
+        raw.expiredRate ??
+        (total > 0 ? Number(((expired / total) * 100).toFixed(1)) : 0)
 
       return {
         total,
@@ -594,39 +762,54 @@ export default function HotseatManagement() {
         confirmedRate,
         cancelled,
         cancellationRate,
-        uniqueSeats,
+        checkedIn,
+        checkedInRate,
+        released,
+        releasedRate,
+        expired,
+        expiredRate,
+        uniqueSeats: 453,
       }
     }
 
+    // Dynamic metrics computed from filteredBookings when filtered
     const total = filteredBookings.length
-    let confirmed = 0
-    let cancelled = 0
-    const seatSet = new Set()
+    const confirmed = total >= liveCancelled ? total - liveCancelled : liveConfirmed
+    const confirmedRate =
+      total > 0 ? Number(((confirmed / total) * 100).toFixed(1)) : 0
+    const cancellationRate =
+      total > 0 ? Number(((liveCancelled / total) * 100).toFixed(1)) : 0
+    const checkedInRate =
+      total > 0 ? Number(((liveCheckedIn / total) * 100).toFixed(1)) : 0
+    const releasedRate =
+      total > 0 ? Number(((liveReleased / total) * 100).toFixed(1)) : 0
+    const expiredRate =
+      total > 0 ? Number(((liveExpired / total) * 100).toFixed(1)) : 0
 
-    filteredBookings.forEach((b) => {
-      const st = String(b.status || '').toUpperCase()
-      if (b.seat && b.seat !== '-') seatSet.add(b.seat)
-
-      if (st === 'CANCELLED' || st === 'CANCELED' || st === 'REJECTED') {
-        cancelled++
-      } else {
-        confirmed++
-      }
-    })
-
-    const confirmedRate = total > 0 ? Math.round((confirmed / total) * 100) : 0
-    const cancellationRate = total > 0 ? Math.round((cancelled / total) * 100) : 0
-    const uniqueSeats = seatSet.size
+    let uniqueSeats = 453
+    if (moduleFilter.toLowerCase().includes('tidel')) {
+      uniqueSeats = 224
+    } else if (moduleFilter.toLowerCase().includes('module 2') || moduleFilter.toLowerCase().includes('eo2')) {
+      uniqueSeats = 131
+    } else if (moduleFilter.toLowerCase().includes('module 1') || moduleFilter.toLowerCase().includes('elcot')) {
+      uniqueSeats = 98
+    }
 
     return {
       total,
       confirmed,
       confirmedRate,
-      cancelled,
+      cancelled: liveCancelled,
       cancellationRate,
+      checkedIn: liveCheckedIn,
+      checkedInRate,
+      released: liveReleased,
+      releasedRate,
+      expired: liveExpired,
+      expiredRate,
       uniqueSeats,
     }
-  }, [dashboardData, analyticsData, filteredBookings])
+  }, [dashboardData, analyticsData, filteredBookings, timeFilter, moduleFilter, statusFilter])
 
   // =====================================================
   // HOTSEAT VISUAL CHARTS DATA
@@ -634,59 +817,28 @@ export default function HotseatManagement() {
 
   // 1. Module / Zone Workstation Distribution (Donut)
   const moduleDistributionData = useMemo(() => {
-    const rawList =
-      analyticsData?.volumeByFacilityZone ||
-      dashboardData?.volumeByFacilityZone ||
-      analyticsData?.moduleDistribution ||
-      dashboardData?.moduleDistribution ||
-      []
-
     const tidelItem = { name: 'Module 1 - Tidel Park', value: 0, color: '#0284C7' }
     const elcot1Item = { name: 'Module 1 - Elcot Park', value: 0, color: '#0D9488' }
     const elcot2Item = { name: 'Module 2 - Elcot Park', value: 0, color: '#6366F1' }
 
-    if (rawList.length > 0) {
-      rawList.forEach((item) => {
-        const name = String(
-          item.moduleName || item.label || item.facilityName || item.name || ''
-        ).toLowerCase()
-        const count = Number(item.bookingCount ?? item.value ?? item.count ?? 0)
+    filteredBookings.forEach((b) => {
+      const mod = String(b.module || '').toLowerCase()
+      const zone = String(b.zone || '').toLowerCase()
+      const seat = String(b.seat || '').toLowerCase()
+      if (mod.includes('tidel') || zone.includes('tidel') || seat.startsWith('ws-04')) {
+        tidelItem.value += 1
+      } else if (mod.includes('module 2') || mod.includes('eo2') || seat.includes('eo2')) {
+        elcot2Item.value += 1
+      } else {
+        elcot1Item.value += 1
+      }
+    })
 
-        if (name.includes('tidel')) {
-          tidelItem.value += count
-        } else if (name.includes('module 2') || name.includes('eo2')) {
-          elcot2Item.value += count
-        } else {
-          elcot1Item.value += count
-        }
-      })
-    } else {
-      filteredBookings.forEach((b) => {
-        const mod = String(b.module || '').toLowerCase()
-        const zone = String(b.zone || '').toLowerCase()
-        const seat = String(b.seat || '').toLowerCase()
-        if (mod.includes('tidel') || zone.includes('tidel') || seat.startsWith('ws-04')) {
-          tidelItem.value += 1
-        } else if (mod.includes('module 2') || mod.includes('eo2') || seat.includes('eo2')) {
-          elcot2Item.value += 1
-        } else {
-          elcot1Item.value += 1
-        }
-      })
-    }
-
-    // Strict fixed order: 1. Tidel Park, 2. Elcot M1, 3. Elcot M2
     return [tidelItem, elcot1Item, elcot2Item].filter((item) => item.value > 0)
-  }, [analyticsData, dashboardData, filteredBookings])
+  }, [filteredBookings])
 
   // 2. Floor Section Demand Breakdown
   const sectionDemandData = useMemo(() => {
-    const rawList =
-      analyticsData?.floorSectionDemand ||
-      dashboardData?.floorSectionDemand ||
-      analyticsData?.sectionDemand ||
-      []
-
     const map = {
       'Section A': 0,
       'Section B': 0,
@@ -694,29 +846,21 @@ export default function HotseatManagement() {
       'Section D': 0,
     }
 
-    if (rawList.length > 0) {
-      rawList.forEach((item) => {
-        const sec = String(item.section || '')
-        const count = Number(item.bookingCount ?? item.bookings ?? item.count ?? 0)
-        if (sec.includes('A') || sec === 'A') map['Section A'] += count
-        else if (sec.includes('B') || sec === 'B') map['Section B'] += count
-        else if (sec.includes('C') || sec === 'C') map['Section C'] += count
-        else if (sec.includes('D') || sec === 'D') map['Section D'] += count
-      })
-    } else {
-      filteredBookings.forEach((b) => {
-        const sec = resolveSection(b.seat, b.module)
-        if (map[sec] !== undefined) {
-          map[sec] += 1
-        } else {
-          map['Section A'] += 1
-        }
-      })
-    }
+    filteredBookings.forEach((b) => {
+      const sec = resolveSection(b.seat, b.module)
+      if (map[sec] !== undefined) {
+        map[sec] += 1
+      } else {
+        map['Section A'] += 1
+      }
+    })
 
     const isTidel =
       moduleFilter.toLowerCase().includes('tidel') ||
-      moduleFilter === 'All'
+      (moduleFilter === 'All' &&
+        filteredBookings.some((b) =>
+          String(b.module || '').toLowerCase().includes('tidel')
+        ))
 
     const sections = [
       {
@@ -736,7 +880,7 @@ export default function HotseatManagement() {
       },
     ]
 
-    // Only Tidel Park has Section D
+    // Only Tidel Park has Section D (Seats 165 - 224)
     if (isTidel) {
       sections.push({
         section: 'Section D',
@@ -746,7 +890,7 @@ export default function HotseatManagement() {
     }
 
     return sections
-  }, [analyticsData, dashboardData, filteredBookings, moduleFilter])
+  }, [filteredBookings, moduleFilter])
 
   // 3. Most In-Demand Workstation Desks (Limit to Top 3 Only)
   const topDesksData = useMemo(() => {
@@ -956,14 +1100,14 @@ export default function HotseatManagement() {
                 ))
               ) : (
                 <>
+                  <option value="Module 1 - Tidel Park">
+                    Module 1 - Tidel Park
+                  </option>
                   <option value="Module 1 - Elcot Park">
                     Module 1 - Elcot Park
                   </option>
                   <option value="Module 2 - Elcot Park">
                     Module 2 - Elcot Park
-                  </option>
-                  <option value="Module 1 - Tidel Park">
-                    Module 1 - Tidel Park
                   </option>
                 </>
               )}
@@ -993,15 +1137,15 @@ export default function HotseatManagement() {
 
           <div className="flex items-center gap-2 text-xs font-semibold text-slate">
             <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            Analyzing {kpis.total} total bookings
+            Analyzing {filteredBookings.length} total bookings
           </div>
         </div>
       </Card>
 
       {/* =================================================
-          TOP 3 KPI CARDS
+          TOP 6 KPI CARDS
       ================================================= */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         {/* Card 1: TOTAL RESERVATIONS */}
         <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
@@ -1014,7 +1158,7 @@ export default function HotseatManagement() {
             {kpis.total}
           </p>
           <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
-            <span>{kpis.uniqueSeats} Active Hotseats</span>
+            <span>{kpis.uniqueSeats} Total</span>
             <span className="font-semibold text-sky-700">100% Vol</span>
           </div>
           <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
@@ -1030,14 +1174,9 @@ export default function HotseatManagement() {
             </span>
             <CheckCircle2 size={14} className="text-[#5c7a60]" />
           </div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <p className="text-2xl font-extrabold text-[#5c7a60] leading-tight">
-              {kpis.confirmed}
-            </p>
-            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
-              {kpis.confirmedRate}%
-            </span>
-          </div>
+          <p className="mt-1 text-2xl font-extrabold text-[#5c7a60] leading-tight">
+            {kpis.confirmed}
+          </p>
           <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>Successful</span>
             <span className="font-bold text-emerald-700">
@@ -1052,7 +1191,82 @@ export default function HotseatManagement() {
           </div>
         </Card>
 
-        {/* Card 3: CANCELLED BOOKINGS */}
+        {/* Card 3: CHECKED IN */}
+        <Card className="p-3 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
+              CHECKED IN
+            </span>
+            <UserCheck size={14} className="text-[#0284c7]" />
+          </div>
+          <p className="mt-1 text-2xl font-extrabold text-[#0284c7] leading-tight">
+            {kpis.checkedIn}
+          </p>
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
+            <span>Occupied</span>
+            <span className="font-bold text-sky-700">
+              {kpis.checkedInRate}%
+            </span>
+          </div>
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
+            <div
+              className="h-1 rounded-full bg-[#0284c7] transition-all duration-500"
+              style={{ width: `${kpis.checkedInRate}%` }}
+            />
+          </div>
+        </Card>
+
+        {/* Card 4: RELEASED */}
+        <Card className="p-3 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
+              RELEASED
+            </span>
+            <LogOut size={14} className="text-[#8b5cf6]" />
+          </div>
+          <p className="mt-1 text-2xl font-extrabold text-[#8b5cf6] leading-tight">
+            {kpis.released}
+          </p>
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
+            <span>Released</span>
+            <span className="font-bold text-purple-700">
+              {kpis.releasedRate}%
+            </span>
+          </div>
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
+            <div
+              className="h-1 rounded-full bg-[#8b5cf6] transition-all duration-500"
+              style={{ width: `${kpis.releasedRate}%` }}
+            />
+          </div>
+        </Card>
+
+        {/* Card 5: EXPIRED */}
+        <Card className="p-3 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
+              EXPIRED
+            </span>
+            <AlertCircle size={14} className="text-[#f59e0b]" />
+          </div>
+          <p className="mt-1 text-2xl font-extrabold text-[#f59e0b] leading-tight">
+            {kpis.expired}
+          </p>
+          <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
+            <span>Expired</span>
+            <span className="font-bold text-amber-700">
+              {kpis.expiredRate}%
+            </span>
+          </div>
+          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
+            <div
+              className="h-1 rounded-full bg-[#f59e0b] transition-all duration-500"
+              style={{ width: `${kpis.expiredRate}%` }}
+            />
+          </div>
+        </Card>
+
+        {/* Card 6: CANCELLED BOOKINGS */}
         <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
@@ -1060,14 +1274,9 @@ export default function HotseatManagement() {
             </span>
             <XCircle size={14} className="text-[#be534d]" />
           </div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <p className="text-2xl font-extrabold text-[#be534d] leading-tight">
-              {kpis.cancelled}
-            </p>
-            <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-800">
-              {kpis.cancellationRate}%
-            </span>
-          </div>
+          <p className="mt-1 text-2xl font-extrabold text-[#be534d] leading-tight">
+            {kpis.cancelled}
+          </p>
           <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>Cancelled</span>
             <span className="font-bold text-red-700">
