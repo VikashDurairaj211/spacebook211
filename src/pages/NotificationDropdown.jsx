@@ -227,20 +227,39 @@ export default function NotificationDropdown({ onClose }) {
 
     fetchNotifications()
 
+    // 1. Auto-polling every 5 seconds
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications()
+      }
+    }, 5000)
+
+    // 2. Fetch on tab focus / visibility change
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications()
+      }
+    }
+
     const handleNotificationsRead = () => {
       fetchNotifications()
     }
 
-    window.addEventListener(
-      'notificationsRead',
-      handleNotificationsRead
-    )
+    window.addEventListener('notificationsRead', handleNotificationsRead)
+    window.addEventListener('notificationRefresh', handleNotificationsRead)
+    window.addEventListener('bookingCreated', handleNotificationsRead)
+    window.addEventListener('bookingCancelled', handleNotificationsRead)
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleFocus)
 
     return () => {
-      window.removeEventListener(
-        'notificationsRead',
-        handleNotificationsRead
-      )
+      clearInterval(pollInterval)
+      window.removeEventListener('notificationsRead', handleNotificationsRead)
+      window.removeEventListener('notificationRefresh', handleNotificationsRead)
+      window.removeEventListener('bookingCreated', handleNotificationsRead)
+      window.removeEventListener('bookingCancelled', handleNotificationsRead)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleFocus)
     }
   }, [user, isAdmin])
 

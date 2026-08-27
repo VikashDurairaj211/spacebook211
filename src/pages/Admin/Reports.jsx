@@ -493,11 +493,68 @@ export default function Reports() {
 
   useEffect(() => {
     fetchFilteredDashboard()
-  }, [timeFilter, moduleFilter, statusFilter])
+  }, [timeFilter, moduleFilter])
 
   // =====================================================
   // FILTERING LOGIC
   // =====================================================
+
+  // Total reservations in scope (Timeframe & Module) - ignores statusFilter so Total Reservations card stays constant
+  const totalOverallInScope = useMemo(() => {
+    const now = new Date()
+    const formatLocalDate = (d) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+        d.getDate()
+      ).padStart(2, '0')}`
+
+    const todayStr = formatLocalDate(now)
+
+    const sevenDaysAgo = new Date(now)
+    sevenDaysAgo.setDate(now.getDate() - 7)
+    const sevenDaysAgoStr = formatLocalDate(sevenDaysAgo)
+
+    const thirtyDaysAgo = new Date(now)
+    thirtyDaysAgo.setDate(now.getDate() - 30)
+    const thirtyDaysAgoStr = formatLocalDate(thirtyDaysAgo)
+
+    return bookings.filter((b) => {
+      // 1. MODULE FILTER
+      if (moduleFilter !== 'All') {
+        const bMod = String(b.module || '').toLowerCase()
+        if (moduleFilter.includes('Tidel')) {
+          if (!bMod.includes('tidel') && !bMod.includes('tidal')) return false
+        } else if (moduleFilter.includes('Module 2')) {
+          if (!bMod.includes('module 2') && !bMod.includes('m2')) return false
+        } else if (moduleFilter.includes('Module 1')) {
+          if (!bMod.includes('module 1') || bMod.includes('tidel')) return false
+        }
+      }
+
+      // 2. TIME FILTER
+      if (timeFilter !== 'All') {
+        const bDate = b.date
+        if (!bDate) return true
+
+        if (timeFilter === 'Today' && bDate !== todayStr) {
+          return false
+        }
+        if (timeFilter === 'This Week' && (bDate < sevenDaysAgoStr || bDate > todayStr)) {
+          return false
+        }
+        if (timeFilter === 'This Month' && (bDate < thirtyDaysAgoStr || bDate > todayStr)) {
+          return false
+        }
+        if (timeFilter === 'Past' && bDate >= todayStr) {
+          return false
+        }
+        if (timeFilter === 'Upcoming' && bDate < todayStr) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [bookings, moduleFilter, timeFilter])
 
   const filteredBookings = useMemo(() => {
     const now = new Date()
@@ -600,7 +657,8 @@ export default function Reports() {
   // =====================================================
 
   const kpis = useMemo(() => {
-    const total = filteredBookings.length
+    // Total Reservations remains fixed to the overall scope count and never drops when selecting status filter
+    const total = totalOverallInScope.length
     let confirmed = 0
     let cancelled = 0
     let totalBookedMinutes = 0
@@ -608,7 +666,7 @@ export default function Reports() {
     const userSet = new Set()
     const dateSet = new Set()
 
-    filteredBookings.forEach((b) => {
+    totalOverallInScope.forEach((b) => {
       if (b.roomName) roomSet.add(b.roomName)
       if (b.createdBy) userSet.add(b.createdBy)
       if (b.date) dateSet.add(b.date)
@@ -682,7 +740,7 @@ export default function Reports() {
       uniqueUsers,
       utilization,
     }
-  }, [filteredBookings, dashboardMetrics, timeFilter, moduleFilter])
+  }, [totalOverallInScope, dashboardMetrics, timeFilter, moduleFilter, statusFilter])
 
   // =====================================================
   // CHART DATA
@@ -1334,7 +1392,7 @@ export default function Reports() {
                     value={tableSearch}
                     onChange={(e) => setTableSearch(e.target.value)}
                     placeholder="Search bookings, rooms, employees..."
-                    className="w-full sm:w-72 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:border-sky-500"
+                    className="w-full sm:w-72 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:border-sky-500 shadow-xs"
                   />
                   {tableSearch && (
                     <button

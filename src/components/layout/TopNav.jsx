@@ -338,7 +338,7 @@ export default function TopNav({
   }
 
   // =====================================================
-  // Load Notifications
+  // Load Notifications (With Auto-Polling & Live Refresh)
   // =====================================================
 
   useEffect(() => {
@@ -346,16 +346,44 @@ export default function TopNav({
       return
     }
 
+    // Initial fetch
     fetchNotifications()
+
+    // 1. Ultra-fast auto-polling every 5 seconds so new notifications appear almost instantly
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications()
+      }
+    }, 5000)
+
+    // 2. Fetch on tab focus / visibility change
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications()
+      }
+    }
 
     const handleNotificationRefresh = () => {
       fetchNotifications()
     }
 
     window.addEventListener('notificationsRead', handleNotificationRefresh)
+    window.addEventListener('notificationRefresh', handleNotificationRefresh)
+    window.addEventListener('bookingCreated', handleNotificationRefresh)
+    window.addEventListener('bookingCancelled', handleNotificationRefresh)
+    window.addEventListener('booking-updated', handleNotificationRefresh)
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleFocus)
 
     return () => {
+      clearInterval(pollInterval)
       window.removeEventListener('notificationsRead', handleNotificationRefresh)
+      window.removeEventListener('notificationRefresh', handleNotificationRefresh)
+      window.removeEventListener('bookingCreated', handleNotificationRefresh)
+      window.removeEventListener('bookingCancelled', handleNotificationRefresh)
+      window.removeEventListener('booking-updated', handleNotificationRefresh)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleFocus)
     }
   }, [publicOnly, user, isAdmin])
 
