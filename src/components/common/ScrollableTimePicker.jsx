@@ -45,7 +45,7 @@ export default function ScrollableTimePicker({
   selectedDate,
   minTime,
   error,
-  placeholder = 'Select time (10:00 AM - 10:00 PM)',
+  placeholder = 'Select time',
   className = '',
   disabled = false,
 }) {

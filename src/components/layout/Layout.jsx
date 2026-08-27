@@ -64,7 +64,7 @@ export default function Layout() {
           >
             <div className="mx-auto max-w-7xl">
 
-              <div className="rounded-[24px] bg-white/80 backdrop-blur-sm border border-sky-100 p-6 m-6 shadow-sm">
+              <div className="rounded-2xl bg-white/80 backdrop-blur-sm border border-sky-100 p-4 m-4 md:p-5 md:m-5 shadow-xs">
 
                 <Outlet />
 

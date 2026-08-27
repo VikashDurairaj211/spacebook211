@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import NotificationCard from '../components/cards/NotificationCard'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -9,6 +10,10 @@ import {
 } from '../api/notifications'
 
 export default function Notifications() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const highlightParam = searchParams.get('highlight') || searchParams.get('id') || ''
+
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -268,6 +273,74 @@ export default function Notifications() {
     (notification) => !notification.isRead
   ).length
 
+  // Auto-scroll to highlighted notification
+  useEffect(() => {
+    if (highlightParam && !loading && notifications.length > 0) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`notification-card-${highlightParam}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightParam, loading, notifications]);
+
+  const handleSelectNotification = (n) => {
+    const id = String(n.notificationId ?? n.id ?? '')
+    if (id) {
+      saveReadNotificationIds([id])
+      setNotifications((prev) =>
+        prev.map((item) =>
+          String(item.notificationId ?? item.id) === id
+            ? { ...item, isRead: true }
+            : item
+        )
+      )
+      window.dispatchEvent(new Event('notificationsRead'))
+    }
+
+    if (isAdmin) {
+      navigate(`/admin/notifications?highlight=${encodeURIComponent(id)}`)
+      return
+    }
+
+    const bookingId =
+      n.bookingId ||
+      n.hotseatBookingId ||
+      String(n.message || '').match(/#(\d+)/)?.[1] ||
+      (!isNaN(Number(n.id)) ? String(n.id) : '')
+
+    // Extract clean room name from object or message
+    const rawMsg = String(n.message || '')
+    const rawTitle = String(n.title || '')
+    const combined = `${rawTitle} ${rawMsg}`
+
+    const extractedRoom =
+      n.roomName ||
+      combined.match(/(Conference Room \d+|Meeting Room \d+|Discussion Room \d+|Board Room \d+|Training Room \d+|Room \d+)/i)?.[0] ||
+      ''
+
+    const extractedSeat =
+      n.seatNumber ||
+      n.seat ||
+      combined.match(/(WS-[\w-]+|Hot Seat [\w-]+|Seat [\w-]+)/i)?.[0] ||
+      ''
+
+    const params = new URLSearchParams()
+    if (bookingId) params.set('highlight', bookingId)
+    if (extractedRoom) params.set('room', extractedRoom)
+    if (extractedSeat) params.set('seat', extractedSeat)
+    if (n.bookingDate) params.set('date', n.bookingDate)
+
+    const cleanSearch = extractedRoom || extractedSeat || (bookingId ? `#${bookingId}` : '')
+    if (cleanSearch) {
+      params.set('search', cleanSearch)
+    }
+
+    navigate(`/my-bookings?${params.toString()}`)
+  }
+
   // =====================================================
   // Render
   // =====================================================
@@ -346,16 +419,34 @@ export default function Notifications() {
 
         <div className="space-y-3">
 
-          {notifications.map((item) => (
+          {notifications.map((item) => {
+            const isHighlighted = Boolean(
+              highlightParam &&
+              (String(highlightParam).toLowerCase() === String(item.notificationId).toLowerCase() ||
+               String(highlightParam).toLowerCase() === String(item.id).toLowerCase())
+            )
 
-            <div
-              key={item.notificationId}
-              className={`rounded-2xl border p-4 transition ${
-                item.isRead
-                  ? 'border-line bg-white'
-                  : 'border-slate-200 bg-slate-50/70'
-              }`}
-            >
+            return (
+              <div
+                key={item.notificationId}
+                id={`notification-card-${item.notificationId}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleSelectNotification(item)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    handleSelectNotification(item)
+                  }
+                }}
+                className={`rounded-2xl border p-4 cursor-pointer transition-all duration-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-sky-400 ${
+                  isHighlighted
+                    ? 'border-sky-500 bg-sky-50 shadow-md ring-2 ring-sky-300 font-semibold'
+                    : item.isRead
+                    ? 'border-line bg-white hover:bg-sky-50/20'
+                    : 'border-amber-200 bg-amber-50/50 hover:bg-amber-50/80'
+                }`}
+              >
 
               {/* Top Row */}
 
@@ -473,8 +564,8 @@ export default function Notifications() {
               )}
 
             </div>
-
-          ))}
+          )
+        })}
 
         </div>
       )}

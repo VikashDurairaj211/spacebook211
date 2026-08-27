@@ -640,29 +640,36 @@ export default function HotseatManagement() {
   // =====================================================
 
   const kpis = useMemo(() => {
-    let liveConfirmed = 0
     let liveCancelled = 0
     let liveCheckedIn = 0
     let liveReleased = 0
     let liveExpired = 0
+    let livePendingConfirmed = 0
 
     // Count live statuses from the current filtered bookings
     filteredBookings.forEach((b) => {
       const st = String(b.status || '').toUpperCase()
 
-      if (st.includes('RELEASE')) {
-        liveReleased++
-      } else if (st.includes('EXPIR')) {
-        liveExpired++
+      if (st.includes('CANCEL') || st === 'REJECTED') {
+        liveCancelled++
       } else if (st.includes('CHECK') || st === 'CHECKED IN' || st === 'CHECKED-IN') {
         liveCheckedIn++
-        liveConfirmed++
-      } else if (st.includes('CANCEL') || st === 'REJECTED') {
-        liveCancelled++
+      } else if (st.includes('EXPIR')) {
+        liveExpired++
+        liveReleased++
+      } else if (st.includes('RELEASE')) {
+        liveReleased++
+        liveExpired++
       } else {
-        liveConfirmed++
+        livePendingConfirmed++
       }
     })
+
+    // Confirmed bookings = Check-in + Expired/Released + Active Confirmed (or Total - Cancelled)
+    const liveConfirmed =
+      filteredBookings.length >= liveCancelled
+        ? filteredBookings.length - liveCancelled
+        : liveCheckedIn + liveExpired + livePendingConfirmed
 
     const raw = dashboardData || analyticsData
     const isAllFilters = timeFilter === 'All' && moduleFilter === 'All'
@@ -690,14 +697,7 @@ export default function HotseatManagement() {
         raw.cancelledBookings ?? raw.cancelled ?? liveCancelled
 
       const cancellationRate =
-        raw.cancelledRate ??
-        (total > 0 ? Number(((cancelled / total) * 100).toFixed(1)) : 0)
-
-      const confirmed = total >= cancelled ? total - cancelled : (raw.confirmedBookings ?? liveConfirmed)
-
-      const confirmedRate =
-        raw.confirmedRate ??
-        (total > 0 ? Number(((confirmed / total) * 100).toFixed(1)) : 0)
+        total > 0 ? Number(((cancelled / total) * 100).toFixed(1)) : 0
 
       const trendlineCheckIns = Array.isArray(raw.dailyOccupancyTrendline)
         ? raw.dailyOccupancyTrendline.reduce(
@@ -714,8 +714,7 @@ export default function HotseatManagement() {
         (trendlineCheckIns > 0 ? trendlineCheckIns : liveCheckedIn)
 
       const checkedInRate =
-        raw.checkedInRate ??
-        (total > 0 ? Number(((checkedIn / total) * 100).toFixed(1)) : 0)
+        total > 0 ? Number(((checkedIn / total) * 100).toFixed(1)) : 0
 
       const expired =
         raw.expiredBookings ??
@@ -724,12 +723,20 @@ export default function HotseatManagement() {
         liveExpired
 
       const expiredRate =
-        raw.expiredRate ??
-        (total > 0 ? Number(((expired / total) * 100).toFixed(1)) : 0)
+        total > 0 ? Number(((expired / total) * 100).toFixed(1)) : 0
 
       // Released count reflects the automatically released workstations
-      const released = expired
-      const releasedRate = expiredRate
+      const released = raw.releasedBookings ?? raw.released ?? expired
+      const releasedRate = total > 0 ? Number(((released / total) * 100).toFixed(1)) : expiredRate
+
+      // Confirmed bookings = Checked In + Expired (+ any active pending) or Total - Cancelled
+      const confirmed =
+        total >= cancelled
+          ? total - cancelled
+          : (checkedIn + expired)
+
+      const confirmedRate =
+        total > 0 ? Number(((confirmed / total) * 100).toFixed(1)) : 0
 
       return {
         total,
