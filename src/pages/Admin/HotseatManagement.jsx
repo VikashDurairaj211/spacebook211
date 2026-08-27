@@ -717,16 +717,6 @@ export default function HotseatManagement() {
         raw.checkedInRate ??
         (total > 0 ? Number(((checkedIn / total) * 100).toFixed(1)) : 0)
 
-      const released =
-        raw.releasedBookings ??
-        raw.released ??
-        raw.totalReleased ??
-        liveReleased
-
-      const releasedRate =
-        raw.releasedRate ??
-        (total > 0 ? Number(((released / total) * 100).toFixed(1)) : 0)
-
       const expired =
         raw.expiredBookings ??
         raw.expired ??
@@ -736,6 +726,10 @@ export default function HotseatManagement() {
       const expiredRate =
         raw.expiredRate ??
         (total > 0 ? Number(((expired / total) * 100).toFixed(1)) : 0)
+
+      // Released count reflects the automatically released workstations
+      const released = expired
+      const releasedRate = expiredRate
 
       return {
         total,
@@ -759,8 +753,11 @@ export default function HotseatManagement() {
     const confirmedRate = total > 0 ? Number(((confirmed / total) * 100).toFixed(1)) : 0
     const cancellationRate = total > 0 ? Number(((liveCancelled / total) * 100).toFixed(1)) : 0
     const checkedInRate = total > 0 ? Number(((liveCheckedIn / total) * 100).toFixed(1)) : 0
-    const releasedRate = total > 0 ? Number(((liveReleased / total) * 100).toFixed(1)) : 0
     const expiredRate = total > 0 ? Number(((liveExpired / total) * 100).toFixed(1)) : 0
+
+    // Released count reflects the automatically released workstations
+    const released = liveExpired
+    const releasedRate = expiredRate
 
     return {
       total,
@@ -770,7 +767,7 @@ export default function HotseatManagement() {
       cancellationRate,
       checkedIn: liveCheckedIn,
       checkedInRate,
-      released: liveReleased,
+      released,
       releasedRate,
       expired: liveExpired,
       expiredRate,
