@@ -33,16 +33,11 @@ function formatTime(time) {
     .split(":")
     .map(Number);
 
-  const suffix =
-    hour >= 12
-      ? "PM"
-      : "AM";
+  if (isNaN(hour)) return time;
 
-  const displayH = hour % 12 || 12;
-
-  return `${String(displayH).padStart(2, "0")}:${String(
+  return `${String(hour).padStart(2, "0")}:${String(
     minute || 0
-  ).padStart(2, "0")} ${suffix}`;
+  ).padStart(2, "0")}`;
 }
 
 // =====================================================

@@ -36,6 +36,7 @@ export default function TopNav({
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [showSearchResults, setShowSearchResults] = useState(false)
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
 
   const [liveRooms, setLiveRooms] = useState([])
   const [liveBookings, setLiveBookings] = useState([])
@@ -482,9 +483,57 @@ export default function TopNav({
 
     return {
       rooms: matchedRooms,
-      bookings: matchedBookings,
     }
-  }, [searchInput, liveRooms, liveBookings])
+  }, [searchInput, liveRooms])
+
+  const flatSearchResults = useMemo(() => {
+    return (searchResults.rooms || []).map((r, i) => ({
+      ...r,
+      searchType: 'room',
+      globalIndex: i,
+    }))
+  }, [searchResults])
+
+  // Scroll active item into view
+  useEffect(() => {
+    if (highlightedIndex >= 0 && searchContainerRef.current) {
+      const activeEl = searchContainerRef.current.querySelector(
+        `[data-search-index="${highlightedIndex}"]`
+      )
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      }
+    }
+  }, [highlightedIndex])
+
+  function handleSearchKeyDown(e) {
+    if (!showSearchResults || flatSearchResults.length === 0) return
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setHighlightedIndex((prev) =>
+        prev + 1 < flatSearchResults.length ? prev + 1 : 0
+      )
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlightedIndex((prev) =>
+        prev - 1 >= 0 ? prev - 1 : flatSearchResults.length - 1
+      )
+    } else if (e.key === 'Enter') {
+      if (highlightedIndex >= 0 && flatSearchResults[highlightedIndex]) {
+        e.preventDefault()
+        const item = flatSearchResults[highlightedIndex]
+        if (item.searchType === 'room') {
+          handleSelectRoom(item)
+        } else {
+          handleSelectResult(item.title || item.roomName, 'booking')
+        }
+      }
+    } else if (e.key === 'Escape') {
+      setShowSearchResults(false)
+      setHighlightedIndex(-1)
+    }
+  }
 
   // =====================================================
   // Search Submit
@@ -689,11 +738,11 @@ export default function TopNav({
               placeholder="Search rooms, bookings..."
               value={searchInput}
               onChange={(event) => {
-                setSearchInput(
-                  event.target.value
-                )
+                setSearchInput(event.target.value)
+                setHighlightedIndex(-1)
                 setShowSearchResults(true)
               }}
+              onKeyDown={handleSearchKeyDown}
               onFocus={() => {
                 if (searchInput.trim()) {
                   setShowSearchResults(true)
@@ -718,26 +767,30 @@ export default function TopNav({
 
           {showSearchResults &&
             searchInput.trim() && (
-              <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-64 overflow-auto rounded-lg border border-line bg-white text-ink shadow-lg">
+              <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-64 overflow-auto rounded-xl border border-sky-200 bg-white text-ink shadow-2xl divide-y divide-slate-100">
 
                 {/* Rooms */}
 
                 {searchResults.rooms.length > 0 && (
-                  <div className="border-b border-line">
-
-                    <div className="bg-portal-bg px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-slate">
+                  <div>
+                    <div className="bg-sky-50/80 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-sky-800">
                       Rooms
                     </div>
 
-                    {searchResults.rooms.map(
-                      (room) => (
+                    {searchResults.rooms.map((room, rIdx) => {
+                      const isHighlighted = highlightedIndex === rIdx
+                      return (
                         <button
                           key={room.id}
                           type="button"
-                          onClick={() =>
-                            handleSelectRoom(room)
-                          }
-                          className="flex w-full flex-col px-3 py-2 text-left font-sans text-sm transition-colors hover:bg-portal-bg/80"
+                          data-search-index={rIdx}
+                          onMouseEnter={() => setHighlightedIndex(rIdx)}
+                          onClick={() => handleSelectRoom(room)}
+                          className={`flex w-full flex-col px-3 py-2 text-left font-sans text-sm transition-colors border-l-4 ${
+                            isHighlighted
+                              ? 'bg-sky-100/90 text-sky-950 border-[#0284C7] font-semibold shadow-xs'
+                              : 'border-transparent hover:bg-sky-50/60 text-slate-800'
+                          }`}
                         >
                           <span className="font-medium text-ink">
                             {room.name}
@@ -748,57 +801,17 @@ export default function TopNav({
                           </span>
                         </button>
                       )
-                    )}
-                  </div>
-                )}
-
-                {/* Bookings */}
-
-                {searchResults.bookings.length >
-                  0 && (
-                  <div>
-
-                    <div className="bg-portal-bg px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-slate">
-                      Bookings
-                    </div>
-
-                    {searchResults.bookings.map(
-                      (booking) => (
-                        <button
-                          key={booking.id}
-                          type="button"
-                          onClick={() =>
-                            handleSelectResult(
-                              booking.title ||
-                                booking.roomName,
-                              'booking'
-                            )
-                          }
-                          className="flex w-full flex-col px-3 py-2 text-left font-sans text-sm transition-colors hover:bg-portal-bg/80"
-                        >
-                          <span className="font-medium text-ink">
-                            {booking.title}
-                          </span>
-
-                          <span className="text-xs text-slate">
-                            {booking.roomName} ·{' '}
-                            {booking.date}
-                          </span>
-                        </button>
-                      )
-                    )}
+                    })}
                   </div>
                 )}
 
                 {/* No Results */}
 
-                {searchResults.rooms.length === 0 &&
-                  searchResults.bookings.length ===
-                    0 && (
-                    <div className="px-3 py-4 text-center font-sans text-sm text-slate">
-                      No rooms or bookings found
-                    </div>
-                  )}
+                {searchResults.rooms.length === 0 && (
+                  <div className="px-3 py-4 text-center font-sans text-sm text-slate">
+                    No rooms found
+                  </div>
+                )}
               </div>
             )}
         </form>

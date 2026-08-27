@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import Button from "./Button";
 import {
   getNotifications,
@@ -17,6 +19,13 @@ export default function NotificationDropdown({
   onClearOne,
   onViewAll,
 }) {
+  const { user } = useAuth();
+  const isAdmin =
+    user?.role === "Admin" ||
+    user?.role === "admin" ||
+    user?.isAdmin === true;
+
+  const navigate = useNavigate();
   const panelRef = useRef(null);
   const [notifications, setNotifications] = useState(initialNotifications || []);
   const [loading, setLoading] = useState(false);
@@ -28,6 +37,16 @@ export default function NotificationDropdown({
       return raw ? JSON.parse(raw) : [];
     } catch (e) {
       return [];
+    }
+  };
+
+  const saveReadNotificationIds = (ids) => {
+    try {
+      const existing = getReadNotificationIds();
+      const merged = Array.from(new Set([...existing, ...ids]));
+      localStorage.setItem('spacebook_read_notifications', JSON.stringify(merged));
+    } catch (e) {
+      // ignore
     }
   };
 
@@ -186,6 +205,70 @@ export default function NotificationDropdown({
     }
   };
 
+  const handleSelectNotification = (n) => {
+    const id = String(n.notificationId ?? n.id ?? "");
+    if (id) {
+      saveReadNotificationIds([id]);
+      setNotifications((prev) =>
+        prev.map((item) =>
+          String(item.notificationId ?? item.id) === id
+            ? { ...item, isRead: true }
+            : item
+        )
+      );
+      window.dispatchEvent(new Event("notificationsRead"));
+    }
+
+    if (onClose) onClose();
+
+    // If Admin, redirect directly to Admin Notifications page
+    if (isAdmin) {
+      const targetHighlight = id || n.notificationId || bookingId || "";
+      const adminParams = new URLSearchParams();
+      if (targetHighlight) {
+        adminParams.set("highlight", targetHighlight);
+      }
+      navigate(`/admin/notifications?${adminParams.toString()}`);
+      return;
+    }
+
+    const bookingId =
+      n.bookingId ||
+      n.hotseatBookingId ||
+      String(n.message || "").match(/#(\d+)/)?.[1] ||
+      (!isNaN(Number(n.id)) ? String(n.id) : "");
+
+    // Extract clean room name from object or message
+    const rawMsg = String(n.message || "");
+    const rawTitle = String(n.title || "");
+    const combined = `${rawTitle} ${rawMsg}`;
+
+    const extractedRoom =
+      n.roomName ||
+      combined.match(/(Conference Room \d+|Meeting Room \d+|Discussion Room \d+|Board Room \d+|Training Room \d+|Room \d+)/i)?.[0] ||
+      "";
+
+    const extractedSeat =
+      n.seatNumber ||
+      n.seat ||
+      combined.match(/(WS-[\w-]+|Hot Seat [\w-]+|Seat [\w-]+)/i)?.[0] ||
+      "";
+
+    const params = new URLSearchParams();
+    if (bookingId) params.set("highlight", bookingId);
+    if (extractedRoom) params.set("room", extractedRoom);
+    if (extractedSeat) params.set("seat", extractedSeat);
+    if (n.bookingDate) params.set("date", n.bookingDate);
+
+    // Pass clean search keyword
+    const cleanSearch = extractedRoom || extractedSeat || (bookingId ? `#${bookingId}` : "");
+    if (cleanSearch) {
+      params.set("search", cleanSearch);
+    }
+
+    navigate(`/my-bookings?${params.toString()}`);
+  };
+
   if (!open) return null;
 
   const hasUnread = notifications.some((n) => !n.isRead && !n.read && n.unread !== false);
@@ -237,16 +320,25 @@ export default function NotificationDropdown({
             return (
               <div
                 key={id}
-                className={`group relative rounded-2xl border p-3 transition ${
+                role="button"
+                tabIndex={0}
+                onClick={() => handleSelectNotification(n)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleSelectNotification(n);
+                  }
+                }}
+                className={`group relative rounded-2xl border p-3 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400 ${
                   isUnread
-                    ? "border-amber-200 bg-amber-50/40"
-                    : "border-slate-200 bg-portal-bg/60"
+                    ? "border-amber-200 bg-amber-50/50 hover:bg-amber-50/80"
+                    : "border-slate-200 bg-portal-bg/60 hover:bg-white"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="font-display text-xs font-bold text-ink truncate">
+                      <p className="font-display text-xs font-bold text-ink truncate group-hover:text-sky-700">
                         {title}
                       </p>
                       {isUnread && (
@@ -258,9 +350,14 @@ export default function NotificationDropdown({
                     {message && (
                       <p className="mt-1 text-xs text-slate line-clamp-2">{message}</p>
                     )}
-                    <span className="mt-1.5 inline-block font-mono text-[10px] uppercase tracking-wider text-slate/80">
-                      {time}
-                    </span>
+                    <div className="mt-1.5 flex items-center justify-between">
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-slate/80">
+                        {time}
+                      </span>
+                      <span className="text-[10.5px] font-semibold text-sky-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                        View Record →
+                      </span>
+                    </div>
                   </div>
 
                   {/* Dismiss Single Notification Button */}

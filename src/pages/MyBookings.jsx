@@ -37,6 +37,10 @@ export default function MyBookings() {
       searchParams.get("q") ||
       "";
     setSearch(searchFromUrl);
+
+    if (searchParams.get("highlight") || searchParams.get("room")) {
+      setDateFilter("All");
+    }
   }, [searchParams]);
 
   const handleSearchChange = (val) => {
@@ -49,6 +53,69 @@ export default function MyBookings() {
     }
     setSearchParams(newParams, { replace: true });
   };
+
+  const highlightParam = searchParams.get("highlight") || "";
+  const roomParam = searchParams.get("room") || "";
+  const searchParam = searchParams.get("search") || searchParams.get("q") || "";
+
+  // Compute matched highlight target across bookingId, room name, seat, or query
+  const matchedHighlightId = useMemo(() => {
+    if (!highlightParam && !roomParam && !searchParam) return "";
+
+    const cleanHighlight = String(highlightParam || "").replace(/^#/, "").trim().toLowerCase();
+    const cleanRoom = String(roomParam || "").trim().toLowerCase();
+    const cleanSearch = String(searchParam || "").trim().toLowerCase();
+
+    // 1. Exact match by bookingId
+    if (cleanHighlight) {
+      const match = bookings.find((b) => {
+        const bId = String(b.bookingId ?? "").replace(/^#/, "").trim().toLowerCase();
+        return bId === cleanHighlight;
+      });
+      if (match) return String(match.bookingId ?? "").replace(/^#/, "");
+    }
+
+    // 2. Match by room name or seat number
+    if (cleanRoom) {
+      const match = bookings.find((b) => {
+        const rName = String(b.roomName ?? "").trim().toLowerCase();
+        return rName.includes(cleanRoom) || cleanRoom.includes(rName);
+      });
+      if (match) return String(match.bookingId ?? "").replace(/^#/, "");
+    }
+
+    // 3. Match by search text
+    if (cleanSearch) {
+      const match = bookings.find((b) => {
+        const bId = String(b.bookingId ?? "").replace(/^#/, "").trim().toLowerCase();
+        const rName = String(b.roomName ?? "").trim().toLowerCase();
+        const sNum = String(b.seatNumber ?? "").trim().toLowerCase();
+        const purpose = String(b.purpose ?? b.meetingTitle ?? "").trim().toLowerCase();
+        return (
+          bId === cleanSearch.replace(/^#/, "") ||
+          (rName && rName.includes(cleanSearch)) ||
+          (sNum && sNum.includes(cleanSearch)) ||
+          (purpose && purpose.includes(cleanSearch))
+        );
+      });
+      if (match) return String(match.bookingId ?? "").replace(/^#/, "");
+    }
+
+    return cleanHighlight;
+  }, [highlightParam, roomParam, searchParam, bookings]);
+
+  // Auto-scroll to highlighted booking record
+  useEffect(() => {
+    if (matchedHighlightId && !loading && bookings.length > 0) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`booking-row-${matchedHighlightId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [matchedHighlightId, loading, bookings]);
 
   const toast = useToast();
 
@@ -971,7 +1038,7 @@ export default function MyBookings() {
       toast.addToast({
         type: "error",
         title:
-          "Start time cannot be before 10:00 AM.",
+          "Start time cannot be before 10:00.",
       });
 
       return false;
@@ -981,7 +1048,7 @@ export default function MyBookings() {
       toast.addToast({
         type: "error",
         title:
-          "End time cannot be after 10:00 PM.",
+          "End time cannot be after 22:00.",
       });
 
       return false;
@@ -1432,6 +1499,12 @@ export default function MyBookings() {
     const query = search.toLowerCase().trim();
 
     return bookings.filter((b) => {
+      // If this booking is the targeted record, always keep it visible
+      const rawBookingId = String(b.bookingId ?? "").replace(/^#/, "").toLowerCase();
+      if (matchedHighlightId && rawBookingId === String(matchedHighlightId).toLowerCase()) {
+        return true;
+      }
+
       // 1. Search text filter
       const text = [
         String(b.bookingId ?? ""),
@@ -1465,7 +1538,7 @@ export default function MyBookings() {
 
       return matchesSearch && matchesDate;
     });
-  }, [bookings, search, dateFilter, todayString]);
+  }, [bookings, search, dateFilter, todayString, matchedHighlightId]);
 
   // =====================================================
   // RENDER
@@ -2111,7 +2184,7 @@ export default function MyBookings() {
                 <p className="text-xs text-slate-500">
                   Booking hours:{" "}
                   <span className="font-semibold">
-                    10:00 AM - 10:00 PM
+                    10:00 - 22:00
                   </span>
                 </p>
               </>

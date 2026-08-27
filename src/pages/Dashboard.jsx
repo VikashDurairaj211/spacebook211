@@ -734,10 +734,10 @@ export default function Dashboard() {
     });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-3.5">
       {/* Welcome Banner */}
-      <Card className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-xs uppercase tracking-[0.25em] text-slate-500">
+      <Card className="rounded-2xl border border-slate-200 bg-white px-7 py-5 shadow-xs w-full">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
           {new Date().toLocaleDateString("en-US", {
             weekday: "long",
             month: "long",
@@ -745,17 +745,17 @@ export default function Dashboard() {
           })}
         </p>
 
-        <h1 className="mt-2 text-4xl font-bold">
+        <h1 className="mt-1.5 text-3xl font-bold text-slate-900 tracking-tight">
           Welcome, {user?.name}
         </h1>
 
-        <p className="mt-3 text-slate-600">
+        <p className="mt-1 text-sm text-slate-600">
           Find and reserve a workspace for your next meeting.
         </p>
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <DashboardCard
           title="Upcoming"
           value={upcomingCount}
@@ -768,29 +768,29 @@ export default function Dashboard() {
       </div>
 
       {/* Active & Upcoming Reservations */}
-      <Card className="p-6 shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">
+      <Card className="p-4 rounded-2xl shadow-xs">
+        <div className="mb-2.5 flex items-center justify-between">
+          <h2 className="text-sm font-bold text-slate-900">
             Active & Upcoming Reservations
           </h2>
 
           <Link
             to="/my-bookings"
-            className="text-sm text-blue-600 hover:underline"
+            className="text-xs font-semibold text-sky-600 hover:text-sky-800 hover:underline"
           >
             View all
           </Link>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                <th className="py-3">ROOM</th>
-                <th className="py-3">DATE</th>
-                <th className="py-3">TIME</th>
-                <th className="py-3">STATUS</th>
-                <th className="py-3">ACTION</th>
+              <tr className="border-b text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                <th className="py-2">ROOM</th>
+                <th className="py-2">DATE</th>
+                <th className="py-2">TIME</th>
+                <th className="py-2">STATUS</th>
+                <th className="py-2">ACTION</th>
               </tr>
             </thead>
 
@@ -799,7 +799,7 @@ export default function Dashboard() {
                 <tr>
                   <td
                     colSpan={5}
-                    className="py-6 text-center text-slate-500 text-sm"
+                    className="py-4 text-center text-slate-500 text-xs"
                   >
                     No active or upcoming reservations found.
                   </td>
@@ -808,18 +808,18 @@ export default function Dashboard() {
                 activeAndEarlyReservations.map((booking) => (
                   <tr
                     key={booking.bookingId}
-                    className="border-b hover:bg-slate-50 text-sm transition-colors"
+                    className="border-b last:border-0 hover:bg-slate-50 text-xs transition-colors"
                   >
-                    <td className="py-4 font-medium text-slate-900">
+                    <td className="py-2.5 font-medium text-slate-900">
                       {booking.roomName ||
                         "Reserved Workspace"}
                     </td>
 
-                    <td className="text-slate-600">
+                    <td className="py-2.5 text-slate-600">
                       {booking.bookingDate}
                     </td>
 
-                    <td className="text-slate-600">
+                    <td className="py-2.5 text-slate-600">
                       {formatTime(booking.startTime)}
 
                       {booking.endTime &&
@@ -831,9 +831,9 @@ export default function Dashboard() {
                         : ""}
                     </td>
 
-                    <td className="py-4">
+                    <td className="py-2.5">
                       <span
-                        className={`inline-block w-28 py-1 rounded-full text-xs font-bold tracking-wider uppercase text-center ${getStatusBadgeClass(
+                        className={`inline-block w-24 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase text-center ${getStatusBadgeClass(
                           booking.status
                         )}`}
                       >
@@ -841,10 +841,10 @@ export default function Dashboard() {
                       </span>
                     </td>
 
-                    <td className="py-4">
+                    <td className="py-2.5">
                       {booking.isHotseat ? (
                         normalizeStatus(booking.status) === "checkedin" ? (
-                          <span className="text-xs font-semibold text-[#658362]">
+                          <span className="text-[11px] font-semibold text-[#658362]">
                             ✓ Checked In
                           </span>
                         ) : ["confirmed", "approved"].includes(
@@ -854,7 +854,7 @@ export default function Dashboard() {
                             type="button"
                             disabled={checkingInId === (booking.rawId || booking.bookingId)}
                             onClick={() => handleCheckIn(booking)}
-                            className="rounded-lg bg-[#2F6FE0] px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                            className="rounded-md bg-[#2F6FE0] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-2xs"
                           >
                             {checkingInId === (booking.rawId || booking.bookingId)
                               ? "Checking in..."
@@ -863,7 +863,7 @@ export default function Dashboard() {
                         ) : ["confirmed", "approved"].includes(
                             normalizeStatus(booking.status)
                           ) ? (
-                          <span className="text-xs text-slate-400 font-medium select-none">
+                          <span className="text-[11px] text-slate-400 font-medium select-none">
                             Available on day
                           </span>
                         ) : null

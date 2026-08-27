@@ -552,7 +552,7 @@ export default function SearchRooms() {
         OFFICE_START_TIME
     ) {
       setError(
-        "Bookings are allowed only during office hours: 10:00 AM to 10:00 PM."
+        "Bookings are allowed only during office hours: 10:00 to 22:00."
       );
       return;
     }
@@ -563,7 +563,7 @@ export default function SearchRooms() {
         OFFICE_END_TIME
     ) {
       setError(
-        "Bookings are allowed only during office hours: 10:00 AM to 10:00 PM."
+        "Bookings are allowed only during office hours: 10:00 to 22:00."
       );
       return;
     }
