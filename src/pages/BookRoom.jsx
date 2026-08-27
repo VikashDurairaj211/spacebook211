@@ -643,7 +643,7 @@ export default function BookRoom() {
     ) {
       setErrors({
         startTime:
-          'Bookings are allowed only between 10:00 AM and 10:00 PM.',
+          'Bookings are allowed only between 10:00 and 22:00.',
       })
 
       return
@@ -655,7 +655,7 @@ export default function BookRoom() {
     ) {
       setErrors({
         endTime:
-          'Bookings are allowed only between 10:00 AM and 10:00 PM.',
+          'Bookings are allowed only between 10:00 and 22:00.',
       })
 
       return

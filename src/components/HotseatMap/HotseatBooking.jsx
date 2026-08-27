@@ -946,14 +946,19 @@ function OfficeMapTab({
     );
   });
 
-  const myBookedSeatNumber = myBookingForDate?.seatNumber;
+  const myBookedSeatNumber = String(myBookingForDate?.seatNumber || myBookingForDate?.seat || myBookingForDate?.seatId || "").trim();
+
+  const normalizeSeat = (s) => String(s || "").toLowerCase().replace(/^(hot seat|seat|ws-04-)/i, "").trim();
 
   const currentSeats = (currentModule?.seats || []).map((seat) => {
     const isMine = Boolean(
       myBookingForDate &&
       myBookedSeatNumber &&
-      seat.id &&
-      myBookedSeatNumber.toLowerCase() === seat.id.toLowerCase()
+      (
+        normalizeSeat(myBookedSeatNumber) === normalizeSeat(seat.id) ||
+        normalizeSeat(myBookedSeatNumber) === normalizeSeat(seat.number) ||
+        myBookedSeatNumber.toLowerCase() === String(seat.id || "").toLowerCase()
+      )
     );
 
     if (seat.id === active?.id) {
@@ -983,41 +988,35 @@ function OfficeMapTab({
   });
 
   function handleSelectSeat(seat) {
-    if (seat.status === "occupied" && !seat.isMyBooking) {
+    const isMine = Boolean(
+      seat.isMyBooking ||
+      (
+        myBookingForDate &&
+        myBookedSeatNumber &&
+        (
+          normalizeSeat(myBookedSeatNumber) === normalizeSeat(seat.id) ||
+          normalizeSeat(myBookedSeatNumber) === normalizeSeat(seat.number) ||
+          myBookedSeatNumber.toLowerCase() === String(seat.id || "").toLowerCase()
+        )
+      )
+    );
+
+    if (isMine) {
+      setBookingResult(null);
+      setActive({ ...seat, isMyBooking: true });
       return;
     }
 
-    const existingUserBooking = bookings.find((b) => {
-      const bookingDateStr = normalizeDateKey(b.bookingDate || b.date || b.expectedCheckIn);
-      const status = b.status?.toLowerCase();
-      const bSeat = String(b.seatNumber || b.seat || "").toUpperCase();
-      const bMod = String(b.module || "").toLowerCase();
+    if (seat.status === "occupied") {
+      return;
+    }
 
-      let belongsToCurrentModule = false;
-      if (isTidelPark) {
-        belongsToCurrentModule = bSeat.startsWith("WS") || bMod.includes("tidel") || bMod.includes("tidal");
-      } else if (moduleId === "module2") {
-        belongsToCurrentModule = bSeat.includes("EO2") || bMod.includes("module 2") || bMod.includes("eo2");
-      } else {
-        belongsToCurrentModule = bSeat.includes("EO1") || (!bSeat.includes("EO2") && !bSeat.startsWith("WS") && (bMod.includes("module 1") || !bMod));
-      }
-
-      return (
-        bookingDateStr === targetDate &&
-        status !== "cancelled" &&
-        status !== "rejected" &&
-        status !== "expired" &&
-        belongsToCurrentModule &&
-        bSeat.toLowerCase() !== String(seat.id || seat.seatNumber || "").toLowerCase()
-      );
-    });
-
-    if (existingUserBooking && !seat.isMyBooking) {
+    if (myBookingForDate) {
       setConflictData({
         message: "You already have a hotseat booking in this module for this date.",
-        existingBookingId: existingUserBooking.bookingId || existingUserBooking.id,
-        seatId: existingUserBooking.seatId || existingUserBooking.seatNumber,
-        bookingStatus: existingUserBooking.status || "Confirmed"
+        existingBookingId: myBookingForDate.bookingId || myBookingForDate.id,
+        seatId: myBookingForDate.seatId || myBookingForDate.seatNumber,
+        bookingStatus: myBookingForDate.status || "Confirmed"
       });
       return;
     }
@@ -1155,13 +1154,18 @@ function OfficeMapTab({
           {active && (
             <BookingDialog
               item={active}
-              booking={bookings.find(
-                (b) =>
-                  b.isMyBooking &&
-                  b.seatNumber?.toLowerCase() === active.id?.toLowerCase() &&
-                  normalizeDateKey(b.bookingDate || b.date) === targetDate &&
-                  b.status?.toLowerCase() !== "cancelled"
-              )}
+              booking={
+                active.isMyBooking
+                  ? myBookingForDate
+                  : (myBookingForDate && normalizeSeat(myBookedSeatNumber) === normalizeSeat(active.id))
+                  ? myBookingForDate
+                  : bookings.find(
+                      (b) =>
+                        normalizeSeat(b.seatNumber || b.seat || b.seatId) === normalizeSeat(active.id) &&
+                        normalizeDateKey(b.bookingDate || b.date || b.expectedCheckIn) === targetDate &&
+                        b.status?.toLowerCase() !== "cancelled"
+                    )
+              }
               currentModuleLabel={currentModule.label}
               targetDate={targetDate}
               onClose={() => setActive(null)}
@@ -1266,7 +1270,7 @@ function BookingDialog({
   onCancel,
   onResult,
 }) {
-  const isEditing = Boolean(booking && booking.isMyBooking);
+  const isEditing = Boolean(booking || item?.isMyBooking);
 
   const [date, setDate] = useState(booking?.bookingDate || targetDate);
 
@@ -1413,7 +1417,7 @@ function BookingDialog({
             </label>
 
             <div className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-medium text-slate-700">
-              {currentModuleLabel} · {item.label}
+              {currentModuleLabel} · {item.id || item.label}
             </div>
           </div>
 
@@ -1422,21 +1426,9 @@ function BookingDialog({
               Booking Date
             </label>
 
-            <select
-              value={date}
-              onChange={(e) => {
-                if (isWeekend(e.target.value)) return;
-                setDate(e.target.value);
-              }}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 focus:border-[#2F6FE0] focus:outline-none"
-            >
-              <option value={getTodayKey()} disabled={isWeekend(getTodayKey())}>
-                {formatDate(getTodayKey())} {isWeekend(getTodayKey()) ? "(Weekend)" : ""}
-              </option>
-              <option value={getTomorrowKey()} disabled={isWeekend(getTomorrowKey())}>
-                {formatDate(getTomorrowKey())} {isWeekend(getTomorrowKey()) ? "(Weekend)" : ""}
-              </option>
-            </select>
+            <div className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-medium text-slate-700">
+              {formatDate(normalizeDateKey(date || targetDate))}
+            </div>
           </div>
 
           <div className="mb-2">
@@ -1452,7 +1444,7 @@ function BookingDialog({
             />
 
             <p className="mt-1 text-[11px] text-slate-500">
-              Operating hours: <span className="font-semibold text-slate-700">10:00 AM – 10:00 PM</span>
+              Operating hours: <span className="font-semibold text-slate-700">10:00 – 22:00</span>
             </p>
           </div>
 

@@ -19,23 +19,19 @@ function timeToMinutes(val) {
   return h * 60 + m
 }
 
-function formatTimeWithAmPm(val) {
+function formatDisplayTime(val) {
   if (!val) return ''
   const [hStr, mStr] = String(val).substring(0, 5).split(':')
   const h = Number(hStr)
   const m = Number(mStr || 0)
   if (isNaN(h)) return val
-  const period = h >= 12 ? 'PM' : 'AM'
-  const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h
-  return `${String(displayH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
 function formatHourLabel(hourStr) {
   const h = Number(hourStr)
   if (isNaN(h)) return hourStr
-  const period = h >= 12 ? 'PM' : 'AM'
-  const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h
-  return `${String(displayH).padStart(2, '0')} ${period}`
+  return String(hourStr)
 }
 
 export default function ScrollableTimePicker({
@@ -234,7 +230,7 @@ export default function ScrollableTimePicker({
               : 'text-slate-500 font-normal'
           }
         >
-          {currentValue ? formatTimeWithAmPm(currentValue) : placeholder}
+          {currentValue ? formatDisplayTime(currentValue) : placeholder}
         </span>
 
         <svg
@@ -262,7 +258,7 @@ export default function ScrollableTimePicker({
         <div className="absolute z-50 mt-1 flex flex-col w-full overflow-hidden rounded-xl border border-sky-200 bg-white shadow-xl">
           {/* Operating hours banner */}
           <div className="bg-sky-50 px-3 py-1.5 text-[10.5px] font-bold text-sky-800 border-b border-sky-100 flex items-center justify-between">
-            <span>Operating: 10:00 AM – 10:00 PM</span>
+            <span>Operating: 10:00 – 22:00</span>
             <span className="text-sky-600 font-normal">Business Hours</span>
           </div>
 

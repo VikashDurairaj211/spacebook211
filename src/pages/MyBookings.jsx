@@ -1038,7 +1038,7 @@ export default function MyBookings() {
       toast.addToast({
         type: "error",
         title:
-          "Start time cannot be before 10:00 AM.",
+          "Start time cannot be before 10:00.",
       });
 
       return false;
@@ -1048,7 +1048,7 @@ export default function MyBookings() {
       toast.addToast({
         type: "error",
         title:
-          "End time cannot be after 10:00 PM.",
+          "End time cannot be after 22:00.",
       });
 
       return false;
@@ -2198,7 +2198,7 @@ export default function MyBookings() {
                 <p className="text-xs text-slate-500">
                   Booking hours:{" "}
                   <span className="font-semibold">
-                    10:00 AM - 10:00 PM
+                    10:00 - 22:00
                   </span>
                 </p>
               </>

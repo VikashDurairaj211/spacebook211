@@ -1796,7 +1796,7 @@ export default function HotseatManagement() {
                               {booking.date}
                             </td>
                             <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
-                              {booking.expectedCheckIn || '10:00 AM'}
+                              {booking.expectedCheckIn || '10:00'}
                             </td>
                             <td className="px-4 py-3.5 text-center whitespace-nowrap">
                               <HotseatStatusTag status={booking.status} />
