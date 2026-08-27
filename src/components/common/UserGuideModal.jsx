@@ -202,7 +202,7 @@ const GUIDE_SECTIONS = [
     title: 'Admin Tools & Intelligence',
     icon: ShieldCheck,
     badge: 'Admin Only',
-    description: 'Executive KPIs, reservation audit modal, room management, and visual analytics.',
+    description: 'Executive KPIs, reservation audit modal, room management, hotseat administration, and visual analytics.',
     topics: [
       {
         title: '1. Reports & Executive KPI Cards',
@@ -238,7 +238,18 @@ const GUIDE_SECTIONS = [
         ],
       },
       {
-        title: '4. Visual Analytics & Usage Intelligence',
+        title: '4. Hotseat Management & Workstation Administration',
+        content:
+          'The Hotseat Management page enables full administrative oversight of hot-desk operations across campus modules:',
+        steps: [
+          'Workstation KPI Metrics: Monitor Total Hotseat Bookings, Active Desks, Checked-In Desks, Cancellation Rate, and Total Users.',
+          'Shift & Module Analytics: Track desk demand across Full Day, Morning, and Afternoon shifts, plus Module 1 vs Module 2 utilization charts.',
+          'Desk Management & Status Controls: Search records by employee or seat ID, view expected check-in times, and perform admin actions (Check-In, Check-Out, Force Release, Set Maintenance).',
+          'Export Hotseat CSV: Export complete hotseat logs with requester names, modules, shifts, and timestamps for facility auditing.',
+        ],
+      },
+      {
+        title: '5. Visual Analytics & Usage Intelligence',
         content:
           'Compact business intelligence charts included on the Reports page:',
         steps: [
@@ -284,9 +295,9 @@ const GUIDE_SECTIONS = [
           'Cancellation reasons are viewable by Admins in the "Reservation Details" modal when clicking View on any booking, as well as in the exported CSV audit report.',
       },
       {
-        title: 'How do administrators manage bookings and rooms?',
+        title: 'How do administrators manage bookings, rooms, and hotseats?',
         content:
-          'Administrators use "Reports" to monitor executive KPIs, view the reservation audit modal, and export CSV reports. Room inventory, capacities, and maintenance modes are managed under "Workspace Administration".',
+          'Administrators use "Reports" for executive KPIs and CSV exports, "Workspace Administration" to manage room inventory and maintenance modes, and "Hotseat Management" to oversee desk check-ins, shift analytics, and workstation allocations.',
       },
     ],
   },
