@@ -251,13 +251,14 @@ const GUIDE_SECTIONS = [
       {
         title: '5. Visual Analytics & Usage Intelligence',
         content:
-          'Compact business intelligence charts included on the Reports page:',
+          'Unified 6-tab business intelligence graph matching the Hotseat Management portal in a clean single-line layout:',
         steps: [
-          'Employee Booking vs Cancellation Ratio: Top employee booking volume compared with cancellation rates.',
-          'Reservation Outcome Breakdown: Donut chart illustrating confirmed vs cancelled proportions.',
-          'Reservation Volume Trendline: Interactive area chart tracking monthly and weekly volume patterns.',
-          'Most Reserved Rooms: Horizontal bar ranking identifying the most frequently booked workspaces.',
-          'Peak Workspace Demand by Hour: Hourly distribution of office reservations across the workday.',
+          'Volume Trend: Interactive area chart tracking monthly and weekly reservation activity progression over time.',
+          'Outcomes: Donut chart illustrating confirmed vs cancelled proportions.',
+          'Facility Share: Donut distribution of reservation volume across campus modules (Elcot Park Module 1 & 2, Tidel Park).',
+          'Section Demand: Column chart showing demand across Conference, Training, and Discussion rooms.',
+          'Workspace Ranking: Horizontal bar chart identifying the most reserved rooms and workspaces.',
+          'Hourly Demand: Hourly distribution of office reservations across the workday (10:00 AM to 10:00 PM IST).',
         ],
       },
     ],

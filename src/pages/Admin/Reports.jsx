@@ -1100,10 +1100,10 @@ export default function Reports() {
       ================================================= */}
       <Card className="p-4 sm:p-5 shadow-sm">
         {/* CHART CONTROLS & TABS */}
-        <div className="flex flex-col gap-3 pb-4 border-b border-line lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <h2 className="font-display text-base font-bold text-ink">
+        <div className="flex flex-col gap-3 pb-4 border-b border-line xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-base font-bold text-ink truncate">
                 {activeChart === 'trend' && 'Reservation Volume Trendline'}
                 {activeChart === 'outcome' && 'Reservation Outcome Breakdown'}
                 {activeChart === 'employee' && 'Employee Booking vs Cancellation Ratio'}
@@ -1114,7 +1114,7 @@ export default function Reports() {
                 Visual Analytics
               </span>
             </div>
-            <p className="text-xs text-slate mt-0.5">
+            <p className="text-xs text-slate mt-0.5 truncate">
               {activeChart === 'trend' && 'Historical reservation activity and volume patterns over time.'}
               {activeChart === 'outcome' && 'Proportion of successful confirmed bookings versus cancellations.'}
               {activeChart === 'employee' && 'Confirmed vs cancelled reservations by top employees.'}
@@ -1123,92 +1123,99 @@ export default function Reports() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap shrink-0 max-w-full pb-1 xl:pb-0">
             {/* MONTHLY / WEEKLY TOGGLE (for Volume Trendline) */}
             {activeChart === 'trend' && (
-              <div className="flex items-center rounded-lg bg-slate-100 p-0.5 text-xs">
+              <div className="flex items-center rounded-lg bg-slate-100 p-0.5 text-xs shrink-0">
                 <button
                   type="button"
                   onClick={() => setTrendPeriod('Monthly')}
-                  className={`rounded-md px-2.5 py-1 font-bold transition-all ${trendPeriod === 'Monthly'
-                    ? 'bg-white text-ink shadow-xs'
-                    : 'text-slate hover:text-ink'
-                    }`}
+                  className={`rounded-md px-2 py-1 text-xs font-bold transition-all ${
+                    trendPeriod === 'Monthly'
+                      ? 'bg-white text-ink shadow-xs'
+                      : 'text-slate hover:text-ink'
+                  }`}
                 >
                   Monthly
                 </button>
                 <button
                   type="button"
                   onClick={() => setTrendPeriod('Weekly')}
-                  className={`rounded-md px-2.5 py-1 font-bold transition-all ${trendPeriod === 'Weekly'
-                    ? 'bg-white text-ink shadow-xs'
-                    : 'text-slate hover:text-ink'
-                    }`}
+                  className={`rounded-md px-2 py-1 text-xs font-bold transition-all ${
+                    trendPeriod === 'Weekly'
+                      ? 'bg-white text-ink shadow-xs'
+                      : 'text-slate hover:text-ink'
+                  }`}
                 >
                   Weekly
                 </button>
               </div>
             )}
 
-            {/* TAB PILLS */}
-            <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl flex-wrap">
+            {/* TAB PILLS - ALL IN ONE SINGLE LINE */}
+            <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl flex-nowrap shrink-0 whitespace-nowrap">
               <button
                 type="button"
                 onClick={() => setActiveChart('trend')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'trend'
-                  ? 'bg-white text-sky-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  activeChart === 'trend'
+                    ? 'bg-white text-sky-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
               >
-                <TrendingUp size={14} className={activeChart === 'trend' ? 'text-sky-600' : 'text-slate-400'} />
+                <TrendingUp size={13} className={activeChart === 'trend' ? 'text-sky-600' : 'text-slate-400'} />
                 <span>Volume Trend</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveChart('outcome')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'outcome'
-                  ? 'bg-white text-sky-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  activeChart === 'outcome'
+                    ? 'bg-white text-sky-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
               >
-                <Sparkles size={14} className={activeChart === 'outcome' ? 'text-emerald-600' : 'text-slate-400'} />
+                <Sparkles size={13} className={activeChart === 'outcome' ? 'text-emerald-600' : 'text-slate-400'} />
                 <span>Outcomes</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveChart('employee')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'employee'
-                  ? 'bg-white text-sky-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  activeChart === 'employee'
+                    ? 'bg-white text-sky-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
               >
-                <Users size={14} className={activeChart === 'employee' ? 'text-sky-600' : 'text-slate-400'} />
+                <Users size={13} className={activeChart === 'employee' ? 'text-sky-600' : 'text-slate-400'} />
                 <span>Employee Ratio</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveChart('rooms')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'rooms'
-                  ? 'bg-white text-sky-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  activeChart === 'rooms'
+                    ? 'bg-white text-sky-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
               >
-                <Building2 size={14} className={activeChart === 'rooms' ? 'text-sky-600' : 'text-slate-400'} />
+                <Building2 size={13} className={activeChart === 'rooms' ? 'text-sky-600' : 'text-slate-400'} />
                 <span>Workspace Ranking</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveChart('hourly')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'hourly'
-                  ? 'bg-white text-sky-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  activeChart === 'hourly'
+                    ? 'bg-white text-sky-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
               >
-                <Clock size={14} className={activeChart === 'hourly' ? 'text-indigo-600' : 'text-slate-400'} />
+                <Clock size={13} className={activeChart === 'hourly' ? 'text-indigo-600' : 'text-slate-400'} />
                 <span>Hourly Demand</span>
               </button>
             </div>

@@ -5,7 +5,7 @@ export default function SpaceBookCopilot({ isOpen = false, onClose }) {
     <div
       style={{
         position: 'fixed',
-        right: '12px',
+        right: '24px',
         top: '56px',
         width: '400px',
         height: 'calc(100vh - 72px)',

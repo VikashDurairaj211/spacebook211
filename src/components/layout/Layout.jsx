@@ -87,12 +87,12 @@ export default function Layout() {
         />
 
         {!isCopilotOpen && (
-          <div className="fixed top-[60px] right-3 z-[9999] flex items-center gap-2 select-none pointer-events-auto">
+          <div className="fixed top-[58px] right-6 z-[9999] flex items-center gap-2.5 select-none pointer-events-auto">
             {/* Ultra-compact Sleek Help Bubble */}
             {showCopilotBubble && (
               <div
                 onClick={() => setIsCopilotOpen(true)}
-                className="relative group cursor-pointer flex items-center gap-2 bg-white/95 backdrop-blur-md border border-sky-200 text-slate-800 px-2.5 py-1.5 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 hover:border-sky-400 hover:-translate-x-0.5"
+                className="relative group cursor-pointer flex items-center gap-2 bg-white/95 backdrop-blur-md border border-sky-200 text-slate-800 px-3 py-1.5 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 hover:border-sky-400 hover:-translate-x-0.5"
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
@@ -134,17 +134,17 @@ export default function Layout() {
               </div>
             )}
 
-            {/* Compact Branded Aira Assistant Button */}
+            {/* Branded Aira Assistant Button */}
             <button
               type="button"
               onClick={() => setIsCopilotOpen(true)}
               className="relative flex items-center justify-center rounded-full bg-gradient-to-tr from-sky-700 via-sky-600 to-sky-500 text-white shadow-md shadow-sky-600/30 hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 border-2 border-white focus:outline-none focus:ring-2 focus:ring-sky-200 group flex-shrink-0"
-              style={{ width: '42px', height: '42px' }}
+              style={{ width: '50px', height: '50px' }}
               title="Aira Assistant - Ask doubts or get help"
               aria-label="Open Aira Assistant"
             >
               {/* Inner container with Logo */}
-              <div className="flex items-center justify-center w-7.5 h-7.5 rounded-full bg-white/95 shadow-inner p-0.5">
+              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/95 shadow-inner p-1">
                 <img
                   src="/Logo.png"
                   alt="Aira Assistant"
@@ -153,8 +153,8 @@ export default function Layout() {
               </div>
 
               {/* Sparkle AI Badge */}
-              <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-amber-950 shadow-sm border border-white">
-                <Sparkles size={9} className="fill-amber-950" />
+              <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-amber-950 shadow-sm border border-white">
+                <Sparkles size={10} className="fill-amber-950" />
               </span>
             </button>
           </div>
