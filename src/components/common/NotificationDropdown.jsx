@@ -70,6 +70,16 @@ export default function NotificationDropdown({
     }
   };
 
+  // Sync initialNotifications prop whenever it changes
+  useEffect(() => {
+    if (!initialNotifications) return;
+    const clearedIds = new Set(getClearedNotificationIds().map(String));
+    const active = initialNotifications.filter(
+      (n) => !clearedIds.has(String(n.notificationId || n.id))
+    );
+    setNotifications(active);
+  }, [initialNotifications]);
+
   // Fetch API data when dropdown opens
   useEffect(() => {
     if (!open) return;
@@ -78,7 +88,7 @@ export default function NotificationDropdown({
     const clearedIds = new Set(getClearedNotificationIds().map(String));
 
     // If initialNotifications was already provided by TopNav, use it
-    if (initialNotifications) {
+    if (initialNotifications && initialNotifications.length > 0) {
       const active = initialNotifications.filter(
         (n) => !clearedIds.has(String(n.notificationId || n.id))
       );

@@ -208,6 +208,8 @@ export default function Notifications() {
   // =====================================================
   // Load Notifications
   // =====================================================
+  // Load Notifications (With Auto-Polling & Live Refresh)
+  // =====================================================
 
   useEffect(() => {
     if (!user) {
@@ -217,20 +219,39 @@ export default function Notifications() {
 
     fetchNotifications()
 
+    // 1. Auto-polling every 5 seconds
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications()
+      }
+    }, 5000)
+
+    // 2. Fetch on tab focus / visibility change
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications()
+      }
+    }
+
     const handleNotificationRefresh = () => {
       fetchNotifications()
     }
 
-    window.addEventListener(
-      'notificationsRead',
-      handleNotificationRefresh
-    )
+    window.addEventListener('notificationsRead', handleNotificationRefresh)
+    window.addEventListener('notificationRefresh', handleNotificationRefresh)
+    window.addEventListener('bookingCreated', handleNotificationRefresh)
+    window.addEventListener('bookingCancelled', handleNotificationRefresh)
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleFocus)
 
     return () => {
-      window.removeEventListener(
-        'notificationsRead',
-        handleNotificationRefresh
-      )
+      clearInterval(pollInterval)
+      window.removeEventListener('notificationsRead', handleNotificationRefresh)
+      window.removeEventListener('notificationRefresh', handleNotificationRefresh)
+      window.removeEventListener('bookingCreated', handleNotificationRefresh)
+      window.removeEventListener('bookingCancelled', handleNotificationRefresh)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleFocus)
     }
   }, [user, isAdmin])
 

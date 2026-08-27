@@ -1,78 +1,70 @@
 # SPACEBOOK — Frontend
 
-React (JavaScript) + Vite + Tailwind CSS. Built to talk to a .NET Web API backed by PostgreSQL.
+Modern Workspace & Hot-Desk Management System built with React, Vite, and Tailwind CSS. Connects to a .NET Web API backed by PostgreSQL.
 
-## Pages included in this pass
-- `/login` — Login
-- `/` — Employee Dashboard
-- `/search-rooms` — Search Rooms
-- `/book-room` — Book Room (optionally pre-fills `?roomId=`)
-- `/my-bookings` — My Bookings
+---
 
-(Admin pages, Availability Calendar, Notifications, and Profile were not built yet — say the word and I'll add them on top of this same structure.)
+## 🚀 Key Features & Pages
 
-## Getting started
+### 🏢 Employee Experience
+- **`/login`** — Authentication with JWT session storage and fallback demo capability.
+- **`/dashboard` (`/`)** — Employee Dashboard with quick actions, active reservation summaries, and facility overview.
+- **`/search-rooms`** — Real-time workspace search with multi-module filtering (Elcot Park & Tidel Park), capacity limits, amenity tags, and conflict detection.
+- **`/room-details/:id`** — Interactive room details, photo gallery, capacity, and day-long time slot matrix.
+- **`/book-room`** — Instant reservation modal with numeric Booking IDs and operational hours validation (10:00 AM – 10:00 PM).
+- **`/availability-calendar`** — Workspace Availability Matrix across all rooms with automatic weekend look-ahead.
+- **`/office-map`** — Interactive Hot-Seat Floor Plan with live pin color codes (🟢 Available, 🔵 Selected, 🔴 Occupied, ⚪ Maintenance) and shift selections (Full Day, Morning, Afternoon).
+- **`/my-bookings`** — Reservation management with Active, Completed, and Cancelled tabs, time slot rescheduling, cancellation reasons, and check-in workflows.
+- **`/notifications`** — Live updates and alert notifications.
+- **`/profile`** — Employee account and role information.
+- **Aira AI Assistant** — Floating background-preloaded assistant for instant office searches, room availability queries, and amenity lookups.
+- **User Guide & Help Center** — Comprehensive in-app guide accessible from Top Navigation.
+
+### 🛡️ Admin Portal (`/admin/*`)
+- **`/admin/reports`** — Executive BI Dashboard featuring 5 compact KPI metric cards, interactive visual analytics charts (utilization, trends, peak demand hours), dedicated Audit Modal (8 items/page), and CSV data exports.
+- **`/admin/room-management`** — Workspace Administration for managing room inventory, maintenance statuses, module locations, and amenities.
+- **`/admin/hotseat-management`** — Workstation & Hot-Desk Administration with occupancy KPIs, shift breakdowns, desk actions (Check-In, Check-Out, Force Release, Set Maintenance), and CSV export.
+
+---
+
+## 🛠️ Getting Started
+
 ```bash
+# 1. Install dependencies
 npm install
-cp .env.example .env   # set VITE_API_BASE_URL to your .NET API
+
+# 2. Configure environment variables
+cp .env.example .env
+# Set VITE_API_BASE_URL to your backend .NET API (default: http://localhost:5000/api)
+
+# 3. Start local development server
 npm run dev
 ```
-Runs at `http://localhost:5173`.
 
-**Demo mode:** if the backend isn't running yet, Login will still work — it detects
-the failed network call and creates a local demo session so you can click through
-the UI. Remove the fallback block in `src/context/AuthContext.jsx` once your real
-`/api/auth/login` is live. Room search and My Bookings behave the same way (mock
-data in `src/data/mockRooms.js` and `src/api/bookings.js`).
+Application runs locally at `http://localhost:5173`.
 
-## Project structure
+---
+
+## 📁 Project Structure
+
 ```
 src/
-  api/            axios client + one file per resource (auth, rooms, bookings)
-  context/        AuthContext (JWT session state)
+  api/            Axios API client and resource modules (auth, rooms, bookings, admin)
   components/
-    layout/       TopNav, Sidebar, AppShell
-    common/       Button, Input/Select/Textarea, Card, StatusTag
-  pages/          one component per route
-  data/           mock data used until the real API responds
+    common/       UserGuideModal, Button, Input, Modal, DatePicker, TimePicker, StatusTag
+    calendar/     AvailabilityGrid and calendar components
+    HotseatMap/   Interactive floor map and hotseat booking components
+    layout/       TopNav, Sidebar, AppShell, Layout
+  context/        AuthContext (JWT session state, security timeout)
+  pages/          Application route pages (Employee & Admin portals)
+  routes/         React Router route definitions with role-based RequireAuth guards
+  utils/          Formatting, export helpers, time and date utilities
 ```
 
-## Expected .NET API contract
-The frontend calls these routes (adjust base path in `.env` via `VITE_API_BASE_URL`,
-default assumes `/api` prefix on a Kestrel dev server):
+---
 
-| Method | Route | Purpose |
-|---|---|---|
-| POST | `/auth/login` | Body `{ email, password }` → `{ token, user }` |
-| POST | `/auth/logout` | Invalidate/revoke token (optional) |
-| GET | `/auth/me` | Return current user from token |
-| GET | `/rooms?module=&type=&capacity=&date=&startTime=&endTime=` | List/filter rooms |
-| GET | `/rooms/{id}` | Room details |
-| GET | `/rooms/{id}/availability?date=` | Time slots for a room on a date |
-| GET | `/bookings/my` | Current user's bookings |
-| POST | `/bookings` | Create booking |
-| PUT | `/bookings/{id}` | Update booking |
-| DELETE | `/bookings/{id}` | Cancel booking |
-
-**Auth:** the client stores the JWT from `/auth/login` in `localStorage` and sends
-it as `Authorization: Bearer <token>` on every request (see `src/api/client.js`).
-A `401` response anywhere automatically clears the session and redirects to `/login`
-— standard behavior for JWT expiry, so your .NET API doesn't need to do anything
-special beyond returning 401 on invalid/expired tokens.
-
-**Suggested PostgreSQL shape** (for reference, not required — build your schema
-however fits your domain model):
-- `rooms (id, name, code, module, type, capacity, status)`
-- `bookings (id, room_id, user_id, title, purpose, date, start_time, end_time, attendees, notes, status)`
-- `users (id, name, email, password_hash, department, role)`
-
-## Design notes
-Blueprint/floor-plan visual direction: ink navy (`#1B2430`) on warm paper (`#F7F5F1`),
-monospace room codes (`M1-CR1` etc.) and status "plaques" instead of colored pill
-badges — tokens live in `tailwind.config.js`.
-
-## Next steps
-- Swap mock fallbacks for real calls once endpoints are live (just remove the
-  `catch` fallback blocks in `src/api/*.js` and `AuthContext.jsx`).
-- Add the remaining pages (Availability Calendar, Notifications, Profile, and the
-  Admin section) using the same `AppShell` / `Card` / `StatusTag` building blocks.
+## 📋 Operating Hours & Rules
+- **Operational Hours**: 10:00 AM – 10:00 PM IST (Monday through Friday).
+- **Campus Modules**: Module 1 - Elcot Park - CMB, Module 2 - Elcot Park - CMB, and Module 1 - Tidel Park - CMB.
+- **Room Types**: Conference (up to 20), Training (up to 50), Discussion (8 to 10).
+- **Approval System**: Automatic instant confirmation on all room and workstation bookings.

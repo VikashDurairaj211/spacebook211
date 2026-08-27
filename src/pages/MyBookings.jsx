@@ -1545,17 +1545,17 @@ export default function MyBookings() {
   // =====================================================
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col space-y-4">
 
       {/* PAGE HEADER & DATE FILTER */}
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between shrink-0">
         <div>
-          <h1 className="font-display text-3xl font-bold">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">
             My Bookings
           </h1>
 
-          <p className="mt-2 text-slate-500">
+          <p className="mt-1 text-xs sm:text-sm text-slate-500">
             View, edit or cancel your workspace reservations.
           </p>
         </div>
@@ -1563,7 +1563,7 @@ export default function MyBookings() {
         <select
           value={dateFilter}
           onChange={(e) => setDateFilter(e.target.value)}
-          className="rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-ink outline-none shadow-sm transition-colors hover:border-sky-400"
+          className="rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-ink outline-none shadow-sm transition-colors hover:border-sky-400 shrink-0"
         >
           <option value="All">All Dates</option>
           <option value="Today">Today</option>
@@ -1572,251 +1572,237 @@ export default function MyBookings() {
         </select>
       </div>
 
-      {/* BOOKINGS TABLE */}
+      {/* BOOKINGS TABLE CONTAINER - Fixed Header, Vertical top-to-bottom scroll only */}
 
-      <Card className="overflow-x-auto p-0">
+      <Card className="p-0 overflow-hidden shadow-sm border border-line rounded-2xl bg-white w-full">
+        <div className="overflow-y-auto overflow-x-hidden max-h-[560px] w-full">
+          <table className="w-full text-xs text-left border-separate border-spacing-0 table-fixed">
 
-        <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-600">
 
-          <thead>
-            <tr className="border-b border-line text-left font-mono text-[11px] uppercase tracking-wider text-slate">
+                <th className="sticky top-0 z-20 w-[50px] px-2.5 py-3 text-center bg-slate-50 border-b border-slate-200" style={{ backgroundColor: '#f8fafc' }}>
+                  ID
+                </th>
 
-              <th className="px-3 py-3">
-                ID
-              </th>
+                <th className="sticky top-0 z-20 w-[16%] px-2.5 py-3 bg-slate-50 border-b border-slate-200" style={{ backgroundColor: '#f8fafc' }}>
+                  Room
+                </th>
 
-              <th className="px-3 py-3">
-                Room
-              </th>
+                <th className="sticky top-0 z-20 w-[18%] px-2.5 py-3 bg-slate-50 border-b border-slate-200" style={{ backgroundColor: '#f8fafc' }}>
+                  Module
+                </th>
 
-              <th className="px-3 py-3">
-                Module
-              </th>
+                <th className="sticky top-0 z-20 w-[18%] px-2.5 py-3 bg-slate-50 border-b border-slate-200" style={{ backgroundColor: '#f8fafc' }}>
+                  Meeting Title
+                </th>
 
-              <th className="px-3 py-3">
-                Meeting Title
-              </th>
+                <th className="sticky top-0 z-20 w-[85px] px-2 py-3 bg-slate-50 border-b border-slate-200" style={{ backgroundColor: '#f8fafc' }}>
+                  Date
+                </th>
 
-              <th className="px-3 py-3">
-                Date
-              </th>
+                <th className="sticky top-0 z-20 w-[100px] px-2 py-3 bg-slate-50 border-b border-slate-200" style={{ backgroundColor: '#f8fafc' }}>
+                  Time
+                </th>
 
-              <th className="px-3 py-3">
-                Time
-              </th>
+                <th className="sticky top-0 z-20 w-[65px] px-2 py-3 text-center bg-slate-50 border-b border-slate-200" style={{ backgroundColor: '#f8fafc' }}>
+                  Duration
+                </th>
 
-              <th className="px-3 py-3">
-                Duration
-              </th>
+                <th className="sticky top-0 z-20 w-[95px] px-2 py-3 text-center bg-slate-50 border-b border-slate-200" style={{ backgroundColor: '#f8fafc' }}>
+                  Status
+                </th>
 
-              <th className="px-3 py-3 text-center">
-                Status
-              </th>
+                <th className="sticky top-0 z-20 w-[110px] px-2.5 py-3 text-center bg-slate-50 border-b border-slate-200" style={{ backgroundColor: '#f8fafc' }}>
+                  Actions
+                </th>
 
-              <th className="px-3 py-3 text-center">
-                Actions
-              </th>
-
-            </tr>
-          </thead>
-
-          <tbody>
-
-            {loading ? (
-
-              <tr>
-                <td
-                  colSpan={9}
-                  className="py-8 text-center text-slate-500"
-                >
-                  Loading bookings...
-                </td>
               </tr>
+            </thead>
 
-            ) : filteredBookings.length === 0 ? (
+            <tbody className="divide-y divide-slate-100 bg-white">
 
-              <tr>
-                <td
-                  colSpan={9}
-                  className="py-8 text-center text-slate-500"
-                >
-                  <div>
-                    <p className="font-medium text-ink">
-                      No bookings found.
-                    </p>
-                    {dateFilter !== "All" && (
-                      <p className="mt-1 text-xs text-slate">
-                        No bookings found for the selected date filter.
-                        <button
-                          type="button"
-                          onClick={() => setDateFilter("All")}
-                          className="ml-2 font-bold text-sky-600 hover:text-sky-800 underline"
-                        >
-                          Show all dates
-                        </button>
+              {loading ? (
+
+                <tr>
+                  <td
+                    colSpan={9}
+                    className="py-10 text-center text-slate-500"
+                  >
+                    Loading bookings...
+                  </td>
+                </tr>
+
+              ) : filteredBookings.length === 0 ? (
+
+                <tr>
+                  <td
+                    colSpan={9}
+                    className="py-10 text-center text-slate-500"
+                  >
+                    <div>
+                      <p className="font-medium text-ink">
+                        No bookings found.
                       </p>
-                    )}
-                  </div>
-                </td>
-              </tr>
+                      {dateFilter !== "All" && (
+                        <p className="mt-1 text-xs text-slate">
+                          No bookings found for the selected date filter.
+                          <button
+                            type="button"
+                            onClick={() => setDateFilter("All")}
+                            className="ml-2 font-bold text-sky-600 hover:text-sky-800 underline"
+                          >
+                            Show all dates
+                          </button>
+                        </p>
+                      )}
+                    </div>
+                  </td>
+                </tr>
 
-            ) : (
+              ) : (
 
-              filteredBookings.map((b) => {
-                const rawBookingId = String(b.bookingId ?? "").replace(/^#/, "");
-                const isHighlighted = Boolean(
-                  matchedHighlightId &&
-                  String(matchedHighlightId).toLowerCase() === rawBookingId.toLowerCase()
-                );
+                filteredBookings.map((b) => (
 
-                return (
                   <tr
                     key={`${
                       b.isHotseat
                         ? "hotseat"
                         : "room"
                     }-${b.bookingId}`}
-                    id={`booking-row-${rawBookingId}`}
-                    className={`border-b transition-all duration-300 ${
-                      isHighlighted
-                        ? "bg-sky-50 font-semibold border-sky-300"
-                        : "border-line last:border-0 hover:bg-slate-50/90"
-                    }`}
+                    className="border-b border-slate-100 last:border-0 transition-colors duration-150 hover:bg-slate-50/90"
                   >
 
                     {/* BOOKING ID */}
 
-                    <td className="px-3 py-4 font-mono whitespace-nowrap">
-                      {rawBookingId}
+                    <td className="px-2.5 py-3 text-center font-medium text-slate-700 whitespace-nowrap">
+                      {String(
+                        b.bookingId ?? ""
+                      ).replace(/^#/, "")}
                     </td>
 
-                  {/* ROOM / HOTSEAT */}
+                    {/* ROOM / HOTSEAT */}
 
-                  <td className="px-3 py-4 whitespace-nowrap font-semibold">
+                    <td className="px-2.5 py-3 font-semibold text-ink break-words leading-snug" title={b.isHotseat ? b.roomName || "Hot Seat" : b.roomName || `Room ${getRoomId(b) || ""}`}>
+                      {b.isHotseat
+                        ? b.roomName ||
+                          "Hot Seat"
+                        : b.roomName ||
+                          `Room ${
+                            getRoomId(b) || ""
+                          }`}
+                    </td>
 
-                    {b.isHotseat
-                      ? b.roomName ||
-                        "Hot Seat"
-                      : b.roomName ||
-                        `Room ${
-                          getRoomId(b) || ""
-                        }`}
+                    {/* MODULE */}
 
-                  </td>
+                    <td className="px-2.5 py-3 text-slate-600 break-words leading-snug" title={getBookingModule(b)}>
+                      {getBookingModule(b)}
+                    </td>
 
-                  {/* MODULE */}
+                    {/* MEETING TITLE */}
 
-                  <td className="px-3 py-4 whitespace-nowrap text-slate-600">
-                    {getBookingModule(b)}
-                  </td>
+                    <td className="px-2.5 py-3 font-medium text-slate-900 break-words leading-snug" title={b.meetingTitle || b.purpose || ""}>
+                      {b.meetingTitle ||
+                      b.purpose ||
+                      (b.isHotseat ? "Hotseat Booking" : "Workspace Reservation")}
+                    </td>
 
-                  {/* MEETING TITLE */}
+                    {/* DATE */}
 
-                  <td className="max-w-[160px] truncate px-3 py-4 font-medium text-slate-900" title={b.meetingTitle || b.purpose || ""}>
-                    {b.meetingTitle ||
-                    b.purpose ||
-                    (b.isHotseat ? "Hotseat Booking" : "Workspace Reservation")}
-                  </td>
+                    <td className="px-2 py-3 text-slate-700 whitespace-nowrap text-xs">
+                      {b.bookingDate}
+                    </td>
 
-                  {/* DATE */}
+                    {/* TIME */}
 
-                  <td className="px-3 py-4 whitespace-nowrap">
-                    {b.bookingDate}
-                  </td>
+                    <td className="px-2 py-3 text-slate-600 whitespace-nowrap text-xs">
+                      {b.isHotseat
+                        ? formatDisplayTime(
+                            b.expectedCheckIn ||
+                            b.startTime
+                          )
+                        : `${formatDisplayTime(
+                            b.startTime
+                          )} - ${formatDisplayTime(
+                            b.endTime
+                          )}`}
+                    </td>
 
-                  {/* TIME */}
+                    {/* DURATION */}
 
-                  <td className="px-3 py-4 whitespace-nowrap text-slate-600">
+                    <td className="px-2 py-3 text-center text-slate-700 whitespace-nowrap font-medium text-xs">
+                      {getDuration(b)}
+                    </td>
 
-                    {b.isHotseat
-                      ? formatDisplayTime(
-                          b.expectedCheckIn ||
-                          b.startTime
-                        )
-                      : `${formatDisplayTime(
-                          b.startTime
-                        )} - ${formatDisplayTime(
-                          b.endTime
+                    {/* STATUS */}
+
+                    <td className="px-2 py-3 text-center whitespace-nowrap">
+                      <span
+                        className={`inline-block w-[82px] rounded-full py-0.5 text-center text-[10.5px] font-bold uppercase tracking-wide ${getStatusBadgeClass(
+                          getDisplayStatus(b)
                         )}`}
+                      >
+                        {getDisplayStatus(b)}
+                      </span>
+                    </td>
 
-                  </td>
+                    {/* ACTIONS */}
 
-                  {/* DURATION */}
+                    <td className="px-2.5 py-3 text-center whitespace-nowrap">
 
-                  <td className="px-3 py-4 whitespace-nowrap">
-                    {getDuration(b)}
-                  </td>
+                      <button
+                        className="mr-2 text-xs font-bold text-sky-600 hover:text-sky-800 hover:underline"
+                        onClick={() =>
+                          handleView(b)
+                        }
+                      >
+                        View
+                      </button>
 
-                  {/* STATUS */}
+                      {canModifyBooking(b) && (
+                        <>
+                          {/* EDIT */}
 
-                  <td className="px-3 py-4 text-center whitespace-nowrap">
+                          <button
+                            className="mr-2 text-xs font-bold text-emerald-600 hover:text-emerald-800 hover:underline"
+                            onClick={() =>
+                              handleEdit(b)
+                            }
+                          >
+                            Edit
+                          </button>
 
-                    <span
-                      className={`inline-block w-24 rounded-full py-1 text-center text-xs font-bold uppercase tracking-wider ${getStatusBadgeClass(
-                        getDisplayStatus(b)
-                      )}`}
-                    >
-                      {getDisplayStatus(b)}
-                    </span>
+                          {/* CANCEL */}
 
-                  </td>
+                          <button
+                            className="text-xs font-bold text-red-600 hover:text-red-800 hover:underline"
+                            onClick={() => {
+                              setSelected({
+                                ...b,
+                                roomId:
+                                  getRoomId(b),
+                              });
+                              setCancelReason("");
+                              setMode("cancel");
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      )}
 
-                  {/* ACTIONS */}
+                    </td>
 
-                  <td className="px-3 py-4 text-center whitespace-nowrap">
+                  </tr>
 
-                    <button
-                      className="mr-2.5 text-sm font-bold text-sky-600 hover:text-sky-800 hover:underline"
-                      onClick={() =>
-                        handleView(b)
-                      }
-                    >
-                      View
-                    </button>
+                ))
 
-                    {canModifyBooking(b) && (
-                      <>
-                        {/* EDIT */}
+              )}
 
-                        <button
-                          className="mr-2.5 text-sm font-bold text-emerald-600 hover:text-emerald-800 hover:underline"
-                          onClick={() =>
-                            handleEdit(b)
-                          }
-                        >
-                          Edit
-                        </button>
+            </tbody>
 
-                        {/* CANCEL */}
-
-                        <button
-                          className="text-sm font-bold text-red-600 hover:text-red-800 hover:underline"
-                          onClick={() => {
-                            setSelected({
-                              ...b,
-                              roomId:
-                                getRoomId(b),
-                            });
-                            setCancelReason("");
-                            setMode("cancel");
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    )}
-
-                  </td>
-
-                </tr>
-              );
-            })
-
-          )}
-
-          </tbody>
-
-        </table>
+          </table>
+        </div>
 
       </Card>
 

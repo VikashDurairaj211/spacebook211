@@ -353,13 +353,16 @@ export default function Reports() {
         trendRes,
         statusRes,
         usageRes,
-        dashRes,
+        dashBookingsRes,
+        adminDashRes,
       ] = await Promise.allSettled([
         client.get('/admin/bookings'),
         getBookingTrendReport({ reportType: trendPeriod }),
         getBookingStatusReport({}),
         getRoomUsageReport({}),
         client.get('/admin/bookings/dashboard'),
+        client.get('/admin/dashboard'),
+        client.post('/admin/dashboard', { timeframe: 'All', timeFilter: 'All' }).catch(() => null),
       ])
 
       // 1. Trend Report
@@ -389,10 +392,12 @@ export default function Reports() {
         )
       }
 
-      // 4. Dashboard Metrics
-      if (dashRes.status === 'fulfilled' && dashRes.value?.data) {
-        setDashboardMetrics(dashRes.value.data)
+      // 4. Dashboard Metrics (Merge from GET & POST /admin/dashboard)
+      const combinedDash = {
+        ...(adminDashRes.status === 'fulfilled' && adminDashRes.value?.data ? adminDashRes.value.data : {}),
+        ...(dashBookingsRes.status === 'fulfilled' && dashBookingsRes.value?.data ? dashBookingsRes.value.data : {}),
       }
+      setDashboardMetrics(combinedDash)
 
       // 5. Admin Bookings
       if (bookingsRes.status === 'fulfilled') {
@@ -425,13 +430,131 @@ export default function Reports() {
     }
   }
 
+  // Fetch filtered dashboard metrics from POST /api/admin/dashboard whenever filters change
+  const fetchFilteredDashboard = async () => {
+    try {
+      const now = new Date()
+      const formatLocalDate = (d) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+          d.getDate()
+        ).padStart(2, '0')}`
+
+      const todayStr = formatLocalDate(now)
+      const sevenDaysAgo = new Date(now)
+      sevenDaysAgo.setDate(now.getDate() - 7)
+      const sevenDaysAgoStr = formatLocalDate(sevenDaysAgo)
+
+      const thirtyDaysAgo = new Date(now)
+      thirtyDaysAgo.setDate(now.getDate() - 30)
+      const thirtyDaysAgoStr = formatLocalDate(thirtyDaysAgo)
+
+      let startDate = undefined
+      let endDate = todayStr
+
+      if (timeFilter === 'Today') {
+        startDate = todayStr
+        endDate = todayStr
+      } else if (timeFilter === 'This Week') {
+        startDate = sevenDaysAgoStr
+      } else if (timeFilter === 'This Month') {
+        startDate = thirtyDaysAgoStr
+      }
+
+      const payload = {
+        timeframe: timeFilter,
+        timeFilter,
+        module: moduleFilter !== 'All' ? moduleFilter : undefined,
+        moduleFilter: moduleFilter !== 'All' ? moduleFilter : undefined,
+        status: statusFilter !== 'All' ? statusFilter : undefined,
+        startDate,
+        endDate,
+      }
+
+      // Try POST /api/admin/dashboard with AdminDashboardFilterDto
+      const postRes = await client.post('/admin/dashboard', payload).catch(() => null)
+      if (postRes?.data) {
+        setDashboardMetrics((prev) => ({ ...(prev || {}), ...postRes.data }))
+        return
+      }
+
+      // Fallback to GET /api/admin/dashboard with query params
+      const getRes = await client.get('/admin/dashboard', { params: payload }).catch(() => null)
+      if (getRes?.data) {
+        setDashboardMetrics((prev) => ({ ...(prev || {}), ...getRes.data }))
+      }
+    } catch (err) {
+      console.warn('Dashboard metric sync error:', err)
+    }
+  }
+
   useEffect(() => {
     loadData()
   }, [])
 
+  useEffect(() => {
+    fetchFilteredDashboard()
+  }, [timeFilter, moduleFilter])
+
   // =====================================================
   // FILTERING LOGIC
   // =====================================================
+
+  // Total reservations in scope (Timeframe & Module) - ignores statusFilter so Total Reservations card stays constant
+  const totalOverallInScope = useMemo(() => {
+    const now = new Date()
+    const formatLocalDate = (d) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+        d.getDate()
+      ).padStart(2, '0')}`
+
+    const todayStr = formatLocalDate(now)
+
+    const sevenDaysAgo = new Date(now)
+    sevenDaysAgo.setDate(now.getDate() - 7)
+    const sevenDaysAgoStr = formatLocalDate(sevenDaysAgo)
+
+    const thirtyDaysAgo = new Date(now)
+    thirtyDaysAgo.setDate(now.getDate() - 30)
+    const thirtyDaysAgoStr = formatLocalDate(thirtyDaysAgo)
+
+    return bookings.filter((b) => {
+      // 1. MODULE FILTER
+      if (moduleFilter !== 'All') {
+        const bMod = String(b.module || '').toLowerCase()
+        if (moduleFilter.includes('Tidel')) {
+          if (!bMod.includes('tidel') && !bMod.includes('tidal')) return false
+        } else if (moduleFilter.includes('Module 2')) {
+          if (!bMod.includes('module 2') && !bMod.includes('m2')) return false
+        } else if (moduleFilter.includes('Module 1')) {
+          if (!bMod.includes('module 1') || bMod.includes('tidel')) return false
+        }
+      }
+
+      // 2. TIME FILTER
+      if (timeFilter !== 'All') {
+        const bDate = b.date
+        if (!bDate) return true
+
+        if (timeFilter === 'Today' && bDate !== todayStr) {
+          return false
+        }
+        if (timeFilter === 'This Week' && (bDate < sevenDaysAgoStr || bDate > todayStr)) {
+          return false
+        }
+        if (timeFilter === 'This Month' && (bDate < thirtyDaysAgoStr || bDate > todayStr)) {
+          return false
+        }
+        if (timeFilter === 'Past' && bDate >= todayStr) {
+          return false
+        }
+        if (timeFilter === 'Upcoming' && bDate < todayStr) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [bookings, moduleFilter, timeFilter])
 
   const filteredBookings = useMemo(() => {
     const now = new Date()
@@ -534,29 +657,78 @@ export default function Reports() {
   // =====================================================
 
   const kpis = useMemo(() => {
-    const total = filteredBookings.length
+    // Total Reservations remains fixed to the overall scope count and never drops when selecting status filter
+    const total = totalOverallInScope.length
     let confirmed = 0
     let cancelled = 0
+    let totalBookedMinutes = 0
     const roomSet = new Set()
     const userSet = new Set()
+    const dateSet = new Set()
 
-    filteredBookings.forEach((b) => {
+    totalOverallInScope.forEach((b) => {
       if (b.roomName) roomSet.add(b.roomName)
       if (b.createdBy) userSet.add(b.createdBy)
+      if (b.date) dateSet.add(b.date)
 
       const st = normalizeStatus(b.status)
       if (st === 'CANCELLED' || st === 'REJECTED') {
         cancelled++
       } else {
         confirmed++
+        // Calculate booking duration in minutes
+        let mins = 60
+        if (b.startTime && b.endTime) {
+          const [sh, sm] = String(b.startTime).split(':').map(Number)
+          const [eh, em] = String(b.endTime).split(':').map(Number)
+          if (!isNaN(sh) && !isNaN(eh)) {
+            const startMins = sh * 60 + (sm || 0)
+            const endMins = eh * 60 + (em || 0)
+            if (endMins > startMins) mins = endMins - startMins
+          }
+        }
+        totalBookedMinutes += mins
       }
     })
 
     const confirmedRate = total > 0 ? Math.round((confirmed / total) * 100) : 0
     const cancellationRate = total > 0 ? Math.round((cancelled / total) * 100) : 0
-    const uniqueRooms = roomSet.size
+    const uniqueRooms = roomSet.size || (total > 0 ? 1 : 0)
     const uniqueUsers = userSet.size
-    const utilization = dashboardMetrics?.utilizationRate ?? '10.6'
+
+    // Determine timeframe span for utilization calculation
+    let daysCount = 1
+    if (timeFilter === 'Today') {
+      daysCount = 1
+    } else if (timeFilter === 'This Week') {
+      daysCount = 5 // 5 business days
+    } else if (timeFilter === 'This Month') {
+      daysCount = 22 // ~22 business days
+    } else {
+      daysCount = Math.max(1, dateSet.size)
+    }
+
+    // Backend overall baseline utilization
+    const rawUtil =
+      dashboardMetrics?.utilization ??
+      dashboardMetrics?.utilizationRate ??
+      dashboardMetrics?.occupancyRate
+
+    let utilization = '0.0'
+
+    if (timeFilter === 'All' && moduleFilter === 'All' && rawUtil != null && rawUtil !== '') {
+      // Use overall backend utilization for default All view
+      const num = Number(rawUtil)
+      utilization = isNaN(num) ? String(rawUtil) : num.toFixed(1)
+    } else if (total > 0 && uniqueRooms > 0) {
+      // Dynamic occupancy calculation for the selected timeframe / module:
+      // (Total Booked Minutes / (Active Rooms * Operating Hours * 60 mins)) * 100
+      const totalAvailableMinutes = uniqueRooms * (daysCount * 10 * 60) // 10 office hours/day (10:00 to 20:00)
+      const rate = totalAvailableMinutes > 0 ? (totalBookedMinutes / totalAvailableMinutes) * 100 : 0
+      utilization = Math.min(100, Math.max(0, rate)).toFixed(1)
+    } else {
+      utilization = '0.0'
+    }
 
     return {
       total,
@@ -568,7 +740,7 @@ export default function Reports() {
       uniqueUsers,
       utilization,
     }
-  }, [filteredBookings, dashboardMetrics])
+  }, [totalOverallInScope, dashboardMetrics, timeFilter, moduleFilter, statusFilter])
 
   // =====================================================
   // CHART DATA
@@ -623,11 +795,7 @@ export default function Reports() {
     })
 
     if (map.size === 0) {
-      return [
-        { name: 'Aug 2026', bookings: 14 },
-        { name: 'Sep 2026', bookings: 22 },
-        { name: 'Oct 2026', bookings: 30 },
-      ]
+      return []
     }
 
     return Array.from(map.entries()).map(([name, bookings]) => ({
@@ -932,10 +1100,10 @@ export default function Reports() {
       ================================================= */}
       <Card className="p-4 sm:p-5 shadow-sm">
         {/* CHART CONTROLS & TABS */}
-        <div className="flex flex-col gap-3 pb-4 border-b border-line lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <h2 className="font-display text-base font-bold text-ink">
+        <div className="flex flex-col gap-3 pb-4 border-b border-line xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-base font-bold text-ink truncate">
                 {activeChart === 'trend' && 'Reservation Volume Trendline'}
                 {activeChart === 'outcome' && 'Reservation Outcome Breakdown'}
                 {activeChart === 'employee' && 'Employee Booking vs Cancellation Ratio'}
@@ -946,7 +1114,7 @@ export default function Reports() {
                 Visual Analytics
               </span>
             </div>
-            <p className="text-xs text-slate mt-0.5">
+            <p className="text-xs text-slate mt-0.5 truncate">
               {activeChart === 'trend' && 'Historical reservation activity and volume patterns over time.'}
               {activeChart === 'outcome' && 'Proportion of successful confirmed bookings versus cancellations.'}
               {activeChart === 'employee' && 'Confirmed vs cancelled reservations by top employees.'}
@@ -955,92 +1123,99 @@ export default function Reports() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap shrink-0 max-w-full pb-1 xl:pb-0">
             {/* MONTHLY / WEEKLY TOGGLE (for Volume Trendline) */}
             {activeChart === 'trend' && (
-              <div className="flex items-center rounded-lg bg-slate-100 p-0.5 text-xs">
+              <div className="flex items-center rounded-lg bg-slate-100 p-0.5 text-xs shrink-0">
                 <button
                   type="button"
                   onClick={() => setTrendPeriod('Monthly')}
-                  className={`rounded-md px-2.5 py-1 font-bold transition-all ${trendPeriod === 'Monthly'
+                  className={`rounded-md px-2 py-1 text-xs font-bold transition-all ${
+                    trendPeriod === 'Monthly'
                       ? 'bg-white text-ink shadow-xs'
                       : 'text-slate hover:text-ink'
-                    }`}
+                  }`}
                 >
                   Monthly
                 </button>
                 <button
                   type="button"
                   onClick={() => setTrendPeriod('Weekly')}
-                  className={`rounded-md px-2.5 py-1 font-bold transition-all ${trendPeriod === 'Weekly'
+                  className={`rounded-md px-2 py-1 text-xs font-bold transition-all ${
+                    trendPeriod === 'Weekly'
                       ? 'bg-white text-ink shadow-xs'
                       : 'text-slate hover:text-ink'
-                    }`}
+                  }`}
                 >
                   Weekly
                 </button>
               </div>
             )}
 
-            {/* TAB PILLS */}
-            <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl flex-wrap">
+            {/* TAB PILLS - ALL IN ONE SINGLE LINE */}
+            <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl flex-nowrap shrink-0 whitespace-nowrap">
               <button
                 type="button"
                 onClick={() => setActiveChart('trend')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'trend'
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  activeChart === 'trend'
                     ? 'bg-white text-sky-700 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
+                }`}
               >
-                <TrendingUp size={14} className={activeChart === 'trend' ? 'text-sky-600' : 'text-slate-400'} />
+                <TrendingUp size={13} className={activeChart === 'trend' ? 'text-sky-600' : 'text-slate-400'} />
                 <span>Volume Trend</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveChart('outcome')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'outcome'
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  activeChart === 'outcome'
                     ? 'bg-white text-sky-700 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
+                }`}
               >
-                <Sparkles size={14} className={activeChart === 'outcome' ? 'text-emerald-600' : 'text-slate-400'} />
+                <Sparkles size={13} className={activeChart === 'outcome' ? 'text-emerald-600' : 'text-slate-400'} />
                 <span>Outcomes</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveChart('employee')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'employee'
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  activeChart === 'employee'
                     ? 'bg-white text-sky-700 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
+                }`}
               >
-                <Users size={14} className={activeChart === 'employee' ? 'text-sky-600' : 'text-slate-400'} />
+                <Users size={13} className={activeChart === 'employee' ? 'text-sky-600' : 'text-slate-400'} />
                 <span>Employee Ratio</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveChart('rooms')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'rooms'
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  activeChart === 'rooms'
                     ? 'bg-white text-sky-700 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
+                }`}
               >
-                <Building2 size={14} className={activeChart === 'rooms' ? 'text-sky-600' : 'text-slate-400'} />
+                <Building2 size={13} className={activeChart === 'rooms' ? 'text-sky-600' : 'text-slate-400'} />
                 <span>Workspace Ranking</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveChart('hourly')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChart === 'hourly'
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                  activeChart === 'hourly'
                     ? 'bg-white text-sky-700 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
+                }`}
               >
-                <Clock size={14} className={activeChart === 'hourly' ? 'text-indigo-600' : 'text-slate-400'} />
+                <Clock size={13} className={activeChart === 'hourly' ? 'text-indigo-600' : 'text-slate-400'} />
                 <span>Hourly Demand</span>
               </button>
             </div>
@@ -1051,29 +1226,35 @@ export default function Reports() {
         <div className="h-[360px] sm:h-[390px] w-full pt-4">
           {/* Chart 1: Volume Trendline */}
           {activeChart === 'trend' && (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={timelineData} margin={{ top: 10, right: 15, left: -15, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="bookingAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0284C7" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#0284C7" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
-                <Tooltip content={<CustomChartTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="bookings"
-                  name="Reservations"
-                  stroke="#0284C7"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#bookingAreaGrad)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            timelineData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-slate">
+                No reservation trend data available.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={timelineData} margin={{ top: 10, right: 15, left: -15, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="bookingAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0284C7" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#0284C7" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
+                  <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip content={<CustomChartTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="bookings"
+                    name="Reservations"
+                    stroke="#0284C7"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#bookingAreaGrad)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )
           )}
 
           {/* Chart 2: Outcome Breakdown */}
@@ -1218,7 +1399,7 @@ export default function Reports() {
                     value={tableSearch}
                     onChange={(e) => setTableSearch(e.target.value)}
                     placeholder="Search bookings, rooms, employees..."
-                    className="w-full sm:w-72 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:border-sky-500"
+                    className="w-full sm:w-72 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:border-sky-500 shadow-xs"
                   />
                   {tableSearch && (
                     <button

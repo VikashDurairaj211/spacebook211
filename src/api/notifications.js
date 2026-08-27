@@ -72,16 +72,16 @@ export async function clearAllNotifications() {
   const isAdmin = getIsAdmin();
   const endpoints = isAdmin
     ? [
-        { method: "delete", url: "/admin/notifications/clear" },
+        { method: "delete", url: "/admin/notifications/clear-all" },
         { method: "delete", url: "/admin/notifications" },
+        { method: "delete", url: "/admin/notifications/clear" },
         { method: "post", url: "/admin/notifications/clear" },
-        { method: "delete", url: "/notifications/clear" },
       ]
     : [
-        { method: "delete", url: "/employee/notifications/clear" },
+        { method: "delete", url: "/employee/notifications/clear-all" },
         { method: "delete", url: "/employee/notifications" },
+        { method: "delete", url: "/employee/notifications/clear" },
         { method: "post", url: "/employee/notifications/clear" },
-        { method: "delete", url: "/notifications/clear" },
       ];
 
   let lastError = null;

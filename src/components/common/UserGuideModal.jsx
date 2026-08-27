@@ -202,7 +202,7 @@ const GUIDE_SECTIONS = [
     title: 'Admin Tools & Intelligence',
     icon: ShieldCheck,
     badge: 'Admin Only',
-    description: 'Executive KPIs, reservation audit modal, room management, and visual analytics.',
+    description: 'Executive KPIs, reservation audit modal, room management, hotseat administration, and visual analytics.',
     topics: [
       {
         title: '1. Reports & Executive KPI Cards',
@@ -238,15 +238,27 @@ const GUIDE_SECTIONS = [
         ],
       },
       {
-        title: '4. Visual Analytics & Usage Intelligence',
+        title: '4. Hotseat Management & Workstation Administration',
         content:
-          'Compact business intelligence charts included on the Reports page:',
+          'The Hotseat Management page enables full administrative oversight of hot-desk operations across campus modules:',
         steps: [
-          'Employee Booking vs Cancellation Ratio: Top employee booking volume compared with cancellation rates.',
-          'Reservation Outcome Breakdown: Donut chart illustrating confirmed vs cancelled proportions.',
-          'Reservation Volume Trendline: Interactive area chart tracking monthly and weekly volume patterns.',
-          'Most Reserved Rooms: Horizontal bar ranking identifying the most frequently booked workspaces.',
-          'Peak Workspace Demand by Hour: Hourly distribution of office reservations across the workday.',
+          'Workstation KPI Metrics: Monitor Total Hotseat Bookings, Active Desks, Checked-In Desks, Cancellation Rate, and Total Users.',
+          'Shift & Module Analytics: Track desk demand across Full Day, Morning, and Afternoon shifts, plus Module 1 vs Module 2 utilization charts.',
+          'Desk Management & Status Controls: Search records by employee or seat ID, view expected check-in times, and perform admin actions (Check-In, Check-Out, Force Release, Set Maintenance).',
+          'Export Hotseat CSV: Export complete hotseat logs with requester names, modules, shifts, and timestamps for facility auditing.',
+        ],
+      },
+      {
+        title: '5. Visual Analytics & Usage Intelligence',
+        content:
+          'Unified 6-tab business intelligence graph matching the Hotseat Management portal in a clean single-line layout:',
+        steps: [
+          'Volume Trend: Interactive area chart tracking monthly and weekly reservation activity progression over time.',
+          'Outcomes: Donut chart illustrating confirmed vs cancelled proportions.',
+          'Facility Share: Donut distribution of reservation volume across campus modules (Elcot Park Module 1 & 2, Tidel Park).',
+          'Section Demand: Column chart showing demand across Conference, Training, and Discussion rooms.',
+          'Workspace Ranking: Horizontal bar chart identifying the most reserved rooms and workspaces.',
+          'Hourly Demand: Hourly distribution of office reservations across the workday (10:00 AM to 10:00 PM IST).',
         ],
       },
     ],
@@ -284,9 +296,9 @@ const GUIDE_SECTIONS = [
           'Cancellation reasons are viewable by Admins in the "Reservation Details" modal when clicking View on any booking, as well as in the exported CSV audit report.',
       },
       {
-        title: 'How do administrators manage bookings and rooms?',
+        title: 'How do administrators manage bookings, rooms, and hotseats?',
         content:
-          'Administrators use "Reports" to monitor executive KPIs, view the reservation audit modal, and export CSV reports. Room inventory, capacities, and maintenance modes are managed under "Workspace Administration".',
+          'Administrators use "Reports" for executive KPIs and CSV exports, "Workspace Administration" to manage room inventory and maintenance modes, and "Hotseat Management" to oversee desk check-ins, shift analytics, and workstation allocations.',
       },
     ],
   },
