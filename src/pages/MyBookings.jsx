@@ -731,11 +731,14 @@ export default function MyBookings() {
       return "bg-[#E09F3E] text-white";
     }
 
+    if (s === "expired") {
+      return "bg-[#EA580C] text-white";
+    }
+
     if (
       s === "rejected" ||
       s === "cancelled" ||
-      s === "canceled" ||
-      s === "expired"
+      s === "canceled"
     ) {
       return "bg-[#B85450] text-white";
     }

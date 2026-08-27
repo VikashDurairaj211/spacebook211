@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   ResponsiveContainer,
+  AreaChart,
+  Area,
   BarChart,
   Bar,
   PieChart,
@@ -32,6 +34,7 @@ import {
   UserCheck,
   LogOut,
   AlertCircle,
+  TrendingUp,
 } from 'lucide-react'
 
 import client from '../../api/client'
@@ -124,38 +127,31 @@ function HotseatStatusTag({ status }) {
   const norm = String(status || 'CONFIRMED').toUpperCase()
 
   let bgClass = 'bg-[#5c7a60] text-white' // Approved / Confirmed -> Green
+  let label = 'APPROVED'
 
-  if (
-    norm === 'CANCELLED' ||
-    norm === 'CANCELED' ||
-    norm === 'REJECTED' ||
-    norm === 'EXPIRED'
-  ) {
+  if (norm.includes('CANCEL') || norm === 'REJECTED') {
     bgClass = 'bg-[#be534d] text-white' // Cancelled -> Red
+    label = 'CANCELLED'
   } else if (
+    norm.includes('CHECK') ||
     norm === 'CHECKED IN' ||
     norm === 'CHECKEDIN' ||
     norm === 'CHECKED-IN'
   ) {
     bgClass = 'bg-[#0284C7] text-white' // Checked In -> Blue
-  } else if (norm === 'PENDING') {
-    bgClass = 'bg-[#E09F3E] text-white'
-  }
-
-  let label = 'APPROVED'
-  if (
-    norm === 'CANCELLED' ||
-    norm === 'CANCELED' ||
-    norm === 'REJECTED' ||
-    norm === 'EXPIRED'
-  ) {
-    label = 'CANCELLED'
-  } else if (
-    norm === 'CHECKED IN' ||
-    norm === 'CHECKEDIN' ||
-    norm === 'CHECKED-IN'
-  ) {
     label = 'CHECKED IN'
+  } else if (norm.includes('EXPIR')) {
+    bgClass = 'bg-[#EA580C] text-white' // Expired -> Vibrant Orange
+    label = 'EXPIRED'
+  } else if (norm.includes('RELEASE')) {
+    bgClass = 'bg-[#7c3aed] text-white' // Released -> Purple
+    label = 'RELEASED'
+  } else if (norm.includes('PEND')) {
+    bgClass = 'bg-[#E09F3E] text-white' // Pending -> Amber
+    label = 'PENDING'
+  } else {
+    bgClass = 'bg-[#5c7a60] text-white'
+    label = 'APPROVED'
   }
 
   return (
@@ -240,8 +236,10 @@ export default function HotseatManagement() {
   // Filters
   const [timeFilter, setTimeFilter] = useState('All')
   const [moduleFilter, setModuleFilter] = useState('All')
-  const [statusFilter, setStatusFilter] = useState('All')
   const [tableSearch, setTableSearch] = useState('')
+
+  // Interactive Visual Analytics Tab State
+  const [activeChart, setActiveChart] = useState('hourly')
 
   // Pagination for Modal Table
   const [currentPage, setCurrentPage] = useState(1)
@@ -281,7 +279,6 @@ export default function HotseatManagement() {
       const filterDto = {
         timeframe: normalizeTimeframe(timeFilter),
         module: moduleFilter === 'All' ? null : moduleFilter,
-        status: statusFilter === 'All' ? null : statusFilter,
         page: 1,
         pageSize: 1000,
       }
@@ -520,7 +517,7 @@ export default function HotseatManagement() {
 
   useEffect(() => {
     loadData()
-  }, [timeFilter, moduleFilter, statusFilter])
+  }, [timeFilter, moduleFilter])
 
   // =====================================================
   // Filtering Logic
@@ -528,15 +525,18 @@ export default function HotseatManagement() {
 
   const filteredBookings = useMemo(() => {
     const now = new Date()
-    const todayStr = now.toISOString().split('T')[0]
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const todayStr = `${year}-${month}-${day}`
 
-    const sevenDaysAgo = new Date(now)
-    sevenDaysAgo.setDate(now.getDate() - 7)
-    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0]
+    const d7 = new Date(now)
+    d7.setDate(d7.getDate() - 7)
+    const sevenDaysAgoStr = `${d7.getFullYear()}-${String(d7.getMonth() + 1).padStart(2, '0')}-${String(d7.getDate()).padStart(2, '0')}`
 
-    const thirtyDaysAgo = new Date(now)
-    thirtyDaysAgo.setDate(now.getDate() - 30)
-    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0]
+    const d30 = new Date(now)
+    d30.setDate(d30.getDate() - 30)
+    const thirtyDaysAgoStr = `${d30.getFullYear()}-${String(d30.getMonth() + 1).padStart(2, '0')}-${String(d30.getDate()).padStart(2, '0')}`
 
     return bookings.filter((b) => {
       const bDate = b.isoDate || toStandardIsoDate(b.date)
@@ -598,41 +598,9 @@ export default function HotseatManagement() {
         if (!matches) return false
       }
 
-      // 3. Status Filter
-      if (statusFilter !== 'All') {
-        const st = String(b.status || '').toUpperCase()
-        const target = statusFilter.toUpperCase()
-
-        if (target === 'CONFIRMED') {
-          if (!st.includes('CONFIRM') && st !== 'APPROVED' && st !== 'ACTIVE') {
-            return false
-          }
-        } else if (target === 'CANCELLED' || target === 'CANCELED') {
-          if (!st.includes('CANCEL') && st !== 'REJECTED') {
-            return false
-          }
-        } else if (target.includes('CHECK')) {
-          if (!st.includes('CHECK')) {
-            return false
-          }
-        } else if (target === 'RELEASED') {
-          if (!st.includes('RELEASE')) {
-            return false
-          }
-        } else if (target === 'EXPIRED') {
-          if (!st.includes('EXPIR')) {
-            return false
-          }
-        } else {
-          if (!st.includes(target) && !target.includes(st)) {
-            return false
-          }
-        }
-      }
-
       return true
     })
-  }, [bookings, timeFilter, moduleFilter, statusFilter])
+  }, [bookings, timeFilter, moduleFilter])
 
   // Filtered list for the modal search table
   const displayedTableBookings = useMemo(() => {
@@ -665,10 +633,10 @@ export default function HotseatManagement() {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [tableSearch, timeFilter, moduleFilter, statusFilter])
+  }, [tableSearch, timeFilter, moduleFilter])
 
   // =====================================================
-  // KPIs (Pure Dynamic from Backend or Live Bookings)
+  // KPIs (Summary Cards Calculation)
   // =====================================================
 
   const kpis = useMemo(() => {
@@ -678,6 +646,7 @@ export default function HotseatManagement() {
     let liveReleased = 0
     let liveExpired = 0
 
+    // Count live statuses from the current filtered bookings
     filteredBookings.forEach((b) => {
       const st = String(b.status || '').toUpperCase()
 
@@ -696,9 +665,21 @@ export default function HotseatManagement() {
     })
 
     const raw = dashboardData || analyticsData
-    const isGlobal = timeFilter === 'All' && moduleFilter === 'All' && statusFilter === 'All'
+    const isAllFilters = timeFilter === 'All' && moduleFilter === 'All'
 
-    if (raw && isGlobal) {
+    // Dynamic capacity by module
+    let uniqueSeats = 453
+    const modLower = moduleFilter.toLowerCase()
+    if (modLower.includes('tidel')) {
+      uniqueSeats = 224
+    } else if (modLower.includes('module 2') || modLower.includes('eo2')) {
+      uniqueSeats = 131
+    } else if (modLower.includes('module 1') || modLower.includes('elcot')) {
+      uniqueSeats = 98
+    }
+
+    // 1. All Time & All Modules: Use global backend dashboardData totals
+    if (isAllFilters && raw && (raw.totalReservations !== undefined || raw.totalBookings !== undefined)) {
       const total =
         raw.totalReservations ??
         raw.totalBookings ??
@@ -712,7 +693,7 @@ export default function HotseatManagement() {
         raw.cancelledRate ??
         (total > 0 ? Number(((cancelled / total) * 100).toFixed(1)) : 0)
 
-      const confirmed = total >= cancelled ? total - cancelled : liveConfirmed
+      const confirmed = total >= cancelled ? total - cancelled : (raw.confirmedBookings ?? liveConfirmed)
 
       const confirmedRate =
         raw.confirmedRate ??
@@ -772,28 +753,14 @@ export default function HotseatManagement() {
       }
     }
 
-    // Dynamic metrics computed from filteredBookings when filtered
+    // 2. Filtered Timeframes & Modules: Calculated from filteredBookings
     const total = filteredBookings.length
     const confirmed = total >= liveCancelled ? total - liveCancelled : liveConfirmed
-    const confirmedRate =
-      total > 0 ? Number(((confirmed / total) * 100).toFixed(1)) : 0
-    const cancellationRate =
-      total > 0 ? Number(((liveCancelled / total) * 100).toFixed(1)) : 0
-    const checkedInRate =
-      total > 0 ? Number(((liveCheckedIn / total) * 100).toFixed(1)) : 0
-    const releasedRate =
-      total > 0 ? Number(((liveReleased / total) * 100).toFixed(1)) : 0
-    const expiredRate =
-      total > 0 ? Number(((liveExpired / total) * 100).toFixed(1)) : 0
-
-    let uniqueSeats = 453
-    if (moduleFilter.toLowerCase().includes('tidel')) {
-      uniqueSeats = 224
-    } else if (moduleFilter.toLowerCase().includes('module 2') || moduleFilter.toLowerCase().includes('eo2')) {
-      uniqueSeats = 131
-    } else if (moduleFilter.toLowerCase().includes('module 1') || moduleFilter.toLowerCase().includes('elcot')) {
-      uniqueSeats = 98
-    }
+    const confirmedRate = total > 0 ? Number(((confirmed / total) * 100).toFixed(1)) : 0
+    const cancellationRate = total > 0 ? Number(((liveCancelled / total) * 100).toFixed(1)) : 0
+    const checkedInRate = total > 0 ? Number(((liveCheckedIn / total) * 100).toFixed(1)) : 0
+    const releasedRate = total > 0 ? Number(((liveReleased / total) * 100).toFixed(1)) : 0
+    const expiredRate = total > 0 ? Number(((liveExpired / total) * 100).toFixed(1)) : 0
 
     return {
       total,
@@ -809,7 +776,7 @@ export default function HotseatManagement() {
       expiredRate,
       uniqueSeats,
     }
-  }, [dashboardData, analyticsData, filteredBookings, timeFilter, moduleFilter, statusFilter])
+  }, [dashboardData, analyticsData, filteredBookings, timeFilter, moduleFilter])
 
   // =====================================================
   // HOTSEAT VISUAL CHARTS DATA
@@ -958,6 +925,82 @@ export default function HotseatManagement() {
       .slice(0, 7)
   }, [analyticsData, dashboardData, filteredBookings])
 
+  // 5. Volume Trendline (Daily Progress Area Chart Computed from Live Bookings)
+  const trendlineData = useMemo(() => {
+    const moduleScoped =
+      moduleFilter === 'All'
+        ? bookings
+        : bookings.filter((b) => {
+            const modName = String(b.module || '').toLowerCase()
+            const target = moduleFilter.toLowerCase()
+            return modName.includes(target) || target.includes(modName)
+          })
+
+    const map = {}
+    moduleScoped.forEach((b) => {
+      const d = toStandardIsoDate(b.isoDate || b.date || b.bookingDate)
+      if (!d || d === '-') return
+      if (!map[d]) {
+        map[d] = { name: d, bookings: 0, checkIns: 0 }
+      }
+      map[d].bookings += 1
+
+      const st = String(b.status || '').toUpperCase()
+      if (
+        st.includes('CHECK') ||
+        b.checkInTime ||
+        b.actualCheckInTime ||
+        b.isCheckedIn
+      ) {
+        map[d].checkIns += 1
+      }
+    })
+
+    const list = Object.values(map).sort((a, b) => a.name.localeCompare(b.name))
+    return list.slice(-14)
+  }, [bookings, moduleFilter])
+
+  // 6. Visual Status Outcomes Breakdown
+  const visualStatusData = useMemo(() => {
+    return [
+      { name: 'Approved', value: kpis.confirmed, color: '#658362' },
+      { name: 'Checked In', value: kpis.checkedIn, color: '#0284C7' },
+      { name: 'Cancelled', value: kpis.cancelled, color: '#B85450' },
+      { name: 'Released', value: kpis.released, color: '#7c3aed' },
+      { name: 'Expired', value: kpis.expired, color: '#EA580C' },
+    ].filter((d) => d.value > 0)
+  }, [kpis])
+
+  // 7. Hourly Demand Distribution (10:00 to 22:00)
+  const hourlyDistributionData = useMemo(() => {
+    const hours = [
+      '10:00',
+      '11:00',
+      '12:00',
+      '13:00',
+      '14:00',
+      '15:00',
+      '16:00',
+      '17:00',
+      '18:00',
+      '19:00',
+      '20:00',
+      '21:00',
+      '22:00',
+    ]
+    const map = Object.fromEntries(hours.map((h) => [h, 0]))
+
+    filteredBookings.forEach((b) => {
+      const t = String(b.expectedCheckIn || b.time || '')
+      const matchedHour = hours.find((h) => t.includes(h.substring(0, 2)))
+      if (matchedHour) {
+        map[matchedHour] += 1
+      }
+    })
+
+    return hours.map((time) => ({ time, bookings: map[time] }))
+  }, [filteredBookings])
+
   // =====================================================
   // Export Handlers
   // =====================================================
@@ -1018,7 +1061,7 @@ export default function HotseatManagement() {
             Hotseat Management
           </h1>
           <p className="text-sm text-slate">
-            Executive workspace intelligence, desk utilization telemetry, and hotseat records.
+            Executive visual insights on hotseat reservations,usage level rates,and audit logs.
           </p>
         </div>
 
@@ -1109,27 +1152,6 @@ export default function HotseatManagement() {
                   <option value="Module 2 - Elcot Park">
                     Module 2 - Elcot Park
                   </option>
-                </>
-              )}
-            </select>
-
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
-            >
-              <option value="All">All Status</option>
-              {filterOptions.statuses.length > 0 ? (
-                filterOptions.statuses.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))
-              ) : (
-                <>
-                  <option value="Confirmed">Confirmed Bookings</option>
-                  <option value="Cancelled">Cancelled Bookings</option>
                 </>
               )}
             </select>
@@ -1247,20 +1269,20 @@ export default function HotseatManagement() {
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
               EXPIRED
             </span>
-            <AlertCircle size={14} className="text-[#f59e0b]" />
+            <AlertCircle size={14} className="text-[#EA580C]" />
           </div>
-          <p className="mt-1 text-2xl font-extrabold text-[#f59e0b] leading-tight">
+          <p className="mt-1 text-2xl font-extrabold text-[#EA580C] leading-tight">
             {kpis.expired}
           </p>
           <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>Expired</span>
-            <span className="font-bold text-amber-700">
+            <span className="font-bold text-orange-700">
               {kpis.expiredRate}%
             </span>
           </div>
           <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
             <div
-              className="h-1 rounded-full bg-[#f59e0b] transition-all duration-500"
+              className="h-1 rounded-full bg-[#EA580C] transition-all duration-500"
               style={{ width: `${kpis.expiredRate}%` }}
             />
           </div>
@@ -1317,193 +1339,355 @@ export default function HotseatManagement() {
         </div>
       </Card>
 
-      {/* =================================================
-          ROW 1: Hotseat Facility Distribution & Section Breakdown
-      ================================================= */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* CHART 1: Module & Facility Distribution (Donut Chart) */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-bold text-ink">
-                Hotseat Volume by Facility & Zone
+      {/* =====================================================
+          INTERACTIVE TABBED ANALYTICS GRAPH CONTAINER
+      ===================================================== */}
+      <Card className="p-5 shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-line pb-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-base font-bold text-ink truncate">
+                {activeChart === 'trend' && 'Daily Hotseat Volume Trendline'}
+                {activeChart === 'outcome' && 'Hotseat Outcomes & Status Breakdown'}
+                {activeChart === 'facility' && 'Hotseat Volume by Facility & Zone'}
+                {activeChart === 'section' && 'Floor Section Demand Breakdown'}
+                {activeChart === 'topDesks' && 'Most In-Demand Workstations'}
+                {activeChart === 'hourly' && 'Peak Workspace Demand by Hour'}
               </h2>
-              <p className="text-xs text-slate">
-                Workstation reservation share across Tidel Park and Elcot Park Modules.
-              </p>
+              <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700 shrink-0">
+                Visual Analytics
+              </span>
             </div>
-            <MapPin size={16} className="text-sky-600" />
+            <p className="mt-0.5 text-xs text-slate truncate">
+              {activeChart === 'trend' &&
+                'Daily progression of total hotseat reservations vs actual check-ins.'}
+              {activeChart === 'outcome' &&
+                'Proportional outcome breakdown of all reservations.'}
+              {activeChart === 'facility' &&
+                'Workstation reservation share across Tidel Park and Elcot Park Modules.'}
+              {activeChart === 'section' &&
+                'Concentration of desk bookings across zoned quadrants (Sections A, B, C, D).'}
+              {activeChart === 'topDesks' &&
+                'Top individual hotseats with highest booking count.'}
+              {activeChart === 'hourly' &&
+                'Distribution of reservations across operational office hours.'}
+            </p>
           </div>
 
-          <div className="h-[300px] w-full pt-2">
-            {moduleDistributionData.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate">
-                No facility data available.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={moduleDistributionData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={65}
-                    outerRadius={105}
-                    paddingAngle={4}
+          {/* TAB BUTTONS / HYPERLINKS */}
+          <div className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1 overflow-x-auto whitespace-nowrap shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveChart('trend')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                activeChart === 'trend'
+                  ? 'bg-white text-sky-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <TrendingUp
+                size={13}
+                className={
+                  activeChart === 'trend' ? 'text-sky-600' : 'text-slate-400'
+                }
+              />
+              <span>Volume Trend</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveChart('outcome')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                activeChart === 'outcome'
+                  ? 'bg-white text-sky-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <Sparkles
+                size={13}
+                className={
+                  activeChart === 'outcome' ? 'text-sky-600' : 'text-slate-400'
+                }
+              />
+              <span>Outcomes</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveChart('facility')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                activeChart === 'facility'
+                  ? 'bg-white text-sky-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <MapPin
+                size={13}
+                className={
+                  activeChart === 'facility' ? 'text-sky-600' : 'text-slate-400'
+                }
+              />
+              <span>Facility Share</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveChart('section')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                activeChart === 'section'
+                  ? 'bg-white text-sky-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <Layers
+                size={13}
+                className={
+                  activeChart === 'section' ? 'text-sky-600' : 'text-slate-400'
+                }
+              />
+              <span>Section Demand</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveChart('topDesks')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                activeChart === 'topDesks'
+                  ? 'bg-white text-sky-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <Armchair
+                size={13}
+                className={
+                  activeChart === 'topDesks' ? 'text-sky-600' : 'text-slate-400'
+                }
+              />
+              <span>Workspace Ranking</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveChart('hourly')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                activeChart === 'hourly'
+                  ? 'bg-white text-sky-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <Clock
+                size={13}
+                className={
+                  activeChart === 'hourly' ? 'text-indigo-600' : 'text-slate-400'
+                }
+              />
+              <span>Hourly Demand</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ACTIVE GRAPH DISPLAY */}
+        <div className="h-[360px] sm:h-[390px] w-full pt-4">
+          {/* Chart 1: Volume Trend */}
+          {activeChart === 'trend' && (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={trendlineData}
+                margin={{ top: 10, right: 15, left: -15, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient
+                    id="hotseatAreaGrad"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
                   >
-                    {moduleDistributionData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={entry.color || MODULE_COLORS[index % MODULE_COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomChartTooltip />} />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={36}
-                    formatter={(value) => (
-                      <span className="text-xs text-slate-700 font-medium">
-                        {value}
-                      </span>
-                    )}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </Card>
+                    <stop offset="5%" stopColor="#0284C7" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#0284C7" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: '#475569', fontSize: 11 }}
+                />
+                <YAxis
+                  tick={{ fill: '#475569', fontSize: 11 }}
+                  allowDecimals={false}
+                />
+                <Tooltip content={<CustomChartTooltip />} />
+                <Legend verticalAlign="top" height={36} />
+                <Area
+                  type="monotone"
+                  dataKey="bookings"
+                  name="Total Bookings"
+                  stroke="#0284C7"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#hotseatAreaGrad)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="checkIns"
+                  name="Check-ins"
+                  stroke="#10B981"
+                  strokeWidth={2}
+                  fillOpacity={0.2}
+                  fill="#10B981"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
 
-        {/* CHART 2: Floor Section Demand Breakdown */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-bold text-ink">
-                Floor Section Demand Breakdown
-              </h2>
-              <p className="text-xs text-slate">
-                Concentration of desk bookings across zoned quadrants.
-              </p>
-            </div>
-            <Layers size={16} className="text-sky-600" />
-          </div>
+          {/* Chart 2: Outcomes */}
+          {activeChart === 'outcome' && (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={visualStatusData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={75}
+                  outerRadius={120}
+                  paddingAngle={4}
+                >
+                  {visualStatusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomChartTooltip />} />
+                <Legend verticalAlign="bottom" iconType="circle" height={36} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
 
-          <div className="h-[300px] w-full pt-2">
+          {/* Chart 3: Facility Share */}
+          {activeChart === 'facility' && (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={moduleDistributionData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={65}
+                  outerRadius={115}
+                  paddingAngle={4}
+                >
+                  {moduleDistributionData.map((entry, index) => (
+                    <Cell key={`mod-cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomChartTooltip />} />
+                <Legend verticalAlign="bottom" height={36} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+
+          {/* Chart 4: Section Demand */}
+          {activeChart === 'section' && (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={sectionDemandData}
                 margin={{ top: 20, right: 20, left: -20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="section" tick={{ fill: '#475569', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
+                <XAxis
+                  dataKey="section"
+                  tick={{ fill: '#475569', fontSize: 11 }}
+                />
+                <YAxis
+                  tick={{ fill: '#475569', fontSize: 11 }}
+                  allowDecimals={false}
+                />
                 <Tooltip content={<CustomChartTooltip />} />
-                <Bar dataKey="bookings" name="Reserved Desks" radius={[6, 6, 0, 0]}>
+                <Bar
+                  dataKey="bookings"
+                  name="Reserved Desks"
+                  radius={[6, 6, 0, 0]}
+                >
                   {sectionDemandData.map((entry, index) => (
                     <Cell key={`sec-cell-${index}`} fill={entry.color} />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
+          )}
 
-      {/* =================================================
-          ROW 2: Top In-Demand Desks & Peak Check-in Times
-      ================================================= */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Ranked Top Desks */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-bold text-ink">
-                Most In-Demand Desks
-              </h2>
-              <p className="text-xs text-slate">
-                Top individual hotseats with highest booking count.
-              </p>
-            </div>
-            <Armchair size={16} className="text-sky-600" />
-          </div>
-
-          <div className="mt-4 space-y-3">
-            {topDesksData.length === 0 ? (
-              <p className="text-xs text-slate py-8 text-center">
-                No desk reservation data available.
-              </p>
-            ) : (
-              topDesksData.map((desk, idx) => (
-                <div
-                  key={desk.name}
-                  className="flex items-center justify-between rounded-xl bg-slate-50/80 p-2.5 transition-colors hover:bg-slate-100/80"
+          {/* Chart 5: Workspace Ranking */}
+          {activeChart === 'topDesks' && (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={topDesksData}
+                layout="vertical"
+                margin={{ top: 5, right: 20, left: 30, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis
+                  type="number"
+                  tick={{ fill: '#475569', fontSize: 11 }}
+                  allowDecimals={false}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  tick={{ fill: '#0f172a', fontSize: 11, fontWeight: 600 }}
+                  width={130}
+                />
+                <Tooltip content={<CustomChartTooltip />} />
+                <Bar
+                  dataKey="bookings"
+                  name="Reservations"
+                  fill="#0284C7"
+                  radius={[0, 6, 6, 0]}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-100 text-xs font-bold text-sky-800">
-                      #{idx + 1}
-                    </span>
-                    <div>
-                      <p className="text-xs font-bold text-ink">{desk.name}</p>
-                      <p className="text-[11px] text-slate">{desk.module}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-extrabold text-sky-950">
-                      {desk.bookings}
-                    </span>
-                    <span className="text-[10px] text-slate ml-1">
-                      {desk.bookings === 1 ? 'booking' : 'bookings'}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
+                  {topDesksData.map((entry, index) => (
+                    <Cell
+                      key={`desk-cell-${index}`}
+                      fill={
+                        ['#0284C7', '#0D9488', '#6366F1', '#8B5CF6', '#EC4899'][
+                          index % 5
+                        ]
+                      }
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
 
-        {/* Peak Check-In Times */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div>
-              <h2 className="font-display text-sm font-bold text-ink">
-                Peak Check-In Arrival Hours
-              </h2>
-              <p className="text-xs text-slate">
-                Hourly frequency of employee hotseat occupancy.
-              </p>
-            </div>
-            <Clock size={16} className="text-sky-600" />
-          </div>
-
-          <div className="h-[250px] w-full pt-4">
-            {timeSlotDistributionData.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate">
-                No arrival time data available.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={timeSlotDistributionData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="slot" tick={{ fill: '#475569', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#475569', fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip content={<CustomChartTooltip />} />
-                  <Bar
-                    dataKey="bookings"
-                    name="Check-in Slots"
-                    fill="#6366F1"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </Card>
-      </div>
+          {/* Chart 6: Hourly Demand */}
+          {activeChart === 'hourly' && (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={hourlyDistributionData}
+                margin={{ top: 10, right: 15, left: -15, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="time"
+                  tick={{ fill: '#475569', fontSize: 11 }}
+                />
+                <YAxis
+                  tick={{ fill: '#475569', fontSize: 11 }}
+                  allowDecimals={false}
+                />
+                <Tooltip content={<CustomChartTooltip />} />
+                <Bar
+                  dataKey="bookings"
+                  name="Hotseat Bookings"
+                  fill="#6366F1"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </Card>
 
       {/* =====================================================
           AUDIT TABLE MODAL (Pure Hotseat Records)
