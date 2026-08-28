@@ -35,9 +35,9 @@ export default function Layout() {
     }
   }, [])
 
-  // 15-minute idle inactivity tracker
+  // 50-minute idle inactivity tracker
   useEffect(() => {
-    const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000 // 15 minutes
+    const INACTIVITY_TIMEOUT_MS = 50 * 60 * 1000 // 50 minutes
 
     let timer
 

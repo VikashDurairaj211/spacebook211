@@ -226,8 +226,8 @@ export default function ScrollableTimePicker({
         <span
           className={
             currentValue
-              ? 'text-ink font-normal'
-              : 'text-slate-500 font-normal'
+              ? 'text-ink font-sans font-normal tabular-nums'
+              : 'text-slate-500 font-sans font-normal'
           }
         >
           {currentValue ? formatDisplayTime(currentValue) : placeholder}
@@ -255,17 +255,17 @@ export default function ScrollableTimePicker({
       )}
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 flex flex-col w-full overflow-hidden rounded-xl border border-sky-200 bg-white shadow-xl">
+        <div className="absolute z-50 mt-1 flex flex-col w-full overflow-hidden rounded-xl border border-sky-200 bg-white shadow-xl font-sans">
           {/* Operating hours banner */}
-          <div className="bg-sky-50 px-3 py-1.5 text-[10.5px] font-bold text-sky-800 border-b border-sky-100 flex items-center justify-between">
+          <div className="bg-sky-50 px-3 py-1.5 font-sans text-[10.5px] font-bold text-sky-800 border-b border-sky-100 flex items-center justify-between">
             <span>Operating: 10:00 – 22:00</span>
             <span className="text-sky-600 font-normal">Business Hours</span>
           </div>
 
-          <div className="flex w-full">
+          <div className="flex w-full font-sans">
             {/* HOURS */}
             <div className="flex flex-1 flex-col border-r border-slate-100 min-w-0">
-              <div className="bg-slate-50 text-slate-700 py-1.5 text-xs font-bold border-b border-slate-200 text-center select-none">
+              <div className="bg-slate-50 text-slate-700 py-1.5 font-sans text-xs font-bold border-b border-slate-200 text-center select-none">
                 Hour
               </div>
 
@@ -284,7 +284,7 @@ export default function ScrollableTimePicker({
                       disabled={isHourDis}
                       data-selected={isSelected ? 'true' : 'false'}
                       onClick={() => handleHourClick(hour)}
-                      className={`block w-full rounded-md py-1.5 px-1 text-xs font-semibold transition-colors text-center ${
+                      className={`block w-full rounded-md py-1.5 px-1 font-sans text-xs font-semibold tabular-nums transition-colors text-center ${
                         isHourDis
                           ? 'cursor-not-allowed bg-slate-50 text-slate-300 opacity-50'
                           : isSelected
@@ -301,7 +301,7 @@ export default function ScrollableTimePicker({
 
             {/* MINUTES */}
             <div className="flex flex-1 flex-col min-w-0">
-              <div className="bg-slate-50 text-slate-700 py-1.5 text-xs font-bold border-b border-slate-200 text-center select-none">
+              <div className="bg-slate-50 text-slate-700 py-1.5 font-sans text-xs font-bold border-b border-slate-200 text-center select-none">
                 Minute
               </div>
 
@@ -321,7 +321,7 @@ export default function ScrollableTimePicker({
                       disabled={isMinDis}
                       data-selected={isSelected ? 'true' : 'false'}
                       onClick={() => handleMinuteClick(minute)}
-                      className={`block w-full rounded-md py-1.5 text-xs font-semibold transition-colors text-center ${
+                      className={`block w-full rounded-md py-1.5 font-sans text-xs font-semibold tabular-nums transition-colors text-center ${
                         isMinDis
                           ? 'cursor-not-allowed bg-slate-50 text-slate-300 opacity-50'
                           : isSelected
