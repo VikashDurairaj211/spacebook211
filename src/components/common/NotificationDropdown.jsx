@@ -303,7 +303,7 @@ export default function NotificationDropdown({
 
       {/* Body */}
       <div className="max-h-80 space-y-2.5 overflow-auto px-4 py-3">
-        {loading ? (
+        {loading && notifications.length === 0 ? (
           <div className="p-4 text-center text-xs text-slate">Loading notifications...</div>
         ) : notifications.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-portal-bg p-4 text-center text-sm text-slate">

@@ -106,16 +106,18 @@ export default function Notifications() {
   // Fetch Notifications
   // =====================================================
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (isSilent = false) => {
     try {
-      setLoading(true)
-      setError('')
+      if (!isSilent) {
+        setLoading(true)
+        setError('')
+      }
 
       const token =
         localStorage.getItem('spacebook_token')
 
       if (!token || !user) {
-        setNotifications([])
+        setNotifications((prev) => (prev.length === 0 ? prev : []))
         return
       }
 
@@ -144,20 +146,38 @@ export default function Notifications() {
         })
         .filter((n) => !clearedIds.has(String(n.notificationId)))
 
-      setNotifications(mapped)
+      // Zero-flicker: Only update state if data actually changed
+      setNotifications((prev) => {
+        if (prev.length === mapped.length) {
+          const isIdentical = prev.every((item, idx) => {
+            const m = mapped[idx]
+            return (
+              item.notificationId === m.notificationId &&
+              item.isRead === m.isRead &&
+              item.title === m.title &&
+              item.message === m.message
+            )
+          })
+          if (isIdentical) return prev
+        }
+        return mapped
+      })
     } catch (err) {
       console.error(
         'Failed to fetch notifications:',
         err
       )
 
-      setError(
-        'Unable to load notifications.'
-      )
-
-      setNotifications([])
+      if (!isSilent) {
+        setError(
+          'Unable to load notifications.'
+        )
+        setNotifications([])
+      }
     } finally {
-      setLoading(false)
+      if (!isSilent) {
+        setLoading(false)
+      }
     }
   }
 
@@ -167,46 +187,27 @@ export default function Notifications() {
 
   const markAllAsRead = async () => {
     try {
-      const token =
-        localStorage.getItem('spacebook_token')
+      const currentIds = notifications.map((n, idx) =>
+        String(n.notificationId ?? n.id ?? n._id ?? idx)
+      )
+      saveReadNotificationIds(currentIds)
 
-      if (!token || !user) {
-        return
-      }
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, isRead: true }))
+      )
 
-      // Call backend API
       try {
         await markAllNotificationsAsRead()
       } catch (err) {
         // ignore
       }
 
-      // Persist read IDs locally
-      const currentIds = notifications.map((n, idx) =>
-        String(n.notificationId ?? n.id ?? n._id ?? idx)
-      )
-      saveReadNotificationIds(currentIds)
-
-      setNotifications((previous) =>
-        previous.map((notification) => ({
-          ...notification,
-          isRead: true,
-        }))
-      )
-
-      window.dispatchEvent(
-        new Event('notificationsRead')
-      )
+      window.dispatchEvent(new Event('notificationsRead'))
     } catch (err) {
-      console.error(
-        'Failed to mark notifications as read:',
-        err
-      )
+      console.error('Failed to mark all as read:', err)
     }
   }
 
-  // =====================================================
-  // Load Notifications
   // =====================================================
   // Load Notifications (With Auto-Polling & Live Refresh)
   // =====================================================
@@ -217,24 +218,24 @@ export default function Notifications() {
       return
     }
 
-    fetchNotifications()
+    fetchNotifications(false)
 
-    // 1. Auto-polling every 5 seconds
+    // 1. Silent auto-polling every 5 seconds without layout shifts
     const pollInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        fetchNotifications()
+        fetchNotifications(true)
       }
     }, 5000)
 
     // 2. Fetch on tab focus / visibility change
     const handleFocus = () => {
       if (document.visibilityState === 'visible') {
-        fetchNotifications()
+        fetchNotifications(true)
       }
     }
 
     const handleNotificationRefresh = () => {
-      fetchNotifications()
+      fetchNotifications(true)
     }
 
     window.addEventListener('notificationsRead', handleNotificationRefresh)
