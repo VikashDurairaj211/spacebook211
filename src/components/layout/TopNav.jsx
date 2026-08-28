@@ -213,14 +213,16 @@ export default function TopNav({
   // Fetch Notifications
   // =====================================================
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (isSilent = false) => {
     try {
-      setLoadingNotifications(true)
+      if (!isSilent) {
+        setLoadingNotifications(true)
+      }
 
       const token = localStorage.getItem('spacebook_token')
 
       if (!token || !user) {
-        setNotifications([])
+        setNotifications((prev) => (prev.length === 0 ? prev : []))
         return
       }
 
@@ -249,12 +251,31 @@ export default function TopNav({
         })
         .filter((n) => !clearedIds.has(String(n.notificationId)))
 
-      setNotifications(mapped)
+      // Zero-flicker: Only update state if data actually changed
+      setNotifications((prev) => {
+        if (prev.length === mapped.length) {
+          const isIdentical = prev.every((item, idx) => {
+            const m = mapped[idx]
+            return (
+              item.notificationId === m.notificationId &&
+              item.isRead === m.isRead &&
+              item.title === m.title &&
+              item.message === m.message
+            )
+          })
+          if (isIdentical) return prev
+        }
+        return mapped
+      })
     } catch (error) {
       console.error('Failed to fetch notifications in TopNav:', error)
-      setNotifications([])
+      if (!isSilent) {
+        setNotifications([])
+      }
     } finally {
-      setLoadingNotifications(false)
+      if (!isSilent) {
+        setLoadingNotifications(false)
+      }
     }
   }
 
@@ -347,25 +368,25 @@ export default function TopNav({
       return
     }
 
-    // Initial fetch
-    fetchNotifications()
+    // Initial fetch (shows initial loading if necessary)
+    fetchNotifications(false)
 
-    // 1. Ultra-fast auto-polling every 5 seconds so new notifications appear almost instantly
+    // 1. Silent auto-polling every 5 seconds without triggering UI loading states or shakes
     const pollInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        fetchNotifications()
+        fetchNotifications(true)
       }
     }, 5000)
 
-    // 2. Fetch on tab focus / visibility change
+    // 2. Silent fetch on tab focus / visibility change
     const handleFocus = () => {
       if (document.visibilityState === 'visible') {
-        fetchNotifications()
+        fetchNotifications(true)
       }
     }
 
     const handleNotificationRefresh = () => {
-      fetchNotifications()
+      fetchNotifications(true)
     }
 
     window.addEventListener('notificationsRead', handleNotificationRefresh)

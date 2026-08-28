@@ -116,9 +116,9 @@ const GUIDE_SECTIONS = [
           'Select your target Date and Work Shift (Full Day 10:00 AM - 10:00 PM, Morning 10:00 AM - 04:00 PM, or Afternoon 04:00 PM - 10:00 PM). Pick any Green available seat, and confirm.',
       },
       {
-        title: 'Checking In & QR Code Workflow',
+        title: 'Checking In to Your Workstation',
         content:
-          'Once booked, your workstation card appears under the map. When arriving at the office, click "Check In" or scan the desk QR code to confirm your physical presence.',
+          'Once booked, your workstation card appears under the map and on your dashboard. When arriving at the office during your arrival window, click "Check In" to confirm your physical presence.',
       },
     ],
   },
@@ -488,6 +488,10 @@ export default function UserGuideModal({ open, onClose }) {
                         {cleanTitle}
                       </h4>
                     </div>
+                    <h4 className="font-display text-sm font-bold text-slate-900">
+                      {topic.title.replace(/^\d+\.\s*/, '')}
+                    </h4>
+                  </div>
 
                     <p className="text-xs text-slate-700 font-sans leading-relaxed pl-8">
                       {topic.content}
