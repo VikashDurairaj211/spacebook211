@@ -38,7 +38,14 @@ export default function MyBookings() {
       "";
     setSearch(searchFromUrl);
 
-    if (searchParams.get("highlight") || searchParams.get("room")) {
+    if (
+      searchParams.get("highlight") ||
+      searchParams.get("id") ||
+      searchParams.get("bookingId") ||
+      searchParams.get("room") ||
+      searchParams.get("seat") ||
+      searchParams.get("date")
+    ) {
       setDateFilter("All");
     }
   }, [searchParams]);
@@ -54,42 +61,82 @@ export default function MyBookings() {
     setSearchParams(newParams, { replace: true });
   };
 
-  const highlightParam = searchParams.get("highlight") || "";
+  const highlightParam =
+    searchParams.get("highlight") ||
+    searchParams.get("id") ||
+    searchParams.get("bookingId") ||
+    "";
   const roomParam = searchParams.get("room") || "";
+  const seatParam = searchParams.get("seat") || "";
+  const dateParam = searchParams.get("date") || "";
   const searchParam = searchParams.get("search") || searchParams.get("q") || "";
 
-  // Compute matched highlight target across bookingId, room name, seat, or query
+  // Compute matched highlight target across bookingId, room name, seat, date, or query
   const matchedHighlightId = useMemo(() => {
-    if (!highlightParam && !roomParam && !searchParam) return "";
+    if (!highlightParam && !roomParam && !seatParam && !searchParam) return "";
 
     const cleanHighlight = String(highlightParam || "").replace(/^#/, "").trim().toLowerCase();
     const cleanRoom = String(roomParam || "").trim().toLowerCase();
+    const cleanSeat = String(seatParam || "").trim().toLowerCase();
+    const cleanDate = String(dateParam || "").trim().toLowerCase();
     const cleanSearch = String(searchParam || "").trim().toLowerCase();
 
     // 1. Exact match by bookingId
     if (cleanHighlight) {
       const match = bookings.find((b) => {
-        const bId = String(b.bookingId ?? "").replace(/^#/, "").trim().toLowerCase();
+        const bId = String(b.bookingId ?? b.id ?? "").replace(/^#/, "").trim().toLowerCase();
         return bId === cleanHighlight;
       });
-      if (match) return String(match.bookingId ?? "").replace(/^#/, "");
+      if (match) return String(match.bookingId ?? match.id ?? "").replace(/^#/, "");
+      return cleanHighlight;
     }
 
-    // 2. Match by room name or seat number
+    // 2. Match by seat number (with date priority)
+    if (cleanSeat) {
+      if (cleanDate) {
+        const matchWithDate = bookings.find((b) => {
+          const sNum = String(b.seatNumber ?? b.seat ?? "").trim().toLowerCase();
+          const bDate = String(b.bookingDate || "").trim().toLowerCase();
+          return (
+            (sNum === cleanSeat || sNum.includes(cleanSeat) || cleanSeat.includes(sNum)) &&
+            bDate.includes(cleanDate)
+          );
+        });
+        if (matchWithDate) return String(matchWithDate.bookingId ?? matchWithDate.id ?? "").replace(/^#/, "");
+      }
+      const match = bookings.find((b) => {
+        const sNum = String(b.seatNumber ?? b.seat ?? "").trim().toLowerCase();
+        return sNum === cleanSeat || sNum.includes(cleanSeat) || cleanSeat.includes(sNum);
+      });
+      if (match) return String(match.bookingId ?? match.id ?? "").replace(/^#/, "");
+    }
+
+    // 3. Match by room name (with date priority)
     if (cleanRoom) {
+      if (cleanDate) {
+        const matchWithDate = bookings.find((b) => {
+          const rName = String(b.roomName ?? "").trim().toLowerCase();
+          const bDate = String(b.bookingDate || "").trim().toLowerCase();
+          return (
+            (rName.includes(cleanRoom) || cleanRoom.includes(rName)) &&
+            bDate.includes(cleanDate)
+          );
+        });
+        if (matchWithDate) return String(matchWithDate.bookingId ?? matchWithDate.id ?? "").replace(/^#/, "");
+      }
       const match = bookings.find((b) => {
         const rName = String(b.roomName ?? "").trim().toLowerCase();
         return rName.includes(cleanRoom) || cleanRoom.includes(rName);
       });
-      if (match) return String(match.bookingId ?? "").replace(/^#/, "");
+      if (match) return String(match.bookingId ?? match.id ?? "").replace(/^#/, "");
     }
 
-    // 3. Match by search text
+    // 4. Match by search text
     if (cleanSearch) {
       const match = bookings.find((b) => {
-        const bId = String(b.bookingId ?? "").replace(/^#/, "").trim().toLowerCase();
+        const bId = String(b.bookingId ?? b.id ?? "").replace(/^#/, "").trim().toLowerCase();
         const rName = String(b.roomName ?? "").trim().toLowerCase();
-        const sNum = String(b.seatNumber ?? "").trim().toLowerCase();
+        const sNum = String(b.seatNumber ?? b.seat ?? "").trim().toLowerCase();
         const purpose = String(b.purpose ?? b.meetingTitle ?? "").trim().toLowerCase();
         return (
           bId === cleanSearch.replace(/^#/, "") ||
@@ -98,11 +145,11 @@ export default function MyBookings() {
           (purpose && purpose.includes(cleanSearch))
         );
       });
-      if (match) return String(match.bookingId ?? "").replace(/^#/, "");
+      if (match) return String(match.bookingId ?? match.id ?? "").replace(/^#/, "");
     }
 
-    return cleanHighlight;
-  }, [highlightParam, roomParam, searchParam, bookings]);
+    return "";
+  }, [highlightParam, roomParam, seatParam, dateParam, searchParam, bookings]);
 
   // Auto-scroll to highlighted booking record
   useEffect(() => {
@@ -110,12 +157,26 @@ export default function MyBookings() {
       const timer = setTimeout(() => {
         const el = document.getElementById(`booking-row-${matchedHighlightId}`);
         if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
         }
-      }, 300);
+      }, 350);
       return () => clearTimeout(timer);
     }
   }, [matchedHighlightId, loading, bookings]);
+
+  const handleClearHighlight = () => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("highlight");
+    newParams.delete("id");
+    newParams.delete("bookingId");
+    newParams.delete("room");
+    newParams.delete("seat");
+    newParams.delete("date");
+    newParams.delete("search");
+    newParams.delete("q");
+    setSearch("");
+    setSearchParams(newParams, { replace: true });
+  };
 
   const toast = useToast();
 
@@ -461,17 +522,9 @@ export default function MyBookings() {
 
             module: resolvedModule,
 
-            meetingTitle:
-              booking.meetingTitle ||
-              booking.title ||
-              booking.purpose ||
-              (seatNum ? `Hotseat (${seatNum})` : "Hotseat Booking"),
+            meetingTitle: "Hotseat Reservation",
 
-            purpose:
-              booking.meetingTitle ||
-              booking.title ||
-              booking.purpose ||
-              (seatNum ? `Hotseat (${seatNum})` : "Hotseat Booking"),
+            purpose: "Hotseat Reservation",
 
             roomId: null,
 
@@ -630,7 +683,7 @@ export default function MyBookings() {
     const bookingTime =
       booking.isHotseat
         ? booking.expectedCheckIn ||
-          booking.startTime
+        booking.startTime
         : booking.startTime;
 
     if (!bookingTime) {
@@ -706,9 +759,8 @@ export default function MyBookings() {
         const mins = diffMins % 60;
 
         if (hrs > 0) {
-          return `${hrs}h${
-            mins > 0 ? ` ${mins}m` : ""
-          }`;
+          return `${hrs}h${mins > 0 ? ` ${mins}m` : ""
+            }`;
         }
 
         return `${mins}m`;
@@ -1109,28 +1161,29 @@ export default function MyBookings() {
     if (
       booking.seatId !== undefined &&
       booking.seatId !== null &&
-      booking.seatId !== ""
+      booking.seatId !== "" &&
+      Number(booking.seatId) > 0
     ) {
-      const id = Number(
-        booking.seatId
-      );
-
+      const id = Number(booking.seatId);
       if (!Number.isNaN(id)) {
         return id;
       }
     }
 
     if (booking.seatNumber) {
-      const digits = String(
-        booking.seatNumber
-      ).replace(/[^0-9]/g, "");
+      const sn = String(booking.seatNumber).trim().toUpperCase();
+      const numFromId = parseInt(sn.split("-").pop(), 10) || 1;
 
-      if (digits) {
-        const id = Number(digits);
-
-        if (!Number.isNaN(id)) {
-          return id;
-        }
+      if (sn.includes("EO2")) {
+        return numFromId + 98;
+      } else if (
+        sn.startsWith("WS") ||
+        sn.includes("TIDEL") ||
+        sn.includes("TIDAL")
+      ) {
+        return numFromId + 229;
+      } else {
+        return numFromId;
       }
     }
 
@@ -1572,6 +1625,30 @@ export default function MyBookings() {
         </select>
       </div>
 
+      {/* HIGHLIGHTED BOOKING NOTIFICATION BANNER */}
+      {matchedHighlightId && (
+        <div className="flex items-center justify-between rounded-xl border border-sky-300 bg-sky-50 px-4 py-2.5 shadow-xs transition-all">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-2.5 w-2.5 rounded-full bg-sky-500 shrink-0"></span>
+            <div className="text-xs">
+              <span className="font-bold text-sky-950">
+                Highlighting Booking #{matchedHighlightId}
+              </span>
+              <span className="ml-1.5 text-sky-700 font-medium">
+                (Selected from notification)
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleClearHighlight}
+            className="rounded-lg bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-900 transition hover:bg-sky-200"
+          >
+            Clear highlight ✕
+          </button>
+        </div>
+      )}
+
       {/* BOOKINGS TABLE CONTAINER - Responsive horizontal and vertical scrolling */}
 
       <Card className="p-0 overflow-hidden shadow-sm border border-line rounded-2xl bg-white w-full">
@@ -1581,7 +1658,7 @@ export default function MyBookings() {
             <thead>
               <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-600">
 
-                <th className="sticky top-0 z-20 w-[50px] px-2.5 py-3 text-center bg-slate-50 border-b border-slate-200" style={{ backgroundColor: '#f8fafc' }}>
+                <th className="sticky top-0 z-20 w-[70px] px-2.5 py-3 text-center bg-slate-50 border-b border-slate-200" style={{ backgroundColor: '#f8fafc' }}>
                   ID
                 </th>
 
@@ -1662,140 +1739,193 @@ export default function MyBookings() {
 
               ) : (
 
-                filteredBookings.map((b) => (
+                filteredBookings.map((b) => {
+                  const currentBookingId = String(
+                    b.bookingId ?? b.id ?? ""
+                  ).replace(/^#/, "");
+                  const isHighlighted = Boolean(
+                    matchedHighlightId &&
+                    String(matchedHighlightId).toLowerCase() === currentBookingId.toLowerCase()
+                  );
 
-                  <tr
-                    key={`${
-                      b.isHotseat
-                        ? "hotseat"
-                        : "room"
-                    }-${b.bookingId}`}
-                    className="border-b border-slate-100 last:border-0 transition-colors duration-150 hover:bg-slate-50/90"
-                  >
+                  return (
+                    <tr
+                      key={`${b.isHotseat
+                          ? "hotseat"
+                          : "room"
+                        }-${b.bookingId}`}
+                      id={`booking-row-${currentBookingId}`}
+                      className={`border-b transition-colors duration-150 ${isHighlighted
+                          ? "bg-sky-50 hover:bg-sky-100/60 border-sky-300 ring-2 ring-sky-300 shadow-sm"
+                          : "border-slate-100 last:border-0 hover:bg-slate-50/90"
+                        }`}
+                    >
 
-                    {/* BOOKING ID */}
+                      {/* BOOKING ID */}
 
-                    <td className="px-2.5 py-3 text-center font-medium text-slate-700 whitespace-nowrap">
-                      {String(
-                        b.bookingId ?? ""
-                      ).replace(/^#/, "")}
-                    </td>
+                      <td className={`px-2.5 py-3 text-center whitespace-nowrap transition-colors ${isHighlighted
+                          ? "border-l-4 border-l-sky-500 bg-sky-50 text-sky-950 font-bold"
+                          : "border-l-4 border-l-transparent text-slate-700 font-medium"
+                        }`}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span>{currentBookingId}</span>
+                          {isHighlighted && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-500 text-white uppercase tracking-wider shadow-2xs">
+                              Selected
+                            </span>
+                          )}
+                        </div>
+                      </td>
 
-                    {/* ROOM / HOTSEAT */}
+                      {/* ROOM / HOTSEAT */}
 
-                    <td className="px-2.5 py-3 font-semibold text-ink break-words leading-snug" title={b.isHotseat ? b.roomName || "Hot Seat" : b.roomName || `Room ${getRoomId(b) || ""}`}>
-                      {b.isHotseat
-                        ? b.roomName ||
-                          "Hot Seat"
-                        : b.roomName ||
-                          `Room ${
-                            getRoomId(b) || ""
+                      <td
+                        className={`px-2.5 py-3 break-words leading-snug transition-colors ${isHighlighted
+                            ? "text-sky-950 font-bold"
+                            : "font-semibold text-ink"
                           }`}
-                    </td>
+                        title={b.isHotseat ? b.roomName || "Hot Seat" : b.roomName || `Room ${getRoomId(b) || ""}`}
+                      >
+                        {b.isHotseat
+                          ? b.roomName ||
+                          "Hot Seat"
+                          : b.roomName ||
+                          `Room ${getRoomId(b) || ""
+                          }`}
+                      </td>
 
-                    {/* MODULE */}
+                      {/* MODULE */}
 
-                    <td className="px-2.5 py-3 text-slate-600 break-words leading-snug" title={getBookingModule(b)}>
-                      {getBookingModule(b)}
-                    </td>
+                      <td
+                        className={`px-2.5 py-3 break-words leading-snug transition-colors ${isHighlighted
+                            ? "text-sky-900 font-medium"
+                            : "text-slate-600"
+                          }`}
+                        title={getBookingModule(b)}
+                      >
+                        {getBookingModule(b)}
+                      </td>
 
-                    {/* MEETING TITLE */}
+                      {/* MEETING TITLE */}
 
-                    <td className="px-2.5 py-3 font-medium text-slate-900 break-words leading-snug" title={b.meetingTitle || b.purpose || ""}>
-                      {b.meetingTitle ||
-                      b.purpose ||
-                      (b.isHotseat ? "Hotseat Booking" : "Workspace Reservation")}
-                    </td>
+                      <td
+                        className={`px-2.5 py-3 break-words leading-snug transition-colors ${isHighlighted
+                            ? "text-sky-950 font-semibold"
+                            : "font-medium text-slate-900"
+                          }`}
+                        title={b.meetingTitle || b.purpose || ""}
+                      >
+                        {b.isHotseat
+                          ? "Hotseat Reservation"
+                          : b.meetingTitle ||
+                            b.purpose ||
+                            "Workspace Reservation"}
+                      </td>
 
-                    {/* DATE */}
+                      {/* DATE */}
 
-                    <td className="px-2 py-3 text-slate-700 whitespace-nowrap text-xs">
-                      {b.bookingDate}
-                    </td>
+                      <td
+                        className={`px-2 py-3 whitespace-nowrap text-xs transition-colors ${isHighlighted
+                            ? "text-sky-900 font-semibold"
+                            : "text-slate-700"
+                          }`}
+                      >
+                        {b.bookingDate}
+                      </td>
 
-                    {/* TIME */}
+                      {/* TIME */}
 
-                    <td className="px-2 py-3 text-slate-600 whitespace-nowrap text-xs">
-                      {b.isHotseat
-                        ? formatDisplayTime(
+                      <td
+                        className={`px-2 py-3 whitespace-nowrap text-xs transition-colors ${isHighlighted
+                            ? "text-sky-900 font-semibold"
+                            : "text-slate-600"
+                          }`}
+                      >
+                        {b.isHotseat
+                          ? formatDisplayTime(
                             b.expectedCheckIn ||
                             b.startTime
                           )
-                        : `${formatDisplayTime(
+                          : `${formatDisplayTime(
                             b.startTime
                           )} - ${formatDisplayTime(
                             b.endTime
                           )}`}
-                    </td>
+                      </td>
 
-                    {/* DURATION */}
+                      {/* DURATION */}
 
-                    <td className="px-2 py-3 text-center text-slate-700 whitespace-nowrap font-medium text-xs">
-                      {getDuration(b)}
-                    </td>
-
-                    {/* STATUS */}
-
-                    <td className="px-2 py-3 text-center whitespace-nowrap">
-                      <span
-                        className={`inline-block w-[82px] rounded-full py-0.5 text-center text-[10.5px] font-bold uppercase tracking-wide ${getStatusBadgeClass(
-                          getDisplayStatus(b)
-                        )}`}
+                      <td
+                        className={`px-2 py-3 text-center whitespace-nowrap text-xs transition-colors ${isHighlighted
+                            ? "text-sky-900 font-bold"
+                            : "text-slate-700 font-medium"
+                          }`}
                       >
-                        {getDisplayStatus(b)}
-                      </span>
-                    </td>
+                        {getDuration(b)}
+                      </td>
 
-                    {/* ACTIONS */}
+                      {/* STATUS */}
 
-                    <td className="px-2.5 py-3 text-center whitespace-nowrap">
+                      <td className="px-2 py-3 text-center whitespace-nowrap">
+                        <span
+                          className={`inline-block w-[82px] rounded-full py-0.5 text-center text-[10.5px] font-bold uppercase tracking-wide ${getStatusBadgeClass(
+                            getDisplayStatus(b)
+                          )}`}
+                        >
+                          {getDisplayStatus(b)}
+                        </span>
+                      </td>
 
-                      <button
-                        className="mr-2 text-xs font-bold text-sky-600 hover:text-sky-800 hover:underline"
-                        onClick={() =>
-                          handleView(b)
-                        }
-                      >
-                        View
-                      </button>
+                      {/* ACTIONS */}
 
-                      {canModifyBooking(b) && (
-                        <>
-                          {/* EDIT */}
+                      <td className="px-2.5 py-3 text-center whitespace-nowrap">
 
-                          <button
-                            className="mr-2 text-xs font-bold text-emerald-600 hover:text-emerald-800 hover:underline"
-                            onClick={() =>
-                              handleEdit(b)
-                            }
-                          >
-                            Edit
-                          </button>
+                        <button
+                          className="mr-2 text-xs font-bold text-sky-600 hover:text-sky-800 hover:underline"
+                          onClick={() =>
+                            handleView(b)
+                          }
+                        >
+                          View
+                        </button>
 
-                          {/* CANCEL */}
+                        {canModifyBooking(b) && (
+                          <>
+                            {/* EDIT */}
 
-                          <button
-                            className="text-xs font-bold text-red-600 hover:text-red-800 hover:underline"
-                            onClick={() => {
-                              setSelected({
-                                ...b,
-                                roomId:
-                                  getRoomId(b),
-                              });
-                              setCancelReason("");
-                              setMode("cancel");
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      )}
+                            <button
+                              className="mr-2 text-xs font-bold text-emerald-600 hover:text-emerald-800 hover:underline"
+                              onClick={() =>
+                                handleEdit(b)
+                              }
+                            >
+                              Edit
+                            </button>
 
-                    </td>
+                            {/* CANCEL */}
 
-                  </tr>
+                            <button
+                              className="text-xs font-bold text-red-600 hover:text-red-800 hover:underline"
+                              onClick={() => {
+                                setSelected({
+                                  ...b,
+                                  roomId:
+                                    getRoomId(b),
+                                });
+                                setCancelReason("");
+                                setMode("cancel");
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        )}
 
-                ))
+                      </td>
+
+                    </tr>
+                  );
+                })
 
               )}
 
@@ -1837,25 +1967,20 @@ export default function MyBookings() {
               ).replace(/^#/, "")}
             </dd>
 
-            {/* ROOM / SEAT */}
+            {/* ROOM (Only for Room Bookings) */}
 
-            <dt className="font-medium">
-              {selected.isHotseat
-                ? "Seat"
-                : "Room"}
-            </dt>
+            {!selected.isHotseat && (
+              <>
+                <dt className="font-medium">
+                  Room
+                </dt>
 
-            <dd>
-              {selected.isHotseat
-                ? selected.seatNumber ||
-                  selected.roomName ||
-                  "Hot Seat"
-                : selected.roomName ||
-                  `Room ${
-                    getRoomId(selected) ||
-                    ""
-                  }`}
-            </dd>
+                <dd>
+                  {selected.roomName ||
+                    `Room ${getRoomId(selected) || ""}`}
+                </dd>
+              </>
+            )}
 
             {/* MODULE */}
 
@@ -1867,7 +1992,7 @@ export default function MyBookings() {
               {getBookingModule(selected)}
             </dd>
 
-            {/* HOTSEAT SEAT NUMBER */}
+            {/* HOTSEAT SEAT NUMBER & CHECK-IN TIME */}
 
             {selected.isHotseat && (
               <>
@@ -1887,13 +2012,13 @@ export default function MyBookings() {
                 <dd>
                   {selected.expectedCheckIn
                     ? formatDisplayTime(
-                        selected.expectedCheckIn
-                      )
+                      selected.expectedCheckIn
+                    )
                     : selected.startTime
-                    ? formatDisplayTime(
+                      ? formatDisplayTime(
                         selected.startTime
                       )
-                    : "-"}
+                      : "-"}
                 </dd>
               </>
             )}
@@ -1905,9 +2030,11 @@ export default function MyBookings() {
             </dt>
 
             <dd>
-              {selected.meetingTitle ||
-                selected.purpose ||
-                (selected.isHotseat ? "Hotseat Booking" : "Workspace Reservation")}
+              {selected.isHotseat
+                ? "Hotseat Reservation"
+                : selected.meetingTitle ||
+                  selected.purpose ||
+                  "Workspace Reservation"}
             </dd>
 
             {/* DATE */}
@@ -1929,14 +2056,14 @@ export default function MyBookings() {
             <dd>
               {selected.isHotseat
                 ? formatDisplayTime(
-                    selected.expectedCheckIn ||
-                    selected.startTime
-                  )
+                  selected.expectedCheckIn ||
+                  selected.startTime
+                )
                 : `${formatDisplayTime(
-                    selected.startTime
-                  )} - ${formatDisplayTime(
-                    selected.endTime
-                  )}`}
+                  selected.startTime
+                )} - ${formatDisplayTime(
+                  selected.endTime
+                )}`}
             </dd>
 
             {/* DURATION */}
