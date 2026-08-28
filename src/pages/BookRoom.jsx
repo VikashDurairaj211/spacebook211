@@ -268,7 +268,7 @@ export default function BookRoom() {
     searchParams.get('endTime') || ''
 
   const prefillAttendees =
-    searchParams.get('attendees') || '1'
+    searchParams.get('attendees') || ''
 
   // =====================================================
   // STATE
@@ -549,7 +549,7 @@ export default function BookRoom() {
         'End time is required.'
     }
 
-    if (!form.attendees) {
+    if (!form.attendees || Number(form.attendees) < 1) {
       newErrors.attendees =
         'Number of attendees is required.'
     }
@@ -1019,6 +1019,7 @@ export default function BookRoom() {
               max={
                 selectedRoomDetails?.capacity
               }
+              placeholder="e.g. 5"
               className="w-32"
               value={form.attendees}
               onChange={(e) =>

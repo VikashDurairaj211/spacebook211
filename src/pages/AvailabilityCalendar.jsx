@@ -734,10 +734,7 @@ export default function AvailabilityCalendar() {
 
         endTime,
 
-        attendees:
-          String(
-            filters.capacity || 1
-          ),
+        ...(filters.capacity ? { attendees: String(filters.capacity) } : {}),
 
         location:
           getRoomLocation(

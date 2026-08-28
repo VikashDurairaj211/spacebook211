@@ -83,7 +83,7 @@ const GUIDE_SECTIONS = [
       {
         title: '3. Instant Reservation & Confirmation',
         content:
-          'Click "Book Now", enter your Meeting Title, review the summary modal, and click "Confirm Booking". Your reservation is created immediately with a clean numeric Booking ID and added to your calendar.',
+          'Click "Book Now", enter your Meeting Title and Number of Attendees (required), review the summary modal, and click "Confirm Booking". Your reservation is created immediately with a clean numeric Booking ID and added to your calendar.',
       },
     ],
   },
@@ -97,7 +97,7 @@ const GUIDE_SECTIONS = [
       {
         title: '1. Navigating the Office Floor Plan',
         content:
-          'Go to "Hotseat Reservation" in the sidebar to open the interactive office floor map. You can toggle between Module 1 and Module 2 floor layouts.',
+          'Go to "Hotseat Reservation" in the sidebar to open the interactive office floor map. You can toggle between Module 1 - Elcot Park, Module 2 - Elcot Park, and Module 1 - Tidel Park floor layouts.',
       },
       {
         title: '2. Understanding Desk Color Codes',
@@ -107,7 +107,7 @@ const GUIDE_SECTIONS = [
           '🟢 Green Pin: Available workstation ready for immediate booking.',
           '🔵 Blue Pin: Your currently selected seat on the floor map.',
           '🔴 Red Pin: Occupied / Booked desk currently reserved by another team member.',
-          '⚪ Gray Pin: Unavailable workstation (non-reservable or maintenance slot).',
+          '⚪ Grey Pin: Unavailable workstation (non-reservable, out-of-service, or maintenance slot).',
         ],
       },
       {
