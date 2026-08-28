@@ -35,6 +35,45 @@ export default function Layout() {
     }
   }, [])
 
+  // 15-minute idle inactivity tracker
+  useEffect(() => {
+    const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000 // 15 minutes
+
+    let timer
+
+    const resetTimer = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        const token = localStorage.getItem('spacebook_token')
+        if (token) {
+          // Trigger the session timeout popup modal
+          window.dispatchEvent(new Event('spacebook_session_expired'))
+        }
+      }, INACTIVITY_TIMEOUT_MS)
+    }
+
+    // Start initial timer
+    resetTimer()
+
+    // Activity event listeners to reset timer on user interaction
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click']
+
+    const handleActivity = () => {
+      resetTimer()
+    }
+
+    activityEvents.forEach((event) => {
+      window.addEventListener(event, handleActivity, { passive: true })
+    })
+
+    return () => {
+      if (timer) clearTimeout(timer)
+      activityEvents.forEach((event) => {
+        window.removeEventListener(event, handleActivity)
+      })
+    }
+  }, [])
+
   // compute sidebar width classes for main margin
   const mainMarginClass = sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'
 
