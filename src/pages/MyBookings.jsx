@@ -70,9 +70,15 @@ export default function MyBookings() {
   const seatParam = searchParams.get("seat") || "";
   const dateParam = searchParams.get("date") || "";
   const searchParam = searchParams.get("search") || searchParams.get("q") || "";
+  const [dismissedHighlight, setDismissedHighlight] = useState(false);
+
+  useEffect(() => {
+    setDismissedHighlight(false);
+  }, [location.search]);
 
   // Compute matched highlight target across bookingId, room name, seat, date, or query
   const matchedHighlightId = useMemo(() => {
+    if (dismissedHighlight) return "";
     if (!highlightParam && !roomParam && !seatParam && !searchParam) return "";
 
     const cleanHighlight = String(highlightParam || "").replace(/^#/, "").trim().toLowerCase();
@@ -165,6 +171,7 @@ export default function MyBookings() {
   }, [matchedHighlightId, loading, bookings]);
 
   const handleClearHighlight = () => {
+    setDismissedHighlight(true);
     const newParams = new URLSearchParams(searchParams);
     newParams.delete("highlight");
     newParams.delete("id");
@@ -1625,30 +1632,6 @@ export default function MyBookings() {
         </select>
       </div>
 
-      {/* HIGHLIGHTED BOOKING NOTIFICATION BANNER */}
-      {matchedHighlightId && (
-        <div className="flex items-center justify-between rounded-xl border border-sky-300 bg-sky-50 px-4 py-2.5 shadow-xs transition-all">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-2.5 w-2.5 rounded-full bg-sky-500 shrink-0"></span>
-            <div className="text-xs">
-              <span className="font-bold text-sky-950">
-                Highlighting Booking #{matchedHighlightId}
-              </span>
-              <span className="ml-1.5 text-sky-700 font-medium">
-                (Selected from notification)
-              </span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleClearHighlight}
-            className="rounded-lg bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-900 transition hover:bg-sky-200"
-          >
-            Clear highlight ✕
-          </button>
-        </div>
-      )}
-
       {/* BOOKINGS TABLE CONTAINER - Responsive horizontal and vertical scrolling */}
 
       <Card className="p-0 overflow-hidden shadow-sm border border-line rounded-2xl bg-white w-full">
@@ -1755,8 +1738,9 @@ export default function MyBookings() {
                           : "room"
                         }-${b.bookingId}`}
                       id={`booking-row-${currentBookingId}`}
+                      onClick={isHighlighted ? handleClearHighlight : undefined}
                       className={`border-b transition-colors duration-150 ${isHighlighted
-                          ? "bg-sky-50 hover:bg-sky-100/60 border-sky-300 ring-2 ring-sky-300 shadow-sm"
+                          ? "bg-sky-50 hover:bg-sky-100/60 border-sky-300 ring-2 ring-sky-300 shadow-sm cursor-pointer"
                           : "border-slate-100 last:border-0 hover:bg-slate-50/90"
                         }`}
                     >
@@ -1767,13 +1751,8 @@ export default function MyBookings() {
                           ? "border-l-4 border-l-sky-500 bg-sky-50 text-sky-950 font-bold"
                           : "border-l-4 border-l-transparent text-slate-700 font-medium"
                         }`}>
-                        <div className="flex items-center justify-center gap-1.5">
+                        <div className="flex items-center justify-center">
                           <span>{currentBookingId}</span>
-                          {isHighlighted && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-500 text-white uppercase tracking-wider shadow-2xs">
-                              Selected
-                            </span>
-                          )}
                         </div>
                       </td>
 
