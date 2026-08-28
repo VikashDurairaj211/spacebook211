@@ -116,9 +116,9 @@ const GUIDE_SECTIONS = [
           'Select your target Date and Work Shift (Full Day 10:00 AM - 10:00 PM, Morning 10:00 AM - 04:00 PM, or Afternoon 04:00 PM - 10:00 PM). Pick any Green available seat, and confirm.',
       },
       {
-        title: '4. Checking In & QR Code Workflow',
+        title: '4. Checking In to Your Workstation',
         content:
-          'Once booked, your workstation card appears under the map. When arriving at the office, click "Check In" or scan the desk QR code to confirm your physical presence.',
+          'Once booked, your workstation card appears under the map and on your dashboard. When arriving at the office during your arrival window, click "Check In" to confirm your physical presence.',
       },
     ],
   },
