@@ -223,7 +223,7 @@ export default function NotificationDropdown({
 
     // If Admin, redirect directly to Admin Notifications page
     if (isAdmin) {
-      const targetHighlight = id || n.notificationId || bookingId || "";
+      const targetHighlight = id || n.notificationId || "";
       const adminParams = new URLSearchParams();
       if (targetHighlight) {
         adminParams.set("highlight", targetHighlight);
@@ -233,10 +233,17 @@ export default function NotificationDropdown({
     }
 
     const bookingId =
-      n.bookingId ||
-      n.hotseatBookingId ||
-      String(n.message || "").match(/#(\d+)/)?.[1] ||
-      (!isNaN(Number(n.id)) ? String(n.id) : "");
+      n.bookingId ??
+      n.booking_id ??
+      n.BookingId ??
+      n.hotseatBookingId ??
+      n.hotseat_booking_id ??
+      n.seatBookingId ??
+      n.seat_booking_id ??
+      n.booking?.id ??
+      n.booking?.bookingId ??
+      String(n.message || "").match(/#(\d+)/)?.[1] ??
+      "";
 
     // Extract clean room name from object or message
     const rawMsg = String(n.message || "");
@@ -244,27 +251,49 @@ export default function NotificationDropdown({
     const combined = `${rawTitle} ${rawMsg}`;
 
     const extractedRoom =
-      n.roomName ||
-      combined.match(/(Conference Room \d+|Meeting Room \d+|Discussion Room \d+|Board Room \d+|Training Room \d+|Room \d+)/i)?.[0] ||
+      n.roomName ??
+      n.room_name ??
+      n.RoomName ??
+      n.booking?.roomName ??
+      n.booking?.room_name ??
+      combined.match(/(Conference Room \d+|Meeting Room \d+|Discussion Room \d+|Board Room \d+|Training Room \d+|Room \d+)/i)?.[0] ??
       "";
 
     const extractedSeat =
-      n.seatNumber ||
-      n.seat ||
-      combined.match(/(WS-[\w-]+|Hot Seat [\w-]+|Seat [\w-]+)/i)?.[0] ||
+      n.seatNumber ??
+      n.seat_number ??
+      n.SeatNumber ??
+      n.seat ??
+      n.booking?.seatNumber ??
+      n.booking?.seat ??
+      combined.match(/(WS-[\w-]+|Hot\s*Seat\s*[\w-]+|Seat\s*[\w-]+)/i)?.[0] ??
       "";
 
+    let bookingDate =
+      n.bookingDate ??
+      n.booking_date ??
+      n.BookingDate ??
+      n.date ??
+      n.booking?.bookingDate ??
+      n.booking?.date ??
+      "";
+
+    if (!bookingDate) {
+      const isoDateMatch = combined.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+      if (isoDateMatch) {
+        bookingDate = isoDateMatch[1];
+      }
+    }
+
+    const quoteMatch = combined.match(/'([^']+)'|"([^"]+)"/);
+    const extractedTitle = quoteMatch ? (quoteMatch[1] || quoteMatch[2]) : "";
+
     const params = new URLSearchParams();
-    if (bookingId) params.set("highlight", bookingId);
+    if (bookingId) params.set("highlight", String(bookingId).replace(/^#/, ""));
     if (extractedRoom) params.set("room", extractedRoom);
     if (extractedSeat) params.set("seat", extractedSeat);
-    if (n.bookingDate) params.set("date", n.bookingDate);
-
-    // Pass clean search keyword
-    const cleanSearch = extractedRoom || extractedSeat || (bookingId ? `#${bookingId}` : "");
-    if (cleanSearch) {
-      params.set("search", cleanSearch);
-    }
+    if (bookingDate) params.set("date", bookingDate);
+    if (extractedTitle) params.set("title", extractedTitle);
 
     navigate(`/my-bookings?${params.toString()}`);
   };
@@ -303,7 +332,7 @@ export default function NotificationDropdown({
 
       {/* Body */}
       <div className="max-h-80 space-y-2.5 overflow-auto px-4 py-3">
-        {loading ? (
+        {loading && notifications.length === 0 ? (
           <div className="p-4 text-center text-xs text-slate">Loading notifications...</div>
         ) : notifications.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-portal-bg p-4 text-center text-sm text-slate">

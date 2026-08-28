@@ -65,7 +65,7 @@ const GUIDE_SECTIONS = [
     description: 'How to search, check amenities, and reserve meeting spaces across Elcot & Tidel Park.',
     topics: [
       {
-        title: '1. Finding the Right Meeting Room',
+        title: 'Finding the Right Meeting Room',
         content:
           'Navigate to "Workspace Search" from the sidebar or type a room name directly into the Top Navigation search bar. Filter by Module (Elcot Park Module 1 & 2, Tidel Park Module 1), Room Type (Conference, Training, Discussion), Capacity, and technical Facilities.',
         steps: [
@@ -76,12 +76,12 @@ const GUIDE_SECTIONS = [
         ],
       },
       {
-        title: '2. Viewing Room Details & Schedule Matrix',
+        title: 'Viewing Room Details & Schedule Matrix',
         content:
           'Click "View Details" on any room card to see its full photo gallery, capacity limits, technical facilities, and the day-long time slot matrix showing already occupied vs free hours.',
       },
       {
-        title: '3. Instant Reservation & Confirmation',
+        title: 'Instant Reservation & Confirmation',
         content:
           'Click "Book Now", enter your Meeting Title and Number of Attendees (required), review the summary modal, and click "Confirm Booking". Your reservation is created immediately with a clean numeric Booking ID and added to your calendar.',
       },
@@ -95,12 +95,12 @@ const GUIDE_SECTIONS = [
     description: 'How to reserve individual workstations using the interactive floor map.',
     topics: [
       {
-        title: '1. Navigating the Office Floor Plan',
+        title: 'Navigating the Office Floor Plan',
         content:
           'Go to "Hotseat Reservation" in the sidebar to open the interactive office floor map. You can toggle between Module 1 - Elcot Park, Module 2 - Elcot Park, and Module 1 - Tidel Park floor layouts.',
       },
       {
-        title: '2. Understanding Desk Color Codes',
+        title: 'Understanding Desk Color Codes',
         content:
           'The floor map uses live color coding for each workstation pin:',
         steps: [
@@ -111,12 +111,12 @@ const GUIDE_SECTIONS = [
         ],
       },
       {
-        title: '3. Booking a Workstation Desk',
+        title: 'Booking a Workstation Desk',
         content:
           'Select your target Date and Work Shift (Full Day 10:00 AM - 10:00 PM, Morning 10:00 AM - 04:00 PM, or Afternoon 04:00 PM - 10:00 PM). Pick any Green available seat, and confirm.',
       },
       {
-        title: '4. Checking In & QR Code Workflow',
+        title: 'Checking In & QR Code Workflow',
         content:
           'Once booked, your workstation card appears under the map. When arriving at the office, click "Check In" or scan the desk QR code to confirm your physical presence.',
       },
@@ -130,22 +130,22 @@ const GUIDE_SECTIONS = [
     description: 'Viewing, rescheduling time slots, and cancelling reservations.',
     topics: [
       {
-        title: '1. Viewing Active & Upcoming Reservations',
+        title: 'Viewing Active & Upcoming Reservations',
         content:
-          'Visit "My Bookings" to see all your reservations organized in tabs: Active (upcoming meetings), Completed (past meetings), and Cancelled. Filter by date, search by meeting title, and inspect clean numeric Booking IDs.',
+          'Visit "My Bookings" to see all your reservations. Filter by date, search by meeting title or seat number, and inspect clean numeric Booking IDs.',
       },
       {
-        title: '2. Rescheduling / Editing Booking Time',
+        title: 'Rescheduling / Editing Booking Time',
         content:
-          'Need to change your meeting time? Click the "Edit / Reschedule" button on your booking card. Pick a new date or adjust start/end time slots within 10:00 AM – 10:00 PM. The system validates conflict-free slots instantly.',
+          'Need to change your meeting time? Click the "Edit" button on your booking row. Pick a new date or adjust start/end time slots within 10:00 AM – 10:00 PM. The system validates conflict-free slots instantly.',
       },
       {
-        title: '3. Cancelling Reservations',
+        title: 'Cancelling Reservations',
         content:
-          'If you no longer need a reserved space, click "Cancel" on your booking card:',
+          'If you no longer need a reserved space, click "Cancel" on your booking row:',
         steps: [
-          'Meeting Rooms: Enter a brief cancellation reason (e.g. Schedule Conflict, Client Postponed) to keep facilities audit logs accurate.',
-          'Hot-Seats: Instant cancellation with confirmation only—no reason required.',
+          'Meeting Rooms: Enter a brief cancellation reason to keep facilities audit logs accurate.',
+          'Hot-Seats: Instant cancellation with confirmation only—no cancellation reason required.',
         ],
       },
     ],
@@ -158,7 +158,7 @@ const GUIDE_SECTIONS = [
     description: 'Visual time-grid matrix of all rooms across the workplace.',
     topics: [
       {
-        title: 'How to Check Workspace Availability',
+        title: 'Checking Workspace Availability Grid',
         content:
           'The "Workspace Availability" page provides a bird’s-eye view matrix of all office meeting rooms across hourly time slots (10:00 AM to 10:00 PM).',
         steps: [
@@ -185,14 +185,14 @@ const GUIDE_SECTIONS = [
       {
         title: 'Supported Prompts & Capabilities',
         content:
-          'You can chat with Aira using these 6 supported prompts:',
+          'You can chat with Aira using these 6 supported prompt workflows:',
         steps: [
-          '1. Office Locations: "What office locations are available in the system?"',
-          '2. Office Search: "Search for the office located in [City/Location Name]."',
-          '3. Available Rooms: "What rooms are available in the [Office Name] office?"',
-          '4. Room Search: "Search for the room named [Room Name]."',
-          '5. Office & Room Filtering: "Show me the rooms in [Office Name] that match the selected [Filter Criteria]."',
-          '6. Room Information: "Tell me about the [Room Name] room."',
+          'Office Locations: "What office locations are available in the system?"',
+          'Office Search: "Search for the office located in [City/Location Name]."',
+          'Available Rooms: "What rooms are available in the [Office Name] office?"',
+          'Room Search: "Search for the room named [Room Name]."',
+          'Office & Room Filtering: "Show me the rooms in [Office Name] that match the selected [Filter Criteria]."',
+          'Room Information: "Tell me about the [Room Name] room."',
         ],
       },
     ],
@@ -205,7 +205,7 @@ const GUIDE_SECTIONS = [
     description: 'Executive KPIs, reservation audit modal, room management, hotseat administration, and visual analytics.',
     topics: [
       {
-        title: '1. Reports & Executive KPI Cards',
+        title: 'Reports & Executive KPI Cards',
         content:
           'The Admin Reports page gives administrators a unified overview with compact, high-impact cards:',
         steps: [
@@ -216,7 +216,7 @@ const GUIDE_SECTIONS = [
         ],
       },
       {
-        title: '2. Workplace Reservation Records & Audit Modal',
+        title: 'Workplace Reservation Records & Audit Modal',
         content:
           'The reservation records table is accessed cleanly via the "View" button in the summary card:',
         steps: [
@@ -227,7 +227,7 @@ const GUIDE_SECTIONS = [
         ],
       },
       {
-        title: '3. Workspace Administration & Inventory',
+        title: 'Workspace Administration & Inventory',
         content:
           'The Workspace Administration page allows administrators to manage room inventory and operational states across Elcot Park and Tidel Park:',
         steps: [
@@ -238,7 +238,7 @@ const GUIDE_SECTIONS = [
         ],
       },
       {
-        title: '4. Hotseat Management & Workstation Administration',
+        title: 'Hotseat Management & Workstation Administration',
         content:
           'The Hotseat Management page enables full administrative oversight of hot-desk operations across campus modules:',
         steps: [
@@ -249,7 +249,7 @@ const GUIDE_SECTIONS = [
         ],
       },
       {
-        title: '5. Visual Analytics & Usage Intelligence',
+        title: 'Visual Analytics & Usage Intelligence',
         content:
           'Unified 6-tab business intelligence graph matching the Hotseat Management portal in a clean single-line layout:',
         steps: [
@@ -473,56 +473,62 @@ export default function UserGuideModal({ open, onClose }) {
 
             {/* Topics List */}
             <div className="space-y-6">
-              {activeSection.topics.map((topic, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-2xl border border-slate-200/80 bg-slate-50/40 p-5 space-y-3 transition hover:border-sky-200 hover:bg-white"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-100 text-sky-800 text-xs font-mono font-bold">
-                      {idx + 1}
+              {activeSection.topics.map((topic, idx) => {
+                const cleanTitle = String(topic.title || '').replace(/^\d+\.\s*/, '')
+                return (
+                  <div
+                    key={idx}
+                    className="rounded-2xl border border-slate-200/80 bg-slate-50/40 p-5 space-y-3 transition hover:border-sky-200 hover:bg-white"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-800 text-xs font-mono font-bold">
+                        {idx + 1}
+                      </div>
+                      <h4 className="font-display text-sm font-bold text-slate-900">
+                        {cleanTitle}
+                      </h4>
                     </div>
-                    <h4 className="font-display text-sm font-bold text-slate-900">
-                      {topic.title}
-                    </h4>
+
+                    <p className="text-xs text-slate-700 font-sans leading-relaxed pl-8">
+                      {topic.content}
+                    </p>
+
+                    {/* Step list if applicable */}
+                    {topic.steps && (
+                      <div className="pl-8 space-y-2 pt-1">
+                        {topic.steps.map((step, sIdx) => {
+                          const cleanStep = String(step || '').replace(/^\d+\.\s*/, '')
+                          return (
+                            <div
+                              key={sIdx}
+                              className="flex items-start gap-2 text-xs font-sans text-slate-600"
+                            >
+                              <ArrowRight
+                                size={12}
+                                className="text-sky-600 shrink-0 mt-0.5"
+                              />
+                              <span>{cleanStep}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {/* Pro-Tip Box */}
+                    {topic.tips && (
+                      <div className="ml-8 mt-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5 text-xs font-sans text-emerald-900 flex items-start gap-2">
+                        <CheckCircle2
+                          size={14}
+                          className="text-emerald-600 shrink-0 mt-0.5"
+                        />
+                        <span>
+                          <strong className="font-semibold">Pro-Tip:</strong> {topic.tips}
+                        </span>
+                      </div>
+                    )}
                   </div>
-
-                  <p className="text-xs text-slate-700 font-sans leading-relaxed pl-8">
-                    {topic.content}
-                  </p>
-
-                  {/* Step list if applicable */}
-                  {topic.steps && (
-                    <div className="pl-8 space-y-1.5 pt-1">
-                      {topic.steps.map((step, sIdx) => (
-                        <div
-                          key={sIdx}
-                          className="flex items-start gap-2 text-xs font-sans text-slate-600"
-                        >
-                          <ArrowRight
-                            size={12}
-                            className="text-sky-600 shrink-0 mt-0.5"
-                          />
-                          <span>{step}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Pro-Tip Box */}
-                  {topic.tips && (
-                    <div className="ml-8 mt-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5 text-xs font-sans text-emerald-900 flex items-start gap-2">
-                      <CheckCircle2
-                        size={14}
-                        className="text-emerald-600 shrink-0 mt-0.5"
-                      />
-                      <span>
-                        <strong className="font-semibold">Pro-Tip:</strong> {topic.tips}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>
