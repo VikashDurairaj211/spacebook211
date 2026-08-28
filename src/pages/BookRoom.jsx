@@ -958,8 +958,7 @@ export default function BookRoom() {
                       value={r.roomId}
                     >
                       {r.roomName ||
-                        `Room ${index + 1}`}{' '}
-                      (Cap: {r.capacity})
+                        `Room ${index + 1}`}
                     </option>
                   )
                 )}
