@@ -1572,11 +1572,11 @@ export default function MyBookings() {
         </select>
       </div>
 
-      {/* BOOKINGS TABLE CONTAINER - Fixed Header, Vertical top-to-bottom scroll only */}
+      {/* BOOKINGS TABLE CONTAINER - Responsive horizontal and vertical scrolling */}
 
       <Card className="p-0 overflow-hidden shadow-sm border border-line rounded-2xl bg-white w-full">
-        <div className="overflow-y-auto overflow-x-hidden max-h-[560px] w-full">
-          <table className="w-full text-xs text-left border-separate border-spacing-0 table-fixed">
+        <div className="overflow-auto max-h-[560px] w-full">
+          <table className="w-full min-w-[720px] text-xs text-left border-separate border-spacing-0">
 
             <thead>
               <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-600">

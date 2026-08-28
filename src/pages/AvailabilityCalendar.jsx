@@ -256,9 +256,9 @@ export default function AvailabilityCalendar() {
           Array.isArray(data)
             ? data
             : data?.rooms ||
-              data?.data ||
-              data?.result ||
-              [];
+            data?.data ||
+            data?.result ||
+            [];
 
         console.log(
           "Availability Rooms:",
@@ -424,8 +424,8 @@ export default function AvailabilityCalendar() {
                   isBooked: isBlockedFlag
                     ? true
                     : slot.isBooked ??
-                      slot.booked ??
-                      false,
+                    slot.booked ??
+                    false,
 
                   status: isBlockedFlag
                     ? "Maintenance"
@@ -518,7 +518,7 @@ export default function AvailabilityCalendar() {
       if (
         filters.capacity &&
         Number(room.capacity) <
-          Number(filters.capacity)
+        Number(filters.capacity)
       ) {
         return false;
       }
@@ -812,10 +812,10 @@ export default function AvailabilityCalendar() {
     selectedSlot?.status === "Available"
       ? "Book this room"
       : selectedSlot?.status === "Pending"
-      ? "Pending approval"
-      : selectedSlot?.status === "Completed"
-      ? "Booking history"
-      : "Booking details";
+        ? "Pending approval"
+        : selectedSlot?.status === "Completed"
+          ? "Booking history"
+          : "Booking details";
 
   // =====================================================
   // UI
@@ -838,49 +838,50 @@ export default function AvailabilityCalendar() {
           </p>
         </div>
 
-        <div className="flex flex-nowrap items-center gap-3">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full lg:w-auto">
 
-          {/* PREVIOUS DAY */}
-
-          <Button
-            variant="secondary"
-            onClick={() =>
-              changeDays(-1)
-            }
-            disabled={
-              selectedDate <= today
-            }
-            aria-label="Previous day"
-          >
-            <ChevronLeft size={16} />
-          </Button>
-
-          {/* DATE */}
-
-          <div className="min-w-[190px]">
-            <BusinessDatePicker
-              min={today}
-              value={selectedDate}
-              onChange={(newDate) =>
-                handleDateChange(newDate)
+          {/* DAY NAVIGATION GROUP */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-none">
+            {/* PREVIOUS DAY */}
+            <Button
+              variant="secondary"
+              onClick={() =>
+                changeDays(-1)
               }
-            />
+              disabled={
+                selectedDate <= today
+              }
+              aria-label="Previous day"
+              className="p-2 sm:px-3 sm:py-2 shrink-0"
+            >
+              <ChevronLeft size={16} />
+            </Button>
+
+            {/* DATE */}
+            <div className="flex-1 sm:w-auto sm:min-w-[190px]">
+              <BusinessDatePicker
+                min={today}
+                value={selectedDate}
+                onChange={(newDate) =>
+                  handleDateChange(newDate)
+                }
+              />
+            </div>
+
+            {/* NEXT DAY */}
+            <Button
+              variant="secondary"
+              onClick={() =>
+                changeDays(1)
+              }
+              aria-label="Next day"
+              className="p-2 sm:px-3 sm:py-2 shrink-0"
+            >
+              <ChevronRight size={16} />
+            </Button>
           </div>
 
-          {/* NEXT DAY */}
-
-          <Button
-            variant="secondary"
-            onClick={() =>
-              changeDays(1)
-            }
-            aria-label="Next day"
-          >
-            <ChevronRight size={16} />
-          </Button>
-
           {/* ROOM TYPE */}
-
           <Select
             value={filters.type}
             onChange={(event) =>
@@ -889,7 +890,7 @@ export default function AvailabilityCalendar() {
                 event.target.value
               )
             }
-            className="w-auto min-w-[170px] max-w-[220px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink transition-colors hover:border-sky-400"
+            className="w-full sm:w-auto sm:min-w-[170px] sm:max-w-[220px] rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink transition-colors hover:border-sky-400"
           >
             {ROOM_TYPE_OPTIONS.map(
               (type) => (
@@ -953,20 +954,20 @@ export default function AvailabilityCalendar() {
 
             {selectedSlot?.status ===
               "Available" && (
-              <Link
-                to={bookingLink(
-                  selectedSlot
-                )}
-              >
-                <Button
-                  onClick={() =>
-                    setSelectedSlot(null)
-                  }
+                <Link
+                  to={bookingLink(
+                    selectedSlot
+                  )}
                 >
-                  Continue to booking
-                </Button>
-              </Link>
-            )}
+                  <Button
+                    onClick={() =>
+                      setSelectedSlot(null)
+                    }
+                  >
+                    Continue to booking
+                  </Button>
+                </Link>
+              )}
           </>
         }
       >
@@ -1018,8 +1019,8 @@ export default function AvailabilityCalendar() {
 
               {selectedSlot.room.facilities?.length
                 ? selectedSlot.room.facilities.join(
-                    ", "
-                  )
+                  ", "
+                )
                 : "None"}
             </p>
 

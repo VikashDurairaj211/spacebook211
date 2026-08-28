@@ -6,14 +6,14 @@ import client from '../../api/client'
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/search-rooms', label: 'Workspace Search', icon: Search },
-  { to: '/availability-calendar', label: 'Workspace Availability', icon: CalendarRange },
-  { to: '/office-map', label: 'Hotseat Reservation', icon: MapPin },
+  { to: '/workspace-search', label: 'Workspace Search', icon: Search },
+  { to: '/workspace-availability', label: 'Workspace Availability', icon: CalendarRange },
+  { to: '/hotseat-reservation', label: 'Hotseat Reservation', icon: MapPin },
 ]
 
 const ADMIN_ITEMS = [
   { to: '/admin/reports', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/admin/room-management', label: 'Workspace Administration', icon: Building2 },
+  { to: '/admin/workspace-administration', label: 'Workspace Administration', icon: Building2 },
   { to: '/admin/hotseat-management', label: 'Hotseat Management', icon: Armchair },
 ]
 

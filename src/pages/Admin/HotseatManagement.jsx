@@ -1113,7 +1113,7 @@ export default function HotseatManagement() {
       ================================================= */}
       <Card className="p-3.5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <span className="text-xs font-bold uppercase tracking-wider text-slate">
               FILTERS:
             </span>
@@ -1122,7 +1122,7 @@ export default function HotseatManagement() {
             <select
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value)}
-              className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
+              className="w-full sm:w-auto rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
             >
               <option value="All">All Time</option>
               <option value="Today">Today</option>
@@ -1136,7 +1136,7 @@ export default function HotseatManagement() {
             <select
               value={moduleFilter}
               onChange={(e) => setModuleFilter(e.target.value)}
-              className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
+              className="w-full sm:w-auto rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
             >
               <option value="All">All Modules</option>
               {filterOptions.modules.length > 0 ? (
@@ -1379,7 +1379,7 @@ export default function HotseatManagement() {
           </div>
 
           {/* TAB BUTTONS / HYPERLINKS */}
-          <div className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1 overflow-x-auto whitespace-nowrap shrink-0">
+          <div className="flex items-center gap-1 rounded-xl bg-slate-100/80 p-1 overflow-x-auto whitespace-nowrap shrink-0 max-w-full">
             <button
               type="button"
               onClick={() => setActiveChart('trend')}

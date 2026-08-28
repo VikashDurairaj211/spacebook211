@@ -445,7 +445,7 @@ export default function SearchRooms() {
 
     if (
       filters.module ===
-        "Module 2 - Elcot Park - CMB" &&
+      "Module 2 - Elcot Park - CMB" &&
       roomType === "Conference"
     ) {
       setSearchMessage(
@@ -457,7 +457,7 @@ export default function SearchRooms() {
 
     if (
       filters.module ===
-        "Module 1 - Elcot Park - CMB" &&
+      "Module 1 - Elcot Park - CMB" &&
       roomType === "Training"
     ) {
       setSearchMessage(
@@ -534,7 +534,7 @@ export default function SearchRooms() {
       filters.startTime &&
       filters.endTime &&
       filters.startTime >=
-        filters.endTime
+      filters.endTime
     ) {
       setError(
         "End time must be after start time."
@@ -549,7 +549,7 @@ export default function SearchRooms() {
     if (
       filters.startTime &&
       filters.startTime <
-        OFFICE_START_TIME
+      OFFICE_START_TIME
     ) {
       setError(
         "Bookings are allowed only during office hours: 10:00 to 22:00."
@@ -560,7 +560,7 @@ export default function SearchRooms() {
     if (
       filters.endTime &&
       filters.endTime >
-        OFFICE_END_TIME
+      OFFICE_END_TIME
     ) {
       setError(
         "Bookings are allowed only during office hours: 10:00 to 22:00."
@@ -651,7 +651,7 @@ export default function SearchRooms() {
         if (
           filters.startTime &&
           filters.startTime <=
-            currentTime
+          currentTime
         ) {
           setError(
             "The selected start time has already passed. Please select a future time."
@@ -662,7 +662,7 @@ export default function SearchRooms() {
         if (
           filters.endTime &&
           filters.endTime <=
-            currentTime
+          currentTime
         ) {
           setError(
             "The selected end time has already passed. Please select a future time."
@@ -687,15 +687,15 @@ export default function SearchRooms() {
         roomTypeId:
           filters.roomTypeId
             ? Number(
-                filters.roomTypeId
-              )
+              filters.roomTypeId
+            )
             : undefined,
 
         participantCount:
           filters.capacity
             ? Number(
-                filters.capacity
-              )
+              filters.capacity
+            )
             : undefined,
 
         facilityIds: [],
@@ -899,8 +899,8 @@ export default function SearchRooms() {
 
       setError(
         err?.response?.data?.message ||
-          err?.response?.data?.Message ||
-          "Unable to search rooms."
+        err?.response?.data?.Message ||
+        "Unable to search rooms."
       );
     } finally {
       setLoading(false);
@@ -1004,8 +1004,8 @@ export default function SearchRooms() {
         const bookingDate =
           String(
             booking.bookingDate ||
-              booking.date ||
-              ""
+            booking.date ||
+            ""
           ).substring(0, 10);
 
         if (
@@ -1035,9 +1035,9 @@ export default function SearchRooms() {
         // Check time overlap
         const overlaps =
           requestedStart <
-            bookingEnd &&
+          bookingEnd &&
           requestedEnd >
-            bookingStart;
+          bookingStart;
 
         if (!overlaps) {
           return false;
@@ -1441,16 +1441,16 @@ export default function SearchRooms() {
 
                       {booking.startTime
                         ? normalizeTime(
-                            booking.startTime
-                          )
+                          booking.startTime
+                        )
                         : ""}
 
                       {" - "}
 
                       {booking.endTime
                         ? normalizeTime(
-                            booking.endTime
-                          )
+                          booking.endTime
+                        )
                         : ""}
                     </p>
                   </div>
@@ -1510,13 +1510,12 @@ export default function SearchRooms() {
         {results.length === 0 ? (
           <div className="space-y-3">
             <div
-              className={`rounded-xl border p-4.5 ${
-                searchMessage.toLowerCase().includes("maintenance")
+              className={`rounded-xl border p-4.5 ${searchMessage.toLowerCase().includes("maintenance")
                   ? "border-amber-200 bg-amber-50/80 text-amber-950"
                   : capacityExceeded
-                  ? "border-red-200 bg-red-50 text-red-700"
-                  : "border-slate-200 bg-slate-50 text-slate-700"
-              }`}
+                    ? "border-red-200 bg-red-50 text-red-700"
+                    : "border-slate-200 bg-slate-50 text-slate-700"
+                }`}
             >
               <p className="text-sm font-semibold">
                 {searchMessage ||
@@ -1599,8 +1598,8 @@ export default function SearchRooms() {
                         .facilities
                         ?.length
                         ? room.facilities.join(
-                            ", "
-                          )
+                          ", "
+                        )
                         : "None"}
                     </p>
                   </div>
@@ -1718,8 +1717,8 @@ export default function SearchRooms() {
                   .facilities
                   ?.length
                   ? selectedRoom.facilities.join(
-                      ", "
-                    )
+                    ", "
+                  )
                   : "None"}
               </p>
 
@@ -1736,21 +1735,21 @@ export default function SearchRooms() {
 
               {(filters.startTime ||
                 filters.endTime) && (
-                <p>
-                  <span className="font-medium text-slate-700">
-                    Time Slot:
-                  </span>{" "}
-                  {
-                    filters.startTime ||
-                    "--:--"
-                  }
-                  {" - "}
-                  {
-                    filters.endTime ||
-                    "--:--"
-                  }
-                </p>
-              )}
+                  <p>
+                    <span className="font-medium text-slate-700">
+                      Time Slot:
+                    </span>{" "}
+                    {
+                      filters.startTime ||
+                      "--:--"
+                    }
+                    {" - "}
+                    {
+                      filters.endTime ||
+                      "--:--"
+                    }
+                  </p>
+                )}
             </div>
 
             <div className="pt-2">
@@ -1855,16 +1854,16 @@ export default function SearchRooms() {
                   {
                     conflictingBooking.startTime
                       ? normalizeTime(
-                          conflictingBooking.startTime
-                        )
+                        conflictingBooking.startTime
+                      )
                       : "--:--"
                   }
                   {" - "}
                   {
                     conflictingBooking.endTime
                       ? normalizeTime(
-                          conflictingBooking.endTime
-                        )
+                        conflictingBooking.endTime
+                      )
                       : "--:--"
                   }
                 </p>

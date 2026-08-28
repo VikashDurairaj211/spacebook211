@@ -9,11 +9,11 @@ Modern Workspace & Hot-Desk Management System built with React, Vite, and Tailwi
 ### 🏢 Employee Experience
 - **`/login`** — Authentication with JWT session storage and fallback demo capability.
 - **`/dashboard` (`/`)** — Employee Dashboard with quick actions, active reservation summaries, and facility overview.
-- **`/search-rooms`** — Real-time workspace search with multi-module filtering (Elcot Park & Tidel Park), capacity limits, amenity tags, and conflict detection.
+- **`/workspace-search`** (alias `/search-rooms`) — Real-time workspace search with multi-module filtering (Elcot Park & Tidel Park), capacity limits, amenity tags, and conflict detection.
 - **`/room-details/:id`** — Interactive room details, photo gallery, capacity, and day-long time slot matrix.
 - **`/book-room`** — Instant reservation modal with numeric Booking IDs and operational hours validation (10:00 AM – 10:00 PM).
-- **`/availability-calendar`** — Workspace Availability Matrix across all rooms with automatic weekend look-ahead.
-- **`/office-map`** — Interactive Hot-Seat Floor Plan with live pin color codes (🟢 Available, 🔵 Selected, 🔴 Occupied, ⚪ Maintenance) and shift selections (Full Day, Morning, Afternoon).
+- **`/workspace-availability`** (alias `/availability-calendar`) — Workspace Availability Matrix across all rooms with automatic weekend look-ahead.
+- **`/hotseat-reservation`** (alias `/office-map`) — Interactive Hot-Seat Floor Plan with live pin color codes (🟢 Available, 🔵 Selected, 🔴 Occupied, ⚪ Maintenance) and shift selections (Full Day, Morning, Afternoon).
 - **`/my-bookings`** — Reservation management with Active, Completed, and Cancelled tabs, time slot rescheduling, cancellation reasons, and check-in workflows.
 - **`/notifications`** — Live updates and alert notifications.
 - **`/profile`** — Employee account and role information.
@@ -22,7 +22,7 @@ Modern Workspace & Hot-Desk Management System built with React, Vite, and Tailwi
 
 ### 🛡️ Admin Portal (`/admin/*`)
 - **`/admin/reports`** — Executive BI Dashboard featuring 5 compact KPI metric cards, interactive visual analytics charts (utilization, trends, peak demand hours), dedicated Audit Modal (8 items/page), and CSV data exports.
-- **`/admin/room-management`** — Workspace Administration for managing room inventory, maintenance statuses, module locations, and amenities.
+- **`/admin/workspace-administration`** (alias `/admin/room-management`) — Workspace Administration for managing room inventory, maintenance statuses, module locations, and amenities.
 - **`/admin/hotseat-management`** — Workstation & Hot-Desk Administration with occupancy KPIs, shift breakdowns, desk actions (Check-In, Check-Out, Force Release, Set Maintenance), and CSV export.
 
 ---

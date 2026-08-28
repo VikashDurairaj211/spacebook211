@@ -62,8 +62,12 @@ export default function AppRoutes() {
             />
 
             <Route
-              path="/search-rooms"
+              path="/workspace-search"
               element={<SearchRoomsPage />}
+            />
+            <Route
+              path="/search-rooms"
+              element={<Navigate to="/workspace-search" replace />}
             />
 
             <Route
@@ -72,13 +76,21 @@ export default function AppRoutes() {
             />
 
             <Route
-              path="/availability-calendar"
+              path="/workspace-availability"
               element={<AvailabilityCalendarPage />}
+            />
+            <Route
+              path="/availability-calendar"
+              element={<Navigate to="/workspace-availability" replace />}
             />
 
             <Route
-              path="/office-map"
+              path="/hotseat-reservation"
               element={<HotseatBookingPage />}
+            />
+            <Route
+              path="/office-map"
+              element={<Navigate to="/hotseat-reservation" replace />}
             />
 
             <Route
@@ -113,12 +125,16 @@ export default function AppRoutes() {
             />
 
             <Route
-              path="/admin/room-management"
+              path="/admin/workspace-administration"
               element={
                 <RequireAuth allowedRoles={['Admin']}>
                   <AdminRoomManagementPage />
                 </RequireAuth>
               }
+            />
+            <Route
+              path="/admin/room-management"
+              element={<Navigate to="/admin/workspace-administration" replace />}
             />
 
             <Route

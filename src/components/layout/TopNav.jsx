@@ -64,9 +64,9 @@ export default function TopNav({
     const params = new URLSearchParams(location.search)
     const urlSearch = params.get('search') || params.get('q') || ''
 
-    if (location.pathname === '/admin/room-management') {
+    if (location.pathname === '/admin/workspace-administration' || location.pathname === '/admin/room-management') {
       setSearchInput(urlSearch)
-    } else if (location.pathname === '/admin/reports' || location.pathname === '/search-rooms' || location.pathname === '/my-bookings') {
+    } else if (location.pathname === '/admin/reports' || location.pathname === '/workspace-search' || location.pathname === '/search-rooms' || location.pathname === '/my-bookings') {
       setSearchInput(urlSearch)
     } else {
       setSearchInput('')
@@ -547,13 +547,13 @@ export default function TopNav({
     const query = searchInput.trim()
 
     if (!query) {
-      if (location.pathname === '/admin/room-management') {
-        navigate('/admin/room-management')
-      } else if (location.pathname === '/admin/reports') {
+      if (location.pathname.startsWith('/admin/workspace-administration') || location.pathname.startsWith('/admin/room-management')) {
+        navigate('/admin/workspace-administration')
+      } else if (location.pathname.startsWith('/admin/reports')) {
         navigate('/admin/reports')
-      } else if (location.pathname === '/search-rooms') {
-        navigate('/search-rooms')
-      } else if (location.pathname === '/my-bookings') {
+      } else if (location.pathname.startsWith('/workspace-search') || location.pathname.startsWith('/search-rooms')) {
+        navigate('/workspace-search')
+      } else if (location.pathname.startsWith('/my-bookings')) {
         navigate('/my-bookings')
       }
       setShowSearchResults(false)
@@ -562,14 +562,14 @@ export default function TopNav({
 
     // ADMIN SEARCH
     if (isAdmin) {
-      navigate(`/admin/room-management?search=${encodeURIComponent(query)}`)
+      navigate(`/admin/workspace-administration?search=${encodeURIComponent(query)}`)
     }
     // EMPLOYEE SEARCH
     else {
       if (location.pathname.includes('/my-bookings')) {
         navigate(`/my-bookings?search=${encodeURIComponent(query)}`)
       } else {
-        navigate(`/search-rooms?q=${encodeURIComponent(query)}`)
+        navigate(`/workspace-search?q=${encodeURIComponent(query)}`)
       }
     }
 
@@ -598,7 +598,7 @@ export default function TopNav({
       if (type === 'booking') {
         navigate(`/admin/reports?search=${encodeURIComponent(query)}`)
       } else {
-        navigate(`/admin/room-management?search=${encodeURIComponent(query)}`)
+        navigate(`/admin/workspace-administration?search=${encodeURIComponent(query)}`)
       }
     }
 
@@ -610,7 +610,7 @@ export default function TopNav({
       if (type === 'booking') {
         navigate(`/my-bookings?search=${encodeURIComponent(query)}`)
       } else {
-        navigate(`/search-rooms?q=${encodeURIComponent(query)}`)
+        navigate(`/workspace-search?q=${encodeURIComponent(query)}`)
       }
     }
   }
@@ -621,12 +621,12 @@ export default function TopNav({
     setShowSearchResults(false)
 
     if (isAdmin) {
-      navigate(`/admin/room-management?search=${encodeURIComponent(room.name || room.code || '')}`)
+      navigate(`/admin/workspace-administration?search=${encodeURIComponent(room.name || room.code || '')}`)
     } else {
       const moduleParam = room.module || ''
       const typeParam = room.type || ''
       const nameParam = room.name || ''
-      navigate(`/search-rooms?module=${encodeURIComponent(moduleParam)}&roomType=${encodeURIComponent(typeParam)}&q=${encodeURIComponent(nameParam)}`)
+      navigate(`/workspace-search?module=${encodeURIComponent(moduleParam)}&roomType=${encodeURIComponent(typeParam)}&q=${encodeURIComponent(nameParam)}`)
     }
   }
 
@@ -637,13 +637,13 @@ export default function TopNav({
   function handleClearSearch() {
     setSearchInput('')
     setShowSearchResults(false)
-    if (location.pathname === '/admin/room-management') {
-      navigate('/admin/room-management')
-    } else if (location.pathname === '/admin/reports') {
+    if (location.pathname.startsWith('/admin/workspace-administration') || location.pathname.startsWith('/admin/room-management')) {
+      navigate('/admin/workspace-administration')
+    } else if (location.pathname.startsWith('/admin/reports')) {
       navigate('/admin/reports')
-    } else if (location.pathname === '/search-rooms') {
-      navigate('/search-rooms')
-    } else if (location.pathname === '/my-bookings') {
+    } else if (location.pathname.startsWith('/workspace-search') || location.pathname.startsWith('/search-rooms')) {
+      navigate('/workspace-search')
+    } else if (location.pathname.startsWith('/my-bookings')) {
       navigate('/my-bookings')
     }
   }

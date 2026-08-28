@@ -916,7 +916,7 @@ export default function Reports() {
       ================================================= */}
       <Card className="p-3.5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <span className="text-xs font-bold uppercase tracking-wider text-slate">
               FILTERS:
             </span>
@@ -925,7 +925,7 @@ export default function Reports() {
             <select
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value)}
-              className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
+              className="w-full sm:w-auto rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
             >
               <option value="All">All Time</option>
               <option value="Today">Today</option>
@@ -939,7 +939,7 @@ export default function Reports() {
             <select
               value={moduleFilter}
               onChange={(e) => setModuleFilter(e.target.value)}
-              className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
+              className="w-full sm:w-auto rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
             >
               <option value="All">All Modules</option>
               <option value="Module 1 - Elcot Park">Module 1 - Elcot Park</option>
@@ -951,7 +951,7 @@ export default function Reports() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
+              className="w-full sm:w-auto rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
             >
               <option value="All">All Status</option>
               <option value="Confirmed">Confirmed Bookings</option>
@@ -1153,7 +1153,7 @@ export default function Reports() {
             )}
 
             {/* TAB PILLS - ALL IN ONE SINGLE LINE */}
-            <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl flex-nowrap shrink-0 whitespace-nowrap">
+            <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl flex-nowrap shrink-0 whitespace-nowrap overflow-x-auto max-w-full">
               <button
                 type="button"
                 onClick={() => setActiveChart('trend')}

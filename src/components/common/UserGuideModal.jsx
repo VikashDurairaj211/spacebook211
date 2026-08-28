@@ -421,11 +421,10 @@ export default function UserGuideModal({ open, onClose }) {
                   <button
                     key={section.id}
                     onClick={() => setActiveSectionId(section.id)}
-                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-sans font-semibold transition ${
-                      isActive
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-sans font-semibold transition ${isActive
                         ? 'bg-sky-600 text-white shadow-sm font-bold'
                         : 'text-slate-700 hover:bg-slate-200/60 hover:text-slate-900'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <Icon

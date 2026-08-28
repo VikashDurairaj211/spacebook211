@@ -1185,85 +1185,96 @@ export default function RoomManagement() {
           </div>
         </div>
       </Card>
-
       {/* ROOM TABLE */}
-      <Card className="shadow-sm">
-        <table className="w-full table-fixed text-left text-xs">
-          <thead>
-            <tr className="border-b border-line font-mono text-[9.5px] font-extrabold uppercase tracking-wider text-black bg-slate-50/70">
-              <th className="w-[15%] px-2 py-1.5 whitespace-nowrap">Room Name</th>
-              <th className="w-[13%] px-2 py-1.5 whitespace-nowrap">Room Number</th>
-              <th className="w-[18%] px-2 py-1.5 whitespace-nowrap">Module</th>
-              <th className="w-[10%] px-2 py-1.5 whitespace-nowrap">Type</th>
-              <th className="w-[7%] px-2 py-1.5 whitespace-nowrap">Capacity</th>
-              <th className="w-[17%] px-2 py-1.5 whitespace-nowrap">Facilities</th>
-              <th className="w-[10%] px-2 py-1.5 text-center whitespace-nowrap">Status</th>
-              <th className="w-[10%] px-2 py-1.5 text-center whitespace-nowrap">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="px-2 py-4 text-center text-slate">
-                  Loading room inventory...
-                </td>
+      <Card className="p-0 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-[720px] table-fixed text-left text-xs">
+            <thead>
+              <tr className="border-b border-line font-mono text-[9.5px] font-extrabold uppercase tracking-wider text-black bg-slate-50/70">
+                <th className="w-[15%] px-2 py-1.5 whitespace-nowrap">Room Name</th>
+                <th className="w-[13%] px-2 py-1.5 whitespace-nowrap">Room Number</th>
+                <th className="w-[18%] px-2 py-1.5 whitespace-nowrap">Module</th>
+                <th className="w-[10%] px-2 py-1.5 whitespace-nowrap">Type</th>
+                <th className="w-[7%] px-2 py-1.5 whitespace-nowrap">Capacity</th>
+                <th className="w-[17%] px-2 py-1.5 whitespace-nowrap">Facilities</th>
+                <th className="w-[10%] px-2 py-1.5 text-center whitespace-nowrap">Status</th>
+                <th className="w-[10%] px-2 py-1.5 text-center whitespace-nowrap">Actions</th>
               </tr>
-            ) : filteredRooms.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-2 py-4 text-center text-slate">
-                  No rooms match your filter criteria.
-                </td>
-              </tr>
-            ) : (
-              filteredRooms.map((room) => (
-                <tr key={room.id} className="transition-colors hover:bg-portal-bg/70">
-                  <td className="px-2 py-1.5 font-sans font-semibold text-xs text-ink truncate" title={room.roomName}>{room.roomName}</td>
-                  <td className="px-2 py-1.5 font-sans text-xs font-semibold text-ink truncate" title={room.roomNumber}>{room.roomNumber}</td>
-                  <td className="px-2 py-1.5 text-slate truncate" title={room.module}>{room.module}</td>
-                  <td className="px-2 py-1.5 text-slate truncate">{room.roomType}</td>
-                  <td className="px-2 py-1.5 text-slate">{room.capacity}</td>
-                  <td className="px-2 py-1.5 text-slate">
-                    {room.facilities?.length > 0 ? (
-                      <div className="flex flex-wrap items-center gap-1">
-                        {room.facilities.map((fac, idx) => (
-                          <span
-                            key={fac.id ?? idx}
-                            className="rounded bg-slate-100 border border-slate-200/60 px-1 py-0.2 text-[9px] font-medium text-slate-700 whitespace-nowrap"
-                          >
-                            {fac.name}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-slate text-[10px]">-</span>
-                    )}
-                  </td>
-                  <td className="px-2 py-1.5 text-center">
-                    <CustomStatusTag status={room.status} />
-                  </td>
-                  <td className="px-2 py-1.5 text-center">
-                    <div className="inline-flex items-center justify-center gap-1.5 font-sans text-xs">
-                      <button
-                        type="button"
-                        onClick={() => openViewModal(room)}
-                        className="font-bold text-sky-600 hover:underline text-xs"
-                      >
-                        View
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(room)}
-                        className="font-bold text-emerald-600 hover:underline text-xs"
-                      >
-                        Edit
-                      </button>
-                    </div>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="px-2 py-4 text-center text-slate">
+                    Loading room inventory...
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : filteredRooms.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-2 py-4 text-center text-slate">
+                    No rooms match your filter criteria.
+                  </td>
+                </tr>
+              ) : (
+                filteredRooms.map((room) => (
+                  <tr key={room.id} className="transition-colors hover:bg-portal-bg/70">
+                    <td className="px-2 py-1.5 font-sans font-semibold text-xs text-ink truncate" title={room.roomName}>{room.roomName}</td>
+                    <td className="px-2 py-1.5 font-sans text-xs font-semibold text-ink truncate" title={room.roomNumber}>{room.roomNumber}</td>
+                    <td className="px-2 py-1.5 text-slate truncate" title={room.module}>{room.module}</td>
+                    <td className="px-2 py-1.5 text-slate truncate">{room.roomType}</td>
+                    <td className="px-2 py-1.5 text-slate">{room.capacity}</td>
+                    <td className="px-2 py-1.5 text-slate">
+                      {room.facilities?.length > 0 ? (
+                        <div className="flex flex-wrap items-center gap-1">
+                          {room.facilities.map((fac, idx) => (
+                            <span
+                              key={fac.id ?? idx}
+                              className="rounded bg-slate-100 border border-slate-200/60 px-1 py-0.2 text-[9px] font-medium text-slate-700 whitespace-nowrap"
+                            >
+                              {fac.name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-slate text-[10px]">-</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      <CustomStatusTag status={room.status} />
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      <div className="inline-flex items-center justify-center gap-1.5 font-sans text-xs">
+                        <button
+                          type="button"
+                          onClick={() => openViewModal(room)}
+                          className="font-bold text-sky-600 hover:underline text-xs"
+                        >
+                          View
+                        </button>
+                        <span className="text-line">|</span>
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(room)}
+                          className="font-bold text-sky-600 hover:underline text-xs"
+                        >
+                          Edit
+                        </button>
+                        <span className="text-line">|</span>
+                        <button
+                          type="button"
+                          disabled={deletingId === (room.id || room.roomId)}
+                          onClick={() => handleDeleteRoom(room)}
+                          className="font-bold text-rose-600 hover:underline text-xs disabled:opacity-50"
+                        >
+                          {deletingId === (room.id || room.roomId) ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </Card>
 
       {/* MODAL */}

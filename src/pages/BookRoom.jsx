@@ -69,9 +69,9 @@ function normalizeRooms(data) {
     Array.isArray(data)
       ? data
       : data?.rooms ||
-        data?.data ||
-        data?.result ||
-        []
+      data?.data ||
+      data?.result ||
+      []
 
   return rooms.map((room) => ({
     ...room,
@@ -583,9 +583,9 @@ export default function BookRoom() {
     if (
       selectedRoomDetails &&
       Number(form.attendees) >
-        Number(
-          selectedRoomDetails.capacity
-        )
+      Number(
+        selectedRoomDetails.capacity
+      )
     ) {
       setErrors({
         attendees:
@@ -1063,9 +1063,9 @@ export default function BookRoom() {
               (
                 selectedRoomDetails &&
                 Number(form.attendees) >
-                  Number(
-                    selectedRoomDetails.capacity
-                  )
+                Number(
+                  selectedRoomDetails.capacity
+                )
               )
             }
           >
@@ -1161,7 +1161,7 @@ export default function BookRoom() {
 
           {/* FIXED ROOM LOCATION */}
 
-          
+
           <p>
             <strong>
               Date & time:
