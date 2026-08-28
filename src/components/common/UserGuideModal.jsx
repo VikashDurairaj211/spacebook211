@@ -488,15 +488,10 @@ export default function UserGuideModal({ open, onClose }) {
                         {cleanTitle}
                       </h4>
                     </div>
-                    <h4 className="font-display text-sm font-bold text-slate-900">
-                      {topic.title.replace(/^\d+\.\s*/, '')}
-                    </h4>
-                  </div>
 
                     <p className="text-xs text-slate-700 font-sans leading-relaxed pl-8">
                       {topic.content}
                     </p>
-
                     {/* Step list if applicable */}
                     {topic.steps && (
                       <div className="pl-8 space-y-2 pt-1">
