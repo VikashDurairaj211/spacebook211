@@ -191,21 +191,23 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
                 </div>
 
                 {/* Office Policy Card */}
-                <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
+                <div className="rounded-2xl border border-sky-200 bg-white p-3 shadow-xs space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-800">
-                      Office Policy
-                    </span>
-                    <Clock size={14} className="text-sky-600" />
-                  </div>
-
-                  <div className="flex items-baseline justify-between pt-1">
-                    <span className="text-sm font-semibold text-sky-950">10:00 - 22:00 IST</span>
-                    <span className="text-[10px] text-sky-800 font-medium bg-sky-100 px-2 py-0.5 rounded-full">
+                    <div className="flex items-center gap-1.5 text-sky-800">
+                      <Clock size={13} className="text-sky-600 shrink-0" />
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-wider">
+                        Office Policy
+                      </span>
+                    </div>
+                    <span className="text-[9px] text-sky-800 font-semibold bg-sky-100 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
                       Active Hours
                     </span>
                   </div>
-                  <p className="text-[11px] text-sky-900/70 leading-tight">
+
+                  <div className="pt-0.5">
+                    <span className="text-xs font-bold text-sky-950 block whitespace-nowrap">10:00 - 22:00 IST</span>
+                  </div>
+                  <p className="text-[10.5px] text-sky-900/70 leading-snug">
                     Ensure standard room reservations comply with operational office time slots.
                   </p>
                 </div>
@@ -240,21 +242,23 @@ export default function Sidebar({ collapsed = true, modules = [], bookings = [] 
             {!collapsed && (
               <div className="mt-6 pt-2 space-y-4">
                 {/* Office Policy Card for Admin */}
-                <div className="rounded-2xl border border-sky-200 bg-white p-3.5 shadow-sm space-y-2">
+                <div className="rounded-2xl border border-sky-200 bg-white p-3 shadow-xs space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-800">
-                      Office Policy
-                    </span>
-                    <Clock size={14} className="text-sky-600" />
-                  </div>
-
-                  <div className="flex items-baseline justify-between pt-1">
-                    <span className="text-sm font-semibold text-sky-950">10:00 - 22:00 IST</span>
-                    <span className="text-[10px] text-sky-800 font-medium bg-sky-100 px-2 py-0.5 rounded-full">
+                    <div className="flex items-center gap-1.5 text-sky-800">
+                      <Clock size={13} className="text-sky-600 shrink-0" />
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-wider">
+                        Office Policy
+                      </span>
+                    </div>
+                    <span className="text-[9px] text-sky-800 font-semibold bg-sky-100 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
                       Active Hours
                     </span>
                   </div>
-                  <p className="text-[11px] text-sky-900/70 leading-tight">
+
+                  <div className="pt-0.5">
+                    <span className="text-xs font-bold text-sky-950 block whitespace-nowrap">10:00 - 22:00 IST</span>
+                  </div>
+                  <p className="text-[10.5px] text-sky-900/70 leading-snug">
                     Ensure standard room reservations comply with operational office time slots.
                   </p>
                 </div>
