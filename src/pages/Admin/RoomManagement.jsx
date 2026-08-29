@@ -920,52 +920,6 @@ export default function RoomManagement() {
     setModalMode('view')
   }
 
-  const [deletingId, setDeletingId] = useState(null)
-
-  const handleDeleteRoom = async (room) => {
-    if (!room) return
-    const id = room.id || room.roomId
-    const name = room.roomName || room.name || room.roomNumber || 'this room'
-
-    if (!window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
-      return
-    }
-
-    try {
-      setDeletingId(id)
-      setError('')
-      setSuccessMessage('')
-
-      if (id) {
-        try {
-          await deleteAdminRoom(id)
-        } catch (apiErr) {
-          console.warn('DELETE /admin/rooms error note:', apiErr)
-        }
-      }
-
-      removeRoomFromMasterInventory(id, room.roomNumber)
-
-      setRooms((prev) =>
-        prev.filter((r) => {
-          const rId = String(r.id ?? r.roomId ?? '')
-          const rNum = String(r.roomNumber ?? r.roomCode ?? '').toLowerCase()
-          if (id && rId === String(id)) return false
-          if (room.roomNumber && rNum === String(room.roomNumber).toLowerCase()) return false
-          return true
-        })
-      )
-
-      setSuccessMessage(`Room "${name}" deleted successfully!`)
-      await loadInitialData()
-    } catch (err) {
-      console.error('Error deleting room:', err)
-      setError('Failed to delete room.')
-    } finally {
-      setDeletingId(null)
-    }
-  }
-
   const closeModal = () => {
     if (submitting) return
     setModalOpen(false)
@@ -1242,30 +1196,21 @@ export default function RoomManagement() {
                       <CustomStatusTag status={room.status} />
                     </td>
                     <td className="px-1 py-1.5 text-center whitespace-nowrap">
-                      <div className="inline-flex items-center justify-center gap-1 font-sans text-xs whitespace-nowrap">
+                      <div className="inline-flex items-center justify-center gap-2 font-sans text-xs whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => openViewModal(room)}
-                          className="font-bold text-sky-600 hover:underline text-xs shrink-0"
+                          className="font-bold text-sky-600 hover:underline text-xs"
                         >
                           View
                         </button>
-                        <span className="text-line shrink-0">|</span>
+                        <span className="text-line">|</span>
                         <button
                           type="button"
                           onClick={() => openEditModal(room)}
-                          className="font-bold text-sky-600 hover:underline text-xs shrink-0"
+                          className="font-bold text-sky-600 hover:underline text-xs"
                         >
                           Edit
-                        </button>
-                        <span className="text-line shrink-0">|</span>
-                        <button
-                          type="button"
-                          disabled={deletingId === (room.id || room.roomId)}
-                          onClick={() => handleDeleteRoom(room)}
-                          className="font-bold text-rose-600 hover:underline text-xs disabled:opacity-50 shrink-0"
-                        >
-                          {deletingId === (room.id || room.roomId) ? 'Deleting...' : 'Delete'}
                         </button>
                       </div>
                     </td>
