@@ -37,7 +37,7 @@ function CustomStatusTag({ status }) {
 
   return (
     <span
-      className={`inline-block min-w-[74px] px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-center ${bgClass}`}
+      className={`inline-block min-w-[58px] px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider text-center ${bgClass}`}
     >
       {raw}
     </span>
@@ -1187,18 +1187,18 @@ export default function RoomManagement() {
       </Card>
       {/* ROOM TABLE */}
       <Card className="p-0 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto w-full">
-          <table className="w-full min-w-[720px] table-fixed text-left text-xs">
+        <div className="overflow-x-hidden w-full">
+          <table className="w-full table-fixed text-left text-xs">
             <thead>
               <tr className="border-b border-line font-mono text-[9.5px] font-extrabold uppercase tracking-wider text-black bg-slate-50/70">
-                <th className="w-[15%] px-2 py-1.5 whitespace-nowrap">Room Name</th>
+                <th className="w-[14%] px-2 py-1.5 whitespace-nowrap">Room Name</th>
                 <th className="w-[13%] px-2 py-1.5 whitespace-nowrap">Room Number</th>
-                <th className="w-[18%] px-2 py-1.5 whitespace-nowrap">Module</th>
-                <th className="w-[10%] px-2 py-1.5 whitespace-nowrap">Type</th>
-                <th className="w-[7%] px-2 py-1.5 whitespace-nowrap">Capacity</th>
-                <th className="w-[17%] px-2 py-1.5 whitespace-nowrap">Facilities</th>
-                <th className="w-[10%] px-2 py-1.5 text-center whitespace-nowrap">Status</th>
-                <th className="w-[10%] px-2 py-1.5 text-center whitespace-nowrap">Actions</th>
+                <th className="w-[16%] px-2 py-1.5 whitespace-nowrap">Module</th>
+                <th className="w-[9%] px-2 py-1.5 whitespace-nowrap">Type</th>
+                <th className="w-[6.5%] px-2 py-1.5 whitespace-nowrap">Capacity</th>
+                <th className="w-[16%] px-2 py-1.5 whitespace-nowrap">Facilities</th>
+                <th className="w-[12.5%] px-1.5 py-1.5 text-center whitespace-nowrap">Status</th>
+                <th className="w-[13%] px-1 py-1.5 text-center whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -1216,7 +1216,7 @@ export default function RoomManagement() {
                 </tr>
               ) : (
                 filteredRooms.map((room) => (
-                  <tr key={room.id} className="transition-colors hover:bg-portal-bg/70">
+                  <tr key={room.id} className="transition-colors hover:bg-portal-bg/70 leading-tight">
                     <td className="px-2 py-1.5 font-sans font-semibold text-xs text-ink truncate" title={room.roomName}>{room.roomName}</td>
                     <td className="px-2 py-1.5 font-sans text-xs font-semibold text-ink truncate" title={room.roomNumber}>{room.roomNumber}</td>
                     <td className="px-2 py-1.5 text-slate truncate" title={room.module}>{room.module}</td>
@@ -1228,7 +1228,7 @@ export default function RoomManagement() {
                           {room.facilities.map((fac, idx) => (
                             <span
                               key={fac.id ?? idx}
-                              className="rounded bg-slate-100 border border-slate-200/60 px-1 py-0.2 text-[9px] font-medium text-slate-700 whitespace-nowrap"
+                              className="rounded bg-slate-100 border border-slate-200/60 px-1 py-0.2 text-[8.5px] font-medium text-slate-700 whitespace-nowrap"
                             >
                               {fac.name}
                             </span>
@@ -1238,32 +1238,32 @@ export default function RoomManagement() {
                         <span className="text-slate text-[10px]">-</span>
                       )}
                     </td>
-                    <td className="px-2 py-1.5 text-center">
+                    <td className="px-1.5 py-1.5 text-center">
                       <CustomStatusTag status={room.status} />
                     </td>
-                    <td className="px-2 py-1.5 text-center">
-                      <div className="inline-flex items-center justify-center gap-1.5 font-sans text-xs">
+                    <td className="px-1 py-1.5 text-center whitespace-nowrap">
+                      <div className="inline-flex items-center justify-center gap-1 font-sans text-xs whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => openViewModal(room)}
-                          className="font-bold text-sky-600 hover:underline text-xs"
+                          className="font-bold text-sky-600 hover:underline text-xs shrink-0"
                         >
                           View
                         </button>
-                        <span className="text-line">|</span>
+                        <span className="text-line shrink-0">|</span>
                         <button
                           type="button"
                           onClick={() => openEditModal(room)}
-                          className="font-bold text-sky-600 hover:underline text-xs"
+                          className="font-bold text-sky-600 hover:underline text-xs shrink-0"
                         >
                           Edit
                         </button>
-                        <span className="text-line">|</span>
+                        <span className="text-line shrink-0">|</span>
                         <button
                           type="button"
                           disabled={deletingId === (room.id || room.roomId)}
                           onClick={() => handleDeleteRoom(room)}
-                          className="font-bold text-rose-600 hover:underline text-xs disabled:opacity-50"
+                          className="font-bold text-rose-600 hover:underline text-xs disabled:opacity-50 shrink-0"
                         >
                           {deletingId === (room.id || room.roomId) ? 'Deleting...' : 'Delete'}
                         </button>

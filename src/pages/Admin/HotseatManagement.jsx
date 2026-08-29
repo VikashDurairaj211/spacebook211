@@ -156,7 +156,7 @@ function HotseatStatusTag({ status }) {
 
   return (
     <span
-      className={`inline-flex items-center justify-center min-w-[95px] px-3 py-1 rounded-full text-[10.5px] font-bold tracking-wider uppercase text-center shadow-xs ${bgClass}`}
+      className={`inline-flex items-center justify-center min-w-[56px] px-1.5 py-0.5 rounded-full text-[8.5px] font-bold tracking-wider uppercase text-center shadow-xs ${bgClass}`}
     >
       {label}
     </span>
@@ -1698,11 +1698,11 @@ export default function HotseatManagement() {
       ===================================================== */}
       {isAuditModalOpen &&
         createPortal(
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
-            <div className="w-full max-w-5xl rounded-3xl bg-white shadow-2xl p-6 relative flex flex-col max-h-[92vh] border border-slate-200 animate-in zoom-in-95 duration-150">
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+            <div className="w-full max-w-5xl rounded-2xl bg-white shadow-2xl p-4 sm:p-5 relative flex flex-col max-h-[86vh] border border-slate-200 animate-in zoom-in-95 duration-150">
               {/* Modal Header */}
-              <div className="flex items-center justify-between pb-3">
-                <h2 className="text-lg font-bold text-slate-900 font-display">
+              <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+                <h2 className="text-sm font-bold text-slate-900 font-display">
                   Hotseat Reservation Records & Audit
                 </h2>
                 <button
@@ -1710,22 +1710,22 @@ export default function HotseatManagement() {
                   onClick={() => setIsAuditModalOpen(false)}
                   className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-lg hover:bg-slate-100"
                 >
-                  <X size={18} />
+                  <X size={16} />
                 </button>
               </div>
 
               {/* Subheader with Filter Count & Search */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-2.5">
-                <p className="text-xs text-slate-500">
-                  Showing {displayedTableBookings.length} of {bookings.length} hotseat reservations matching active filters.
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-1.5">
+                <p className="text-[11px] text-slate-500">
+                  Showing {displayedTableBookings.length} of {bookings.length} reservations matching active filters.
                 </p>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <input
                     value={tableSearch}
                     onChange={(e) => setTableSearch(e.target.value)}
-                    placeholder="Search hotseats, employees, sections..."
-                    className="w-full sm:w-72 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:border-sky-500"
+                    placeholder="Search hotseats, employees..."
+                    className="w-full sm:w-56 rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] h-7.5 text-slate-800 placeholder:text-slate-400 outline-none focus:border-sky-500 shadow-xs"
                   />
                   {tableSearch && (
                     <button
@@ -1742,30 +1742,30 @@ export default function HotseatManagement() {
 
               {/* Table Container Box */}
               <div className="mt-1 rounded-xl border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
-                <div className="overflow-auto max-h-[440px]">
-                  <table className="w-full min-w-[850px] text-left text-xs">
-                    <thead className="sticky top-0 z-10 bg-white shadow-xs">
-                      <tr className="border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-900">
-                        <th className="px-4 py-3 whitespace-nowrap">BOOKING ID</th>
-                        <th className="px-4 py-3 whitespace-nowrap">EMPLOYEE NAME</th>
-                        <th className="px-4 py-3 whitespace-nowrap">SEAT</th>
-                        <th className="px-4 py-3 whitespace-nowrap">MODULE</th>
-                        <th className="px-4 py-3 whitespace-nowrap">SECTION</th>
-                        <th className="px-4 py-3 whitespace-nowrap">DATE</th>
-                        <th className="px-4 py-3 whitespace-nowrap">CHECK-IN</th>
-                        <th className="px-4 py-3 text-center whitespace-nowrap">STATUS</th>
+                <div className="overflow-y-auto overflow-x-hidden max-h-[360px]">
+                  <table className="w-full table-fixed text-left text-[11px]">
+                    <thead className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-xs shadow-xs">
+                      <tr className="border-b border-slate-200 text-[9.5px] font-bold uppercase tracking-wider text-slate-600">
+                        <th className="w-[8%] px-2 py-1.5 whitespace-nowrap">BOOKING ID</th>
+                        <th className="w-[18%] px-2 py-1.5 truncate">EMPLOYEE NAME</th>
+                        <th className="w-[13%] px-2 py-1.5 truncate">SEAT</th>
+                        <th className="w-[15%] px-2 py-1.5 truncate">MODULE</th>
+                        <th className="w-[16%] px-2 py-1.5 truncate">SECTION</th>
+                        <th className="w-[10%] px-2 py-1.5 whitespace-nowrap">DATE</th>
+                        <th className="w-[9%] px-2 py-1.5 whitespace-nowrap">CHECK-IN</th>
+                        <th className="w-[11%] px-2 py-1.5 text-center whitespace-nowrap">STATUS</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {loading ? (
                         <tr>
-                          <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                          <td colSpan={8} className="px-2 py-6 text-center text-slate-500 text-xs">
                             Loading reservation records...
                           </td>
                         </tr>
                       ) : paginatedBookings.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                          <td colSpan={8} className="px-2 py-6 text-center text-slate-500 text-xs">
                             No hotseat records match the active filter criteria.
                           </td>
                         </tr>
@@ -1774,31 +1774,30 @@ export default function HotseatManagement() {
                           <tr
                             key={booking.bookingId}
                             onClick={() => openDetailModal(booking)}
-                            className="cursor-pointer transition-colors duration-150 hover:bg-slate-50/80"
-                            title="Click to view full reservation details"
+                            className="cursor-pointer transition-colors duration-150 hover:bg-slate-50/80 leading-tight"
                           >
-                            <td className="px-4 py-3.5 font-bold text-slate-900 whitespace-nowrap">
+                            <td className="px-2 py-1.5 font-bold text-slate-900 truncate">
                               {booking.bookingId}
                             </td>
-                            <td className="px-4 py-3.5 font-medium text-slate-800 whitespace-nowrap">
+                            <td className="px-2 py-1.5 font-medium text-slate-800 truncate" title={booking.employee}>
                               {booking.employee}
                             </td>
-                            <td className="px-4 py-3.5 font-bold text-slate-900 whitespace-nowrap">
+                            <td className="px-2 py-1.5 font-bold text-slate-900 truncate" title={booking.seat}>
                               {booking.seat}
                             </td>
-                            <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
+                            <td className="px-2 py-1.5 text-slate-600 truncate" title={booking.module}>
                               {booking.module}
                             </td>
-                            <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
+                            <td className="px-2 py-1.5 text-slate-600 truncate" title={booking.section}>
                               {booking.section}
                             </td>
-                            <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
+                            <td className="px-2 py-1.5 text-slate-600 whitespace-nowrap">
                               {booking.date}
                             </td>
-                            <td className="px-4 py-3.5 text-slate-600 whitespace-nowrap">
+                            <td className="px-2 py-1.5 text-slate-600 whitespace-nowrap">
                               {booking.expectedCheckIn || '10:00'}
                             </td>
-                            <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                            <td className="px-2 py-1.5 text-center">
                               <HotseatStatusTag status={booking.status} />
                             </td>
                           </tr>
@@ -1810,43 +1809,43 @@ export default function HotseatManagement() {
               </div>
 
               {/* Modal Footer */}
-              <div className="mt-4 flex flex-col gap-3 pt-1 border-t border-slate-100">
+              <div className="mt-2.5 flex flex-col gap-1.5 pt-1 border-t border-slate-100">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-slate-500">
-                    Showing {displayedTableBookings.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}–{Math.min(currentPage * ITEMS_PER_PAGE, displayedTableBookings.length)} of {displayedTableBookings.length} hotseat bookings
+                  <p className="text-[10px] text-slate-500">
+                    Showing {displayedTableBookings.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}–{Math.min(currentPage * ITEMS_PER_PAGE, displayedTableBookings.length)} of {displayedTableBookings.length} bookings
                   </p>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <button
                       type="button"
                       disabled={currentPage <= 1}
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                     >
                       Prev
                     </button>
-                    <span className="text-xs font-semibold text-slate-700 px-2">
+                    <span className="text-[10px] font-semibold text-slate-700 px-1">
                       {currentPage} / {totalPages}
                     </span>
                     <button
                       type="button"
                       disabled={currentPage >= totalPages}
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      className="rounded-md border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                     >
                       Next
                     </button>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  <p className="text-xs text-slate-400">
+                <div className="flex items-center justify-between pt-0.5">
+                  <p className="text-[10px] text-slate-400">
                     Total {bookings.length} bookings found
                   </p>
                   <button
                     type="button"
                     onClick={() => setIsAuditModalOpen(false)}
-                    className="rounded-xl border border-slate-200 bg-white px-5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
+                    className="rounded-md border border-slate-200 bg-white px-3.5 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
                   >
                     Close
                   </button>

@@ -36,7 +36,7 @@ const DEFAULT_FACILITY_OVERVIEW = [
 ]
 
 export default function Sidebar({ collapsed = true, modules = [], bookings = [] }) {
-  const widthClass = collapsed ? 'w-20' : 'w-64'
+  const widthClass = collapsed ? 'w-20' : 'w-56'
   const { user } = useAuth()
   const isAdmin = user?.role === 'Admin' || user?.isAdmin === true
   const [dynamicOverview, setDynamicOverview] = useState(DEFAULT_FACILITY_OVERVIEW)

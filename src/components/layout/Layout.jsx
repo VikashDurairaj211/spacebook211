@@ -75,7 +75,7 @@ export default function Layout() {
   }, [])
 
   // compute sidebar width classes for main margin
-  const mainMarginClass = sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'
+  const mainMarginClass = sidebarCollapsed ? 'md:ml-20' : 'md:ml-56'
 
   return (
     <ToastProvider>
