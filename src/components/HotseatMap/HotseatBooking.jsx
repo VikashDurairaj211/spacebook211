@@ -257,19 +257,190 @@ function ConflictModal({ conflictData, onClose }) {
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Main Hotseat Booking Component
 // ---------------------------------------------------------------------------
 
 const API_BASE = "https://spacebook-505h.onrender.com/api/Hotseat";
 
+function buildInitialModuleSeats() {
+  const module1Seats = Array.from({ length: 98 }, (_, i) => {
+    const num = i + 1;
+    return {
+      id: `EO1-${num}`,
+      seatNumber: `EO1-${num}`,
+      seatId: num,
+      label: `Seat ${num}`,
+      number: num,
+      modulePrefix: "EO1",
+      type: "hotseat",
+      status: "available",
+      bookedByUserId: null,
+    };
+  });
+
+  const module2Seats = Array.from({ length: 131 }, (_, i) => {
+    const num = i + 1;
+    return {
+      id: `EO2-${num}`,
+      seatNumber: `EO2-${num}`,
+      seatId: num + 98,
+      label: `Seat ${num}`,
+      number: num,
+      modulePrefix: "EO2",
+      type: "hotseat",
+      status: "available",
+      bookedByUserId: null,
+    };
+  });
+
+  const tidalSeats = Array.from({ length: 224 }, (_, i) => {
+    const num = i + 1;
+    const pad3 = `WS-04-${String(num).padStart(3, "0")}`;
+    return {
+      id: pad3,
+      seatNumber: pad3,
+      seatId: 0,
+      label: `Seat ${num}`,
+      number: num,
+      modulePrefix: "WS-04",
+      type: "hotseat",
+      status: "available",
+      bookedByUserId: null,
+    };
+  });
+
+  return [
+    { id: "module1", label: "Module 1", office: "Elcot Park", seats: module1Seats, rooms: [] },
+    { id: "module2", label: "Module 2", office: "Elcot Park", seats: module2Seats, rooms: [] },
+    { id: "tidel-module1", label: "Module 1", office: "Tidel Park", seats: tidalSeats, rooms: [] },
+  ];
+}
+
+function buildModulesFromSeatArray(seatArray) {
+  const eo1Map = new Map();
+  const eo2Map = new Map();
+  const tidalMap = new Map();
+
+  for (let i = 0; i < seatArray.length; i++) {
+    const s = seatArray[i];
+    const sn = String(s.seatNumber || "").trim().toUpperCase();
+    if (!sn) continue;
+
+    if (sn.includes("EO2") || (sn.includes("WS-05") && sn.includes("EO2"))) {
+      const num = parseInt(sn.split("-").pop(), 10);
+      if (!isNaN(num)) eo2Map.set(num, s);
+      eo2Map.set(sn, s);
+    } else if (sn.includes("EO1") || (sn.includes("WS-05") && sn.includes("EO1"))) {
+      const num = parseInt(sn.split("-").pop(), 10);
+      if (!isNaN(num)) eo1Map.set(num, s);
+      eo1Map.set(sn, s);
+    } else if (sn.startsWith("WS-04") || sn.startsWith("WS") || sn.includes("TIDEL") || sn.includes("TIDAL")) {
+      const num = parseInt(sn.split("-").pop(), 10) || parseInt(sn.replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(num)) tidalMap.set(num, s);
+      tidalMap.set(sn, s);
+    }
+  }
+
+  const checkOccupied = (found) => {
+    if (!found) return { isOccupied: false, rawStatus: "available" };
+    const rawStatus = String(found.status || "available").toLowerCase();
+    const isOccupied =
+      rawStatus === "occupied" ||
+      rawStatus === "booked" ||
+      rawStatus === "confirmed" ||
+      rawStatus === "approved" ||
+      rawStatus === "checked in" ||
+      rawStatus === "checkedin" ||
+      rawStatus === "1" ||
+      rawStatus === "true" ||
+      found.isBooked === true ||
+      found.isOccupied === true;
+    return { isOccupied, rawStatus };
+  };
+
+  const module1Seats = Array.from({ length: 98 }, (_, i) => {
+    const num = i + 1;
+    const pad3 = `WS-05-EO1-${String(num).padStart(3, "0")}`;
+    const pad2 = `EO1-${String(num).padStart(2, "0")}`;
+    const pad1 = `EO1-${num}`;
+
+    const found = eo1Map.get(num) || eo1Map.get(pad3) || eo1Map.get(pad2) || eo1Map.get(pad1);
+    const { isOccupied, rawStatus } = checkOccupied(found);
+
+    return {
+      id: found?.seatNumber || `EO1-${num}`,
+      seatNumber: found?.seatNumber || `EO1-${num}`,
+      seatId: found?.seatId ?? found?.id ?? num,
+      label: `Seat ${num}`,
+      number: num,
+      modulePrefix: "EO1",
+      type: "hotseat",
+      status: isOccupied ? "occupied" : rawStatus === "reserved" ? "reserved" : "available",
+      bookedByUserId: found?.bookedByUserId || found?.userId || null,
+    };
+  });
+
+  const module2Seats = Array.from({ length: 131 }, (_, i) => {
+    const num = i + 1;
+    const pad3 = `WS-05-EO2-${String(num).padStart(3, "0")}`;
+    const pad2 = `EO2-${String(num).padStart(2, "0")}`;
+    const pad1 = `EO2-${num}`;
+
+    const found = eo2Map.get(num) || eo2Map.get(pad3) || eo2Map.get(pad2) || eo2Map.get(pad1);
+    const { isOccupied, rawStatus } = checkOccupied(found);
+
+    return {
+      id: found?.seatNumber || `EO2-${num}`,
+      seatNumber: found?.seatNumber || `EO2-${num}`,
+      seatId: found?.seatId ?? found?.id ?? (num + 98),
+      label: `Seat ${num}`,
+      number: num,
+      modulePrefix: "EO2",
+      type: "hotseat",
+      status: isOccupied ? "occupied" : rawStatus === "reserved" ? "reserved" : "available",
+      bookedByUserId: found?.bookedByUserId || found?.userId || null,
+    };
+  });
+
+  const tidalSeats = Array.from({ length: 224 }, (_, i) => {
+    const num = i + 1;
+    const pad3 = `WS-04-${String(num).padStart(3, "0")}`;
+    const pad2 = `WS-04-${String(num).padStart(2, "0")}`;
+    const pad1 = `WS-04-${num}`;
+
+    const found = tidalMap.get(num) || tidalMap.get(pad3) || tidalMap.get(pad2) || tidalMap.get(pad1);
+    const { isOccupied, rawStatus } = checkOccupied(found);
+
+    return {
+      id: found?.seatNumber || pad3,
+      seatNumber: found?.seatNumber || pad3,
+      seatId: found?.seatId ?? found?.id ?? 0,
+      label: `Seat ${num}`,
+      number: num,
+      modulePrefix: "WS-04",
+      type: "hotseat",
+      status: isOccupied ? "occupied" : rawStatus === "reserved" ? "reserved" : "available",
+      bookedByUserId: found?.bookedByUserId || found?.userId || null,
+    };
+  });
+
+  return [
+    { id: "module1", label: "Module 1", office: "Elcot Park", seats: module1Seats, rooms: [] },
+    { id: "module2", label: "Module 2", office: "Elcot Park", seats: module2Seats, rooms: [] },
+    { id: "tidel-module1", label: "Module 1", office: "Tidel Park", seats: tidalSeats, rooms: [] },
+  ];
+}
+
 export default function HotseatBookingApp() {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
-  const [modules, setModules] = useState([]);
+  const [modules, setModules] = useState(() => buildInitialModuleSeats());
   const [toastState, setToastState] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [conflictData, setConflictData] = useState(null);
   const toast = useToast();
+  const seatCacheRef = useRef(new Map());
 
   const today = getTodayKey();
   const [targetDate, setTargetDate] = useState(today);
@@ -292,170 +463,42 @@ export default function HotseatBookingApp() {
     };
   };
 
-  const fetchOfficeData = async () => {
+  const fetchOfficeData = async (forceRefresh = false) => {
     try {
-      setLoading(true);
+      if (!forceRefresh && seatCacheRef.current.has(targetDate)) {
+        const cached = seatCacheRef.current.get(targetDate);
+        if (cached?.modules) setModules(cached.modules);
+        if (cached?.bookings) setBookings(cached.bookings);
+      } else {
+        setLoading(true);
+      }
 
       const [seatsRes, bookingsRes] = await Promise.all([
         fetch(`${API_BASE}?date=${targetDate}`, { headers: getAuthHeaders() }),
         fetch(`${API_BASE}/my-bookings`, { headers: getAuthHeaders() }),
       ]);
 
+      let newModules = null;
+      let newBookings = null;
+
       if (seatsRes.ok) {
         const rawSeats = await seatsRes.json();
         const seatArray = Array.isArray(rawSeats) ? rawSeats : rawSeats?.seats || [];
-
-        // 1. Strictly generate complete Elcot Module 1 seats (Seats 1 to 98)
-        const module1Seats = Array.from({ length: 98 }, (_, i) => {
-          const num = i + 1;
-          const pad3 = `WS-05-EO1-${String(num).padStart(3, "0")}`;
-          const pad2 = `EO1-${String(num).padStart(2, "0")}`;
-          const pad1 = `EO1-${num}`;
-
-          const found = seatArray.find((s) => {
-            const sn = String(s.seatNumber || "").trim().toUpperCase();
-            if (sn.includes("EO2") || (sn.startsWith("WS-04") && !sn.includes("EO1"))) {
-              return false;
-            }
-            return (
-              sn.includes("EO1") &&
-              (sn === pad3 ||
-                sn === pad2 ||
-                sn === pad1 ||
-                parseInt(sn.split("-").pop(), 10) === num)
-            );
-          });
-
-          const rawStatus = String(found?.status || "available").toLowerCase();
-          const isOccupied =
-            rawStatus === "occupied" ||
-            rawStatus === "booked" ||
-            rawStatus === "confirmed" ||
-            rawStatus === "approved" ||
-            rawStatus === "checked in" ||
-            rawStatus === "checkedin" ||
-            rawStatus === "1" ||
-            rawStatus === "true" ||
-            found?.isBooked === true ||
-            found?.isOccupied === true;
-
-          return {
-            id: found?.seatNumber || `EO1-${num}`,
-            seatNumber: found?.seatNumber || `EO1-${num}`,
-            seatId: found?.seatId ?? found?.id ?? num,
-            label: `Seat ${num}`,
-            number: num,
-            modulePrefix: "EO1",
-            type: "hotseat",
-            status: isOccupied ? "occupied" : rawStatus === "reserved" ? "reserved" : "available",
-            bookedByUserId: found?.bookedByUserId || found?.userId || null,
-          };
-        });
-
-        // 2. Strictly generate complete Elcot Module 2 seats (Seats 1 to 131)
-        const module2Seats = Array.from({ length: 131 }, (_, i) => {
-          const num = i + 1;
-          const pad3 = `WS-05-EO2-${String(num).padStart(3, "0")}`;
-          const pad2 = `EO2-${String(num).padStart(2, "0")}`;
-          const pad1 = `EO2-${num}`;
-
-          const found = seatArray.find((s) => {
-            const sn = String(s.seatNumber || "").trim().toUpperCase();
-            if (sn.includes("EO1") || (sn.startsWith("WS-04") && !sn.includes("EO2"))) {
-              return false;
-            }
-            return (
-              sn.includes("EO2") &&
-              (sn === pad3 ||
-                sn === pad2 ||
-                sn === pad1 ||
-                parseInt(sn.split("-").pop(), 10) === num)
-            );
-          });
-
-          const rawStatus = String(found?.status || "available").toLowerCase();
-          const isOccupied =
-            rawStatus === "occupied" ||
-            rawStatus === "booked" ||
-            rawStatus === "confirmed" ||
-            rawStatus === "approved" ||
-            rawStatus === "checked in" ||
-            rawStatus === "checkedin" ||
-            rawStatus === "1" ||
-            rawStatus === "true" ||
-            found?.isBooked === true ||
-            found?.isOccupied === true;
-
-          return {
-            id: found?.seatNumber || `EO2-${num}`,
-            seatNumber: found?.seatNumber || `EO2-${num}`,
-            seatId: found?.seatId ?? found?.id ?? (num + 98),
-            label: `Seat ${num}`,
-            number: num,
-            modulePrefix: "EO2",
-            type: "hotseat",
-            status: isOccupied ? "occupied" : rawStatus === "reserved" ? "reserved" : "available",
-            bookedByUserId: found?.bookedByUserId || found?.userId || null,
-          };
-        });
-
-        // 3. Strictly generate complete Tidel Park Module 1 seats (Seats 1 to 224)
-        const tidalSeats = Array.from({ length: 224 }, (_, i) => {
-          const num = i + 1;
-          const pad3 = `WS-04-${String(num).padStart(3, "0")}`;
-          const pad2 = `WS-04-${String(num).padStart(2, "0")}`;
-          const pad1 = `WS-04-${num}`;
-
-          const found = seatArray.find((s) => {
-            const sn = String(s.seatNumber || "").trim().toUpperCase();
-            if (sn.includes("EO1") || sn.includes("EO2") || sn.startsWith("WS-05")) {
-              return false;
-            }
-            return (
-              sn === pad3 ||
-              sn === pad2 ||
-              sn === pad1 ||
-              (sn.startsWith("WS") && parseInt(sn.split("-").pop(), 10) === num) ||
-              (sn.includes("TIDEL") && parseInt(sn.replace(/[^0-9]/g, ""), 10) === num)
-            );
-          });
-
-          const rawStatus = String(found?.status || "available").toLowerCase();
-          const isOccupied =
-            rawStatus === "occupied" ||
-            rawStatus === "booked" ||
-            rawStatus === "confirmed" ||
-            rawStatus === "approved" ||
-            rawStatus === "checked in" ||
-            rawStatus === "checkedin" ||
-            rawStatus === "1" ||
-            rawStatus === "true" ||
-            found?.isBooked === true ||
-            found?.isOccupied === true;
-
-          return {
-            id: found?.seatNumber || pad3,
-            seatNumber: found?.seatNumber || pad3,
-            seatId: found?.seatId ?? found?.id ?? 0,
-            label: `Seat ${num}`,
-            number: num,
-            modulePrefix: "WS-04",
-            type: "hotseat",
-            status: isOccupied ? "occupied" : rawStatus === "reserved" ? "reserved" : "available",
-            bookedByUserId: found?.bookedByUserId || found?.userId || null,
-          };
-        });
-
-        setModules([
-          { id: "module1", label: "Module 1", office: "Elcot Park", seats: module1Seats, rooms: [] },
-          { id: "module2", label: "Module 2", office: "Elcot Park", seats: module2Seats, rooms: [] },
-          { id: "tidel-module1", label: "Module 1", office: "Tidel Park", seats: tidalSeats, rooms: [] },
-        ]);
+        newModules = buildModulesFromSeatArray(seatArray);
+        setModules(newModules);
       }
 
       if (bookingsRes.ok) {
         const myBookingsData = await bookingsRes.json();
-        setBookings(Array.isArray(myBookingsData) ? myBookingsData : myBookingsData?.bookings || []);
+        newBookings = Array.isArray(myBookingsData) ? myBookingsData : myBookingsData?.bookings || [];
+        setBookings(newBookings);
+      }
+
+      if (newModules) {
+        seatCacheRef.current.set(targetDate, {
+          modules: newModules,
+          bookings: newBookings || [],
+        });
       }
     } catch (err) {
       console.error("Failed to sync with backend:", err);
@@ -466,9 +509,35 @@ export default function HotseatBookingApp() {
   };
 
   useEffect(() => {
-    if (!isWeekend(targetDate)) {
-      fetchOfficeData();
-    }
+    if (isWeekend(targetDate)) return;
+
+    // Initial load
+    fetchOfficeData();
+
+    // 1. Auto-refresh every 30 seconds silently in background
+    const interval = setInterval(() => {
+      fetchOfficeData(true);
+    }, 30000);
+
+    // 2. Refresh when user switches back to this tab
+    const handleFocus = () => {
+      fetchOfficeData(true);
+    };
+
+    // 3. Refresh when a booking is created or cancelled elsewhere in the app
+    const handleBookingUpdated = () => {
+      seatCacheRef.current.delete(targetDate);
+      fetchOfficeData(true);
+    };
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("booking-updated", handleBookingUpdated);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("booking-updated", handleBookingUpdated);
+    };
   }, [targetDate]);
 
   const showCustomToast = useCallback((message, details) => {
@@ -687,6 +756,8 @@ export default function HotseatBookingApp() {
         }))
       );
 
+      seatCacheRef.current.delete(targetDate);
+
       setTimeout(() => {
         navigate("/my-bookings");
       }, 900);
@@ -752,7 +823,8 @@ export default function HotseatBookingApp() {
 
       if (!response.ok) {
         if (response.status === 409) {
-          await fetchOfficeData();
+          seatCacheRef.current.delete(targetDate);
+          await fetchOfficeData(true);
 
           const conflictMessage =
             responseData?.message ||
@@ -778,7 +850,8 @@ export default function HotseatBookingApp() {
 
       showCustomToast("Booking Updated", "Your reservation has been modified.");
       window.dispatchEvent(new Event("booking-updated"));
-      await fetchOfficeData();
+      seatCacheRef.current.delete(targetDate);
+      await fetchOfficeData(true);
 
       return { ok: true, message: "Booking updated." };
     } catch (err) {
@@ -810,7 +883,8 @@ export default function HotseatBookingApp() {
 
       showCustomToast("Booking Cancelled", "The hotseat is now released.");
       window.dispatchEvent(new Event("booking-updated"));
-      await fetchOfficeData();
+      seatCacheRef.current.delete(targetDate);
+      await fetchOfficeData(true);
 
       return { ok: true, message: "Cancelled successfully." };
     } catch (err) {
