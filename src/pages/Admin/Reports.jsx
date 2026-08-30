@@ -708,26 +708,26 @@ export default function Reports() {
       daysCount = Math.max(1, dateSet.size)
     }
 
+    // Dynamic occupancy calculation for the selected timeframe / module:
+    // (Total Booked Minutes / (Active Rooms * Operating Hours * 60 mins)) * 100
+    let calculatedRate = '0.0'
+    if (total > 0 && uniqueRooms > 0) {
+      const totalAvailableMinutes = uniqueRooms * (daysCount * 10 * 60) // 10 office hours/day (10:00 to 20:00)
+      const rate = totalAvailableMinutes > 0 ? (totalBookedMinutes / totalAvailableMinutes) * 100 : 0
+      calculatedRate = Math.min(100, Math.max(0, rate)).toFixed(1)
+    }
+
     // Backend overall baseline utilization
     const rawUtil =
       dashboardMetrics?.utilization ??
       dashboardMetrics?.utilizationRate ??
       dashboardMetrics?.occupancyRate
 
-    let utilization = '0.0'
+    let utilization = calculatedRate
 
-    if (timeFilter === 'All' && moduleFilter === 'All' && rawUtil != null && rawUtil !== '') {
-      // Use overall backend utilization for default All view
-      const num = Number(rawUtil)
-      utilization = isNaN(num) ? String(rawUtil) : num.toFixed(1)
-    } else if (total > 0 && uniqueRooms > 0) {
-      // Dynamic occupancy calculation for the selected timeframe / module:
-      // (Total Booked Minutes / (Active Rooms * Operating Hours * 60 mins)) * 100
-      const totalAvailableMinutes = uniqueRooms * (daysCount * 10 * 60) // 10 office hours/day (10:00 to 20:00)
-      const rate = totalAvailableMinutes > 0 ? (totalBookedMinutes / totalAvailableMinutes) * 100 : 0
-      utilization = Math.min(100, Math.max(0, rate)).toFixed(1)
-    } else {
-      utilization = '0.0'
+    const num = rawUtil != null && rawUtil !== '' ? Number(rawUtil) : NaN
+    if (!isNaN(num) && num > 0 && (timeFilter === 'All' && moduleFilter === 'All')) {
+      utilization = num.toFixed(1)
     }
 
     return {
