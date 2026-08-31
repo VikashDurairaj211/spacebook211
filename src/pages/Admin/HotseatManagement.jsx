@@ -234,7 +234,7 @@ export default function HotseatManagement() {
   const [error, setError] = useState(null)
 
   // Filters
-  const [timeFilter, setTimeFilter] = useState('All')
+  const [timeFilter, setTimeFilter] = useState('Today')
   const [moduleFilter, setModuleFilter] = useState('All')
   const [tableSearch, setTableSearch] = useState('')
 
@@ -494,12 +494,12 @@ export default function HotseatManagement() {
         }
       })
 
-      // Sort descending by ID / Date
+      // Sort ascending by ID / Date (old to new)
       mapped.sort((a, b) => {
         const idA = Number(a.bookingId) || 0
         const idB = Number(b.bookingId) || 0
-        if (idA !== idB) return idB - idA
-        return String(b.date || '').localeCompare(String(a.date || ''))
+        if (idA !== idB) return idA - idB
+        return String(a.date || '').localeCompare(String(b.date || ''))
       })
 
       setBookings(mapped)
@@ -1124,8 +1124,8 @@ export default function HotseatManagement() {
               onChange={(e) => setTimeFilter(e.target.value)}
               className="w-full sm:w-auto rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
             >
-              <option value="All">All Time</option>
               <option value="Today">Today</option>
+              <option value="All">All Time</option>
               <option value="This Week">Past 7 Days</option>
               <option value="This Month">Past 30 Days</option>
               <option value="Past">Past Dates</option>

@@ -212,7 +212,7 @@ export default function Reports() {
   const [dashboardMetrics, setDashboardMetrics] = useState(null)
 
   // FILTERS
-  const [timeFilter, setTimeFilter] = useState('All')
+  const [timeFilter, setTimeFilter] = useState('Today')
   const [moduleFilter, setModuleFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
   const [trendPeriod, setTrendPeriod] = useState('Monthly')
@@ -708,25 +708,15 @@ export default function Reports() {
       daysCount = Math.max(1, dateSet.size)
     }
 
-    // Dynamic occupancy calculation for the selected timeframe / module:
-    // (Total Booked Minutes / (Active Rooms * Operating Hours * 60 mins)) * 100
-    let calculatedRate = '0.0'
-    if (total > 0 && uniqueRooms > 0) {
-      const totalAvailableMinutes = uniqueRooms * (daysCount * 10 * 60) // 10 office hours/day (10:00 to 20:00)
-      const rate = totalAvailableMinutes > 0 ? (totalBookedMinutes / totalAvailableMinutes) * 100 : 0
-      calculatedRate = Math.min(100, Math.max(0, rate)).toFixed(1)
-    }
-
-    // Backend overall baseline utilization
+    // Strictly display backend baseline utilization from /api/admin/dashboard
     const rawUtil =
       dashboardMetrics?.utilization ??
       dashboardMetrics?.utilizationRate ??
       dashboardMetrics?.occupancyRate
 
-    let utilization = calculatedRate
-
+    let utilization = '0.0'
     const num = rawUtil != null && rawUtil !== '' ? Number(rawUtil) : NaN
-    if (!isNaN(num) && num > 0 && (timeFilter === 'All' && moduleFilter === 'All')) {
+    if (!isNaN(num)) {
       utilization = num.toFixed(1)
     }
 
@@ -927,8 +917,8 @@ export default function Reports() {
               onChange={(e) => setTimeFilter(e.target.value)}
               className="w-full sm:w-auto rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-sky-500"
             >
-              <option value="All">All Time</option>
               <option value="Today">Today</option>
+              <option value="All">All Time</option>
               <option value="This Week">Past 7 Days</option>
               <option value="This Month">Past 30 Days</option>
               <option value="Past">Past Dates</option>
@@ -982,7 +972,7 @@ export default function Reports() {
             {kpis.total}
           </p>
           <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
-            <span>{kpis.uniqueRooms} Active Room{kpis.uniqueRooms === 1 ? '' : 's'}</span>
+            <span>15 Rooms</span>
             <span className="font-semibold text-sky-700">{kpis.uniqueUsers} Employee{kpis.uniqueUsers === 1 ? '' : 's'}</span>
           </div>
           <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
@@ -1084,14 +1074,14 @@ export default function Reports() {
             </p>
           </div>
 
-          <Button
-            size="sm"
+          <button
+            type="button"
             onClick={() => setIsAuditModalOpen(true)}
-            className="flex items-center gap-1 px-2.5 py-1 bg-[#0284c7] hover:bg-[#0369a1] text-white font-semibold text-[11px] rounded-lg shadow-xs transition-all active:scale-95 border-0 h-7"
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#0284c7] hover:bg-[#0369a1] text-white font-semibold text-xs rounded-xl shadow-sm transition-all active:scale-95 border-0 cursor-pointer"
           >
             <Eye size={12} />
             <span>View</span>
-          </Button>
+          </button>
         </div>
       </Card>
 

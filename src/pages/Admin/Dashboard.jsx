@@ -222,40 +222,8 @@ export default function AdminDashboard() {
       return timeA.localeCompare(timeB)
     })
 
-  // Dynamic utilization fallback if backend sends 0
-  let displayUtilization = utilization
-  if ((!displayUtilization || Number(displayUtilization) === 0) && allLiveBookings.length > 0) {
-    const activeRooms = Math.max(1, totalRooms || 10)
-    let totalMins = 0
-    allLiveBookings.forEach((b) => {
-      if (!isInactiveStatus(b.status)) {
-        let mins = 60
-        if (b.startTime && b.endTime) {
-          const [sh, sm] = String(b.startTime).split(':').map(Number)
-          const [eh, em] = String(b.endTime).split(':').map(Number)
-          if (!isNaN(sh) && !isNaN(eh)) {
-            const startMins = sh * 60 + (sm || 0)
-            const endMins = eh * 60 + (em || 0)
-            if (endMins > startMins) mins = endMins - startMins
-          }
-        }
-        totalMins += mins
-      }
-    })
-    const dateSet = new Set(
-      allLiveBookings
-        .map((b) => String(b.bookingDate || '').substring(0, 10))
-        .filter(Boolean)
-    )
-    const days = Math.max(1, dateSet.size)
-    const availableMins = activeRooms * days * 10 * 60
-    if (availableMins > 0) {
-      displayUtilization = Math.min(
-        100,
-        Math.max(0, (totalMins / availableMins) * 100)
-      ).toFixed(1)
-    }
-  }
+  // Strictly display utilization from backend /api/admin/dashboard
+  const displayUtilization = Number(utilization || 0).toFixed(1)
 
   // =====================================================
   // UI
