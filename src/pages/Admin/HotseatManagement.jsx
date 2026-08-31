@@ -32,7 +32,6 @@ import {
   MapPin,
   Loader2,
   UserCheck,
-  LogOut,
   AlertCircle,
   TrendingUp,
 } from 'lucide-react'
@@ -1169,9 +1168,9 @@ export default function HotseatManagement() {
       </Card>
 
       {/* =================================================
-          TOP 6 KPI CARDS
+          TOP 5 KPI CARDS
       ================================================= */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         {/* Card 1: TOTAL RESERVATIONS */}
         <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
@@ -1242,32 +1241,7 @@ export default function HotseatManagement() {
           </div>
         </Card>
 
-        {/* Card 4: RELEASED */}
-        <Card className="p-3 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
-              RELEASED
-            </span>
-            <LogOut size={14} className="text-[#8b5cf6]" />
-          </div>
-          <p className="mt-1 text-2xl font-extrabold text-[#8b5cf6] leading-tight">
-            {kpis.released}
-          </p>
-          <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
-            <span>Released</span>
-            <span className="font-bold text-purple-700">
-              {kpis.releasedRate}%
-            </span>
-          </div>
-          <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
-            <div
-              className="h-1 rounded-full bg-[#8b5cf6] transition-all duration-500"
-              style={{ width: `${kpis.releasedRate}%` }}
-            />
-          </div>
-        </Card>
-
-        {/* Card 5: EXPIRED */}
+        {/* Card 4: EXPIRED */}
         <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
@@ -1292,7 +1266,7 @@ export default function HotseatManagement() {
           </div>
         </Card>
 
-        {/* Card 6: CANCELLED BOOKINGS */}
+        {/* Card 5: CANCELLED BOOKINGS */}
         <Card className="p-3 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate">
