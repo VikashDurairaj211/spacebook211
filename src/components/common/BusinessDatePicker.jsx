@@ -80,6 +80,11 @@ export default function BusinessDatePicker({
   const todayYMD = formatDateToYMD(today)
   const minYMD = min || todayYMD
 
+  // Default max to 7 calendar days (1 week) ahead if not specified
+  const defaultMaxDate = new Date(today)
+  defaultMaxDate.setDate(defaultMaxDate.getDate() + 7)
+  const maxYMD = max || formatDateToYMD(defaultMaxDate)
+
   // Selected date object
   const selectedDate = parseYMDToDate(value)
 
@@ -117,14 +122,30 @@ export default function BusinessDatePicker({
     }
   }, [isOpen])
 
-  // Navigation handlers
+  // Navigation handlers & constraints
+  const isPrevDisabled = () => {
+    if (!minYMD) return false
+    const minD = parseYMDToDate(minYMD)
+    if (!minD) return false
+    return year < minD.getFullYear() || (year === minD.getFullYear() && month <= minD.getMonth())
+  }
+
+  const isNextDisabled = () => {
+    if (!maxYMD) return false
+    const maxD = parseYMDToDate(maxYMD)
+    if (!maxD) return false
+    return year > maxD.getFullYear() || (year === maxD.getFullYear() && month >= maxD.getMonth())
+  }
+
   const prevMonth = (e) => {
     e.stopPropagation()
+    if (isPrevDisabled()) return
     setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
   }
 
   const nextMonth = (e) => {
     e.stopPropagation()
+    if (isNextDisabled()) return
     setViewDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
   }
 
@@ -148,6 +169,9 @@ export default function BusinessDatePicker({
   const handleSelectDate = (dateObj) => {
     if (!dateObj) return
     const ymd = formatDateToYMD(dateObj)
+    if (minYMD && ymd < minYMD) return
+    if (maxYMD && ymd > maxYMD) return
+    if (isWeekend(dateObj)) return
     onChange?.(ymd)
     setIsOpen(false)
   }
@@ -234,8 +258,13 @@ export default function BusinessDatePicker({
           <div className="flex items-center justify-between mb-3">
             <button
               type="button"
+              disabled={isPrevDisabled()}
               onClick={prevMonth}
-              className="rounded-lg p-1.5 text-slate-600 hover:bg-sky-100 hover:text-sky-900 transition-colors"
+              className={`rounded-lg p-1.5 transition-colors ${
+                isPrevDisabled()
+                  ? 'text-slate-300 cursor-not-allowed opacity-40'
+                  : 'text-slate-600 hover:bg-sky-100 hover:text-sky-900 cursor-pointer'
+              }`}
               title="Previous Month"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -249,8 +278,13 @@ export default function BusinessDatePicker({
 
             <button
               type="button"
+              disabled={isNextDisabled()}
               onClick={nextMonth}
-              className="rounded-lg p-1.5 text-slate-600 hover:bg-sky-100 hover:text-sky-900 transition-colors"
+              className={`rounded-lg p-1.5 transition-colors ${
+                isNextDisabled()
+                  ? 'text-slate-300 cursor-not-allowed opacity-40'
+                  : 'text-slate-600 hover:bg-sky-100 hover:text-sky-900 cursor-pointer'
+              }`}
               title="Next Month"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -284,7 +318,7 @@ export default function BusinessDatePicker({
               const ymd = formatDateToYMD(dateObj)
               const weekend = isWeekend(dateObj)
               const isPast = minYMD && ymd < minYMD
-              const isFutureMax = max && ymd > max
+              const isFutureMax = maxYMD && ymd > maxYMD
               const isDisabled = weekend || isPast || isFutureMax
 
               const isSelected = value === ymd
@@ -301,6 +335,8 @@ export default function BusinessDatePicker({
                       ? 'Weekends are unavailable'
                       : isPast
                       ? 'Past dates cannot be selected'
+                      : isFutureMax
+                      ? 'Bookings are limited to 1 week in advance'
                       : `Select ${ymd}`
                   }
                   className={`h-7 w-full rounded-lg text-xs font-semibold flex items-center justify-center transition-all ${

@@ -255,6 +255,13 @@ export default function BookRoom() {
     searchParams.get('roomId')
 
   const todayStr = getLocalDateStr()
+  const maxDateObj = new Date()
+  maxDateObj.setDate(maxDateObj.getDate() + 7)
+  const maxDateStr = [
+    maxDateObj.getFullYear(),
+    String(maxDateObj.getMonth() + 1).padStart(2, '0'),
+    String(maxDateObj.getDate()).padStart(2, '0'),
+  ].join('-')
   const defaultBusinessDay = getNextBusinessDayStr()
 
   const prefillDate =
@@ -982,6 +989,7 @@ export default function BookRoom() {
             <BusinessDatePicker
               label="Date"
               min={todayStr}
+              max={maxDateStr}
               value={form.date}
               error={errors.date}
               onChange={(value) =>

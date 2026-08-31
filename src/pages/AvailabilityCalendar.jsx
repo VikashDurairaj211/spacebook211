@@ -184,6 +184,13 @@ function normalizeFacilities(facilities) {
 
 export default function AvailabilityCalendar() {
   const today = localDate();
+  const maxDateObj = new Date();
+  maxDateObj.setDate(maxDateObj.getDate() + 7);
+  const maxDate = [
+    maxDateObj.getFullYear(),
+    String(maxDateObj.getMonth() + 1).padStart(2, '0'),
+    String(maxDateObj.getDate()).padStart(2, '0'),
+  ].join('-');
 
   const [selectedDate, setSelectedDate] =
     useState(today);
@@ -861,6 +868,7 @@ export default function AvailabilityCalendar() {
             <div className="flex-1 sm:w-auto sm:min-w-[190px]">
               <BusinessDatePicker
                 min={today}
+                max={maxDate}
                 value={selectedDate}
                 onChange={(newDate) =>
                   handleDateChange(newDate)
@@ -873,6 +881,9 @@ export default function AvailabilityCalendar() {
               variant="secondary"
               onClick={() =>
                 changeDays(1)
+              }
+              disabled={
+                selectedDate >= maxDate
               }
               aria-label="Next day"
               className="p-2 sm:px-3 sm:py-2 shrink-0"
