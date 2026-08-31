@@ -1011,14 +1011,9 @@ export default function Reports() {
             </span>
             <CheckCircle2 size={14} className="text-[#658362]" />
           </div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <p className="text-2xl font-extrabold text-[#658362] leading-tight">
-              {kpis.confirmed}
-            </p>
-            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
-              {kpis.confirmedRate}%
-            </span>
-          </div>
+          <p className="mt-1 text-2xl font-extrabold text-[#658362] leading-tight">
+            {kpis.confirmed}
+          </p>
           <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>Successful Occupancy</span>
             <span className="font-bold text-emerald-700">{kpis.confirmedRate}%</span>
@@ -1039,14 +1034,9 @@ export default function Reports() {
             </span>
             <XCircle size={14} className="text-[#B85450]" />
           </div>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <p className="text-2xl font-extrabold text-[#B85450] leading-tight">
-              {kpis.cancelled}
-            </p>
-            <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-800">
-              {kpis.cancellationRate}%
-            </span>
-          </div>
+          <p className="mt-1 text-2xl font-extrabold text-[#B85450] leading-tight">
+            {kpis.cancelled}
+          </p>
           <div className="mt-1 flex items-center justify-between text-[11px] text-slate">
             <span>Cancellation Impact</span>
             <span className="font-bold text-red-700">{kpis.cancellationRate}%</span>
