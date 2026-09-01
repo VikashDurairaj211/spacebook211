@@ -1381,7 +1381,7 @@ export default function SearchRooms() {
           >
             {loading
               ? "Searching..."
-              : "Search Available Rooms"}
+              : "Search Available Meeting Spaces"}
           </Button>
         </form>
       </Card>
