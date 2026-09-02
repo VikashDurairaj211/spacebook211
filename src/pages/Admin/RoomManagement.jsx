@@ -572,16 +572,33 @@ async function fetchAdminRoomDashboard() {
   }
 }
 
+const DEFAULT_MASTER_FACILITIES = [
+  { id: 1, name: 'Projector' },
+  { id: 2, name: 'TV' },
+  { id: 3, name: 'Whiteboard' },
+  { id: 4, name: 'Monitor' },
+  { id: 5, name: 'Wi-Fi' },
+  { id: 6, name: 'Video Conferencing' },
+  { id: 7, name: 'Camera' },
+  { id: 8, name: 'Speaker' },
+]
+
 async function fetchAdminFacilities() {
   try {
     const response = await client.get('/admin/facilities')
-    return normalizeFacilityList(response.data)
+    const list = normalizeFacilityList(response.data)
+    if (list && list.length > 0) {
+      const merged = [...list]
+      DEFAULT_MASTER_FACILITIES.forEach((def) => {
+        if (!merged.some((m) => m.name.toLowerCase() === def.name.toLowerCase())) {
+          merged.push(def)
+        }
+      })
+      return merged
+    }
+    return DEFAULT_MASTER_FACILITIES
   } catch {
-    return [
-      { id: 1, name: 'Projector' },
-      { id: 2, name: 'TV' },
-      { id: 3, name: 'Whiteboard' },
-    ]
+    return DEFAULT_MASTER_FACILITIES
   }
 }
 
@@ -928,16 +945,92 @@ export default function RoomManagement() {
     setFormData(getEmptyFormData())
   }
 
+  const handleToggleFacility = (fac) => {
+    if (modalMode === 'view') return
+    const current = formData.facilities || []
+    const facId = fac.id
+    const facName = String(fac.name || fac.facilityName || '').toLowerCase().trim()
+
+    const exists = current.some((f) => {
+      const fId = typeof f === 'object' ? f.id : Number(f)
+      const fName = typeof f === 'object' ? String(f.name || f.facilityName || '').toLowerCase().trim() : String(f).toLowerCase().trim()
+      return (facId && fId === facId) || (facName && fName === facName)
+    })
+
+    let updated
+    if (exists) {
+      updated = current.filter((f) => {
+        const fId = typeof f === 'object' ? f.id : Number(f)
+        const fName = typeof f === 'object' ? String(f.name || f.facilityName || '').toLowerCase().trim() : String(f).toLowerCase().trim()
+        return !(facId && fId === facId) && !(facName && fName === facName)
+      })
+    } else {
+      updated = [...current, { id: fac.id, name: fac.name }]
+    }
+
+    setFormData({ ...formData, facilities: updated })
+    if (modalError) setModalError('')
+  }
+
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault()
 
-    if (!formData.roomName.trim()) {
+    const trimmedRoomName = formData.roomName.trim()
+    if (!trimmedRoomName) {
       setModalError('Room name is required.')
       return
     }
 
-    if (!formData.roomNumber.trim()) {
+    const trimmedRoomNumber = formData.roomNumber.trim()
+    if (!trimmedRoomNumber) {
       setModalError('Room code / number is required.')
+      return
+    }
+
+    const moduleNum = getModuleIdFromName(formData.module)
+    const normalizedSelectedModule = formData.module ? formData.module.trim().toLowerCase() : ''
+    const normalizedInputName = trimmedRoomName.toLowerCase()
+    const normalizedInputNumber = trimmedRoomNumber.toLowerCase()
+
+    // 1. Check if room name already exists in the same module
+    const duplicateNameRoom = rooms.find((r) => {
+      if (
+        selectedRoomId &&
+        (String(r.id) === String(selectedRoomId) || String(r.roomId) === String(selectedRoomId))
+      ) {
+        return false
+      }
+
+      const rName = String(r.roomName || r.name || '').trim().toLowerCase()
+      const rModule = String(r.module || '').trim().toLowerCase()
+      const rModuleId = Number(r.moduleId ?? r.moduleid ?? getModuleIdFromName(r.module))
+
+      const isSameModule =
+        (rModule && rModule === normalizedSelectedModule) ||
+        (moduleNum && rModuleId === moduleNum)
+
+      return isSameModule && rName === normalizedInputName
+    })
+
+    if (duplicateNameRoom) {
+      setModalError(`A workspace named "${trimmedRoomName}" already exists in ${formData.module}.`)
+      return
+    }
+
+    // 2. Check if room number / code already exists
+    const duplicateNumberRoom = rooms.find((r) => {
+      if (
+        selectedRoomId &&
+        (String(r.id) === String(selectedRoomId) || String(r.roomId) === String(selectedRoomId))
+      ) {
+        return false
+      }
+      const rNumber = String(r.roomNumber || r.code || r.roomCode || '').trim().toLowerCase()
+      return rNumber === normalizedInputNumber
+    })
+
+    if (duplicateNumberRoom) {
+      setModalError(`A workspace with code "${trimmedRoomNumber}" already exists.`)
       return
     }
 
@@ -947,13 +1040,12 @@ export default function RoomManagement() {
       setModalError('')
       setSuccessMessage('')
 
-      const moduleNum = getModuleIdFromName(formData.module)
       const roomTypeId = getRoomTypeId(formData.roomType)
       const selectedStatus = formData.status === 'Maintenance' ? 'Maintenance' : 'Available'
 
       const payload = {
-        roomName: formData.roomName.trim(),
-        roomNumber: formData.roomNumber.trim(),
+        roomName: trimmedRoomName,
+        roomNumber: trimmedRoomNumber,
         moduleId: moduleNum,
         module: formData.module,
         roomTypeId: roomTypeId,
@@ -1259,7 +1351,10 @@ export default function RoomManagement() {
             <input
               name="roomName"
               value={formData.roomName}
-              onChange={(e) => setFormData({ ...formData, roomName: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, roomName: e.target.value })
+                if (modalError) setModalError('')
+              }}
               disabled={modalMode === 'view'}
               required
               className="w-full rounded-xl border border-line bg-portal-bg px-3 py-2 text-sm text-ink outline-none"
@@ -1271,7 +1366,10 @@ export default function RoomManagement() {
             <input
               name="roomNumber"
               value={formData.roomNumber}
-              onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, roomNumber: e.target.value })
+                if (modalError) setModalError('')
+              }}
               disabled={modalMode === 'view'}
               required
               placeholder="e.g., CBE-05-EO1-001"
@@ -1284,7 +1382,10 @@ export default function RoomManagement() {
             <select
               name="module"
               value={formData.module}
-              onChange={(e) => setFormData({ ...formData, module: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, module: e.target.value })
+                if (modalError) setModalError('')
+              }}
               disabled={modalMode === 'view'}
               className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
             >
@@ -1300,7 +1401,10 @@ export default function RoomManagement() {
               <select
                 name="roomType"
                 value={formData.roomType}
-                onChange={(e) => setFormData({ ...formData, roomType: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, roomType: e.target.value })
+                  if (modalError) setModalError('')
+                }}
                 disabled={modalMode === 'view'}
                 className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
               >
@@ -1317,11 +1421,67 @@ export default function RoomManagement() {
                 type="number"
                 min="1"
                 value={formData.capacity}
-                onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, capacity: e.target.value })
+                  if (modalError) setModalError('')
+                }}
                 disabled={modalMode === 'view'}
                 className="w-full rounded-xl border border-line bg-portal-bg px-3 py-2 text-sm text-ink outline-none"
               />
             </label>
+          </div>
+
+          {/* Facilities Selector */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase tracking-[0.2em] text-slate font-semibold">Facilities</span>
+              {modalMode !== 'view' && (
+                <span className="text-[10px] text-slate">Click items to toggle</span>
+              )}
+            </div>
+
+            {modalMode === 'view' ? (
+              <div className="flex flex-wrap items-center gap-1.5 min-h-[36px] p-2.5 bg-portal-bg/60 rounded-xl border border-line">
+                {formData.facilities && formData.facilities.length > 0 ? (
+                  formData.facilities.map((fac, idx) => (
+                    <span
+                      key={fac.id ?? idx}
+                      className="inline-flex items-center gap-1 rounded-lg bg-sky-100 border border-sky-200 px-2.5 py-1 text-xs font-semibold text-sky-800"
+                    >
+                      ✓ {typeof fac === 'object' ? fac.name : fac}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate italic">No facilities assigned.</span>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5 p-2.5 bg-portal-bg/60 rounded-xl border border-line">
+                {(facilities.length > 0 ? facilities : DEFAULT_MASTER_FACILITIES).map((fac) => {
+                  const isSelected = (formData.facilities || []).some((f) => {
+                    const fId = typeof f === 'object' ? f.id : Number(f)
+                    const fName = typeof f === 'object' ? String(f.name || f.facilityName || '').toLowerCase().trim() : String(f).toLowerCase().trim()
+                    return (fac.id && fId === fac.id) || (fac.name && fName === fac.name.toLowerCase().trim())
+                  })
+
+                  return (
+                    <button
+                      key={fac.id}
+                      type="button"
+                      onClick={() => handleToggleFacility(fac)}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                        isSelected
+                          ? 'bg-sky-600 text-white shadow-sm border border-sky-600 font-semibold'
+                          : 'bg-white text-ink border border-line hover:border-sky-400 hover:bg-sky-50/60'
+                      }`}
+                    >
+                      <span>{isSelected ? '✓' : '+'}</span>
+                      <span>{fac.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           <label className="block space-y-1">
@@ -1329,7 +1489,10 @@ export default function RoomManagement() {
             <select
               name="status"
               value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, status: e.target.value })
+                if (modalError) setModalError('')
+              }}
               disabled={modalMode === 'view'}
               className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink outline-none"
             >
